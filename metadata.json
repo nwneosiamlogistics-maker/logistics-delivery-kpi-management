@@ -1,0 +1,7 @@
+{
+  "name": "Logistics Delivery KPI Management",
+  "description": "A comprehensive KPI management system for logistics delivery, featuring automated working-day calculations, holiday management, and AI-driven performance insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
