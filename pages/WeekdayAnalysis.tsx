@@ -11,15 +11,22 @@ interface WeekdayAnalysisProps {
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAY_THAI: Record<string, string> = {
+  'Monday': 'จันทร์',
+  'Tuesday': 'อังคาร',
+  'Wednesday': 'พุธ',
+  'Thursday': 'พฤหัสบดี',
+  'Friday': 'ศุกร์',
+  'Saturday': 'เสาร์',
+  'Sunday': 'อาทิตย์'
+};
 
 export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) => {
-  // State for Filters
   const [districtFilter, setDistrictFilter] = useState<string>('All');
   const [storeFilter, setStoreFilter] = useState<string>('All');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  // unique values for dropdowns
   const districts = useMemo(() => Array.from(new Set(deliveries.map(d => d.district))), [deliveries]);
   const stores = useMemo(() => {
     let filtered = deliveries;
@@ -29,7 +36,6 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
     return Array.from(new Set(filtered.map(d => d.storeId)));
   }, [deliveries, districtFilter]);
 
-  // Filter Data
   const filteredData = useMemo(() => {
     return deliveries.filter(d => {
       const matchDistrict = districtFilter === 'All' || d.district === districtFilter;
@@ -43,15 +49,11 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
     });
   }, [deliveries, districtFilter, storeFilter, startDate, endDate]);
 
-  // Aggregate Data
   const analyticsData = useMemo(() => {
-    const map = new Map(WEEKDAYS.map(day => [day, { name: day, count: 0, qty: 0 }]));
+    const map = new Map(WEEKDAYS.map(day => [day, { name: day, nameThai: WEEKDAY_THAI[day], count: 0, qty: 0 }]));
 
     filteredData.forEach(d => {
-      // Robust weekday calculation
       const dayName = getWeekday(d.actualDate);
-      // Ensure it matches our WEEKDAYS array (case sensitive?)
-      // getWeekday returns "Monday", etc.
       if (map.has(dayName)) {
         const entry = map.get(dayName)!;
         entry.count += 1;
@@ -62,56 +64,53 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
     return WEEKDAYS.map(day => map.get(day)!);
   }, [filteredData]);
 
-  // Metrics
   const totalTrips = analyticsData.reduce((s, d) => s + d.count, 0);
   const totalQty = analyticsData.reduce((s, d) => s + d.qty, 0);
   const maxTripDay = analyticsData.reduce((prev, current) => (prev.count > current.count) ? prev : current, analyticsData[0]);
-  const minTripDay = analyticsData.filter(d => d.count > 0).reduce((prev, current) => (prev.count < current.count) ? prev : current, { name: '-', count: 0 } as any);
-
+  const minTripDay = analyticsData.filter(d => d.count > 0).reduce((prev, current) => (prev.count < current.count) ? prev : current, { name: '-', nameThai: '-', count: 0 } as any);
   const weekendTrips = analyticsData.filter(d => d.name === 'Saturday' || d.name === 'Sunday').reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      {/* Header & Controls */}
       <div className="glass-panel p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-center gap-6">
         <div>
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            Weekday Pattern Analysis
+            วิเคราะห์รูปแบบการจัดส่งรายวัน
           </h2>
-          <p className="text-gray-500 mt-1">Optimize delivery schedules based on historical traffic patterns</p>
+          <p className="text-gray-500 mt-1">เพิ่มประสิทธิภาพตารางจัดส่งจากข้อมูลในอดีต</p>
         </div>
 
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">District</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase">อำเภอ</label>
             <select
-              aria-label="Filter by District"
+              aria-label="กรองตามอำเภอ"
               className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               value={districtFilter}
               onChange={(e) => setDistrictFilter(e.target.value)}
             >
-              <option value="All">All Districts</option>
+              <option value="All">ทุกอำเภอ</option>
               {districts.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Store</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase">ร้านค้า</label>
             <select
-              aria-label="Filter by Store"
+              aria-label="กรองตามร้านค้า"
               className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               value={storeFilter}
               onChange={(e) => setStoreFilter(e.target.value)}
             >
-              <option value="All">All Stores</option>
+              <option value="All">ทุกร้านค้า</option>
               {stores.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">From</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase">ตั้งแต่</label>
             <input
-              aria-label="Start Date"
+              aria-label="วันเริ่มต้น"
               type="date"
               className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               value={startDate}
@@ -120,9 +119,9 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">To</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase">ถึง</label>
             <input
-              aria-label="End Date"
+              aria-label="วันสิ้นสุด"
               type="date"
               className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               value={endDate}
@@ -132,43 +131,40 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
         </div>
       </div>
 
-      {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
-          title="Total Trips"
+          title="จำนวนเที่ยว"
           value={totalTrips.toLocaleString()}
           icon="fa-truck"
           color="blue"
         />
         <MetricCard
-          title="Total Volume"
+          title="ปริมาณรวม"
           value={totalQty.toLocaleString()}
-          subValue="Units"
+          subValue="ชิ้น"
           icon="fa-box-open"
           color="purple"
         />
         <MetricCard
-          title="Peak Day"
-          value={maxTripDay.name}
-          subValue={`${maxTripDay.count} Trips`}
+          title="วันที่ส่งมากที่สุด"
+          value={maxTripDay.nameThai}
+          subValue={`${maxTripDay.count} เที่ยว`}
           icon="fa-chart-line"
           color="emerald"
         />
         <MetricCard
-          title="Weekend Activity"
+          title="กิจกรรมวันหยุด"
           value={weekendTrips.toString()}
-          subValue="Trips (Sat-Sun)"
+          subValue="เที่ยว (ส.-อา.)"
           icon="fa-calendar-week"
           color={weekendTrips > 0 ? "orange" : "gray"}
         />
       </div>
 
-      {/* Charts & Insights */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Main Chart */}
         <div className="xl:col-span-2 glass-panel p-6 rounded-2xl">
           <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <i className="fas fa-chart-bar text-indigo-500"></i> Delivery Volume Distribution
+            <i className="fas fa-chart-bar text-indigo-500"></i> การกระจายปริมาณการจัดส่ง
           </h3>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -184,7 +180,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} dy={10} />
+                <XAxis dataKey="nameThai" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} dy={10} />
                 <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
                 <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
                 <Tooltip
@@ -195,23 +191,23 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
                     border: 'none',
                     padding: '12px'
                   }}
+                  formatter={(value: any, name?: string) => [value, name === 'count' ? 'เที่ยว' : 'ชิ้น']}
                 />
-                <Bar yAxisId="left" dataKey="count" name="Trips" fill="url(#colorCount)" radius={[6, 6, 0, 0]} barSize={40}>
+                <Bar yAxisId="left" dataKey="count" name="count" fill="url(#colorCount)" radius={[6, 6, 0, 0]} barSize={40}>
                   {analyticsData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.name === maxTripDay.name ? '#10B981' : 'url(#colorCount)'} />
                   ))}
                 </Bar>
-                <Line yAxisId="right" type="monotone" dataKey="qty" name="Qty" stroke="#EC4899" strokeWidth={3} dot={{ r: 4, fill: '#EC4899', strokeWidth: 2, stroke: '#fff' }} />
+                <Line yAxisId="right" type="monotone" dataKey="qty" name="qty" stroke="#EC4899" strokeWidth={3} dot={{ r: 4, fill: '#EC4899', strokeWidth: 2, stroke: '#fff' }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Insights Panel */}
         <div className="space-y-6">
           <div className="glass-panel p-6 rounded-2xl bg-gradient-to-br from-white to-indigo-50/50">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <i className="fas fa-lightbulb text-amber-400"></i> AI Insights
+              <i className="fas fa-lightbulb text-amber-400"></i> AI วิเคราะห์
             </h3>
             <ul className="space-y-4">
               <li className="flex gap-3 items-start p-3 bg-white/60 rounded-lg shadow-sm">
@@ -219,9 +215,9 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
                   <i className="fas fa-check"></i>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-gray-900">Peak Efficiency</h4>
+                  <h4 className="font-semibold text-sm text-gray-900">วันที่งานหนาแน่น</h4>
                   <p className="text-xs text-gray-600 mt-1">
-                    {maxTripDay.name} is your busiest day with {maxTripDay.count} trips. Ensure maximum fleet availability on this day.
+                    วัน{maxTripDay.nameThai}เป็นวันที่ยุ่งที่สุดมี {maxTripDay.count} เที่ยว ควรเตรียมรถให้เพียงพอ
                   </p>
                 </div>
               </li>
@@ -231,11 +227,11 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
                   <i className="fas fa-exclamation-triangle"></i>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-gray-900">Weekend Risk</h4>
+                  <h4 className="font-semibold text-sm text-gray-900">ความเสี่ยงวันหยุด</h4>
                   <p className="text-xs text-gray-600 mt-1">
                     {weekendTrips > 0
-                      ? `${weekendTrips} trips scheduled on weekends. Verify store opening hours to avoid KPI failure.`
-                      : "No weekend deliveries detected. Low risk of closure-related delays."}
+                      ? `มี ${weekendTrips} เที่ยวในวันหยุดสัปดาห์ ตรวจสอบว่าร้านเปิดหรือไม่`
+                      : "ไม่มีการจัดส่งในวันหยุดสัปดาห์ ลดความเสี่ยง KPI ไม่ผ่าน"}
                   </p>
                 </div>
               </li>
@@ -245,10 +241,10 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
                   <i className="fas fa-chart-pie"></i>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-gray-900">Load Balance</h4>
+                  <h4 className="font-semibold text-sm text-gray-900">สมดุลงาน</h4>
                   <p className="text-xs text-gray-600 mt-1">
-                    Average of {(totalQty / (totalTrips || 1)).toFixed(0)} items per trip.
-                    {maxTripDay.qty > (totalQty / 7) * 1.5 ? ` ${maxTripDay.name} has unusually high volume.` : " Volume is well distributed."}
+                    เฉลี่ย {(totalQty / (totalTrips || 1)).toFixed(0)} ชิ้นต่อเที่ยว
+                    {maxTripDay.qty > (totalQty / 7) * 1.5 ? ` วัน${maxTripDay.nameThai}มีปริมาณสูงผิดปกติ` : " ปริมาณกระจายดี"}
                   </p>
                 </div>
               </li>
@@ -256,34 +252,36 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
           </div>
 
           <div className="glass-panel p-6 rounded-2xl">
-            <h3 className="text-sm font-bold text-gray-500 uppercase mb-4">Quick Stats</h3>
+            <h3 className="text-sm font-bold text-gray-500 uppercase mb-4">สถิติย่อ</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 text-sm">Active Days</span>
+                <span className="text-gray-600 text-sm">วันที่มีการส่ง</span>
                 <span className="font-bold text-gray-900">{analyticsData.filter(d => d.count > 0).length} / 7</span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${(analyticsData.filter(d => d.count > 0).length / 7) * 100}%` }}></div>
+              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-indigo-500 h-2 rounded-full dynamic-width-bar"
+                  style={{ '--target-width': `${(analyticsData.filter(d => d.count > 0).length / 7) * 100}%` } as React.CSSProperties}
+                ></div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Data Table */}
       <div className="glass-panel rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <h3 className="font-bold text-gray-800">Detailed Breakdown</h3>
+          <h3 className="font-bold text-gray-800">รายละเอียดแยกตามวัน</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left text-gray-500">
             <thead className="text-xs text-gray-700 uppercase bg-gray-100/50">
               <tr>
-                <th className="px-6 py-4 font-bold">Weekday</th>
-                <th className="px-6 py-4 font-bold">Delivery Count</th>
-                <th className="px-6 py-4 font-bold">Total Quantity</th>
-                <th className="px-6 py-4 font-bold">Proportion</th>
-                <th className="px-6 py-4 font-bold">Status</th>
+                <th className="px-6 py-4 font-bold">วัน</th>
+                <th className="px-6 py-4 font-bold">จำนวนเที่ยว</th>
+                <th className="px-6 py-4 font-bold">จำนวนชิ้น</th>
+                <th className="px-6 py-4 font-bold">สัดส่วน</th>
+                <th className="px-6 py-4 font-bold">สถานะ</th>
               </tr>
             </thead>
             <tbody>
@@ -293,25 +291,28 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
                   <tr key={day.name} className="border-b border-gray-50 hover:bg-indigo-50/30 transition-colors">
                     <td className="px-6 py-4 font-bold text-gray-900 flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${day.count > 0 ? 'bg-indigo-400' : 'bg-gray-300'}`}></div>
-                      {day.name}
+                      {day.nameThai}
                     </td>
                     <td className="px-6 py-4 font-medium">{day.count}</td>
                     <td className="px-6 py-4">{day.qty.toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-1.5">
-                          <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${percentage}%` }}></div>
+                        <div className="w-24 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-indigo-500 h-1.5 rounded-full dynamic-width-bar"
+                            style={{ '--target-width': `${percentage}%` } as React.CSSProperties}
+                          ></div>
                         </div>
                         <span className="text-xs">{percentage.toFixed(1)}%</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       {day.count === maxTripDay.count && day.count > 0 ? (
-                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-bold">Peak</span>
+                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-bold">สูงสุด</span>
                       ) : day.count === 0 ? (
-                        <span className="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">Inactive</span>
+                        <span className="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">ไม่มี</span>
                       ) : (
-                        <span className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-full">Normal</span>
+                        <span className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-full">ปกติ</span>
                       )}
                     </td>
                   </tr>
@@ -325,7 +326,6 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
   );
 };
 
-// Sub-component for metric cards
 const MetricCard = ({ title, value, subValue, icon, color }: any) => {
   const colorMap: any = {
     blue: "bg-blue-100 text-blue-600",

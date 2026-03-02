@@ -1,8 +1,15 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { DeliveryRecord } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getApiKey = () => {
+  const key = (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+    (import.meta as any).env?.VITE_API_KEY ||
+    (typeof process !== 'undefined' ? (process.env.API_KEY || process.env.GEMINI_API_KEY) : '');
+  if (!key || key === 'undefined' || key === 'null') return '';
+  return key;
+};
+
+const genAI = new GoogleGenerativeAI(getApiKey());
 
 export const getKpiInsights = async (deliveries: DeliveryRecord[]) => {
   const summary = deliveries.reduce((acc, curr) => {
@@ -12,48 +19,57 @@ export const getKpiInsights = async (deliveries: DeliveryRecord[]) => {
     return acc;
   }, { total: 0, pass: 0, fail: 0 });
 
+  if (summary.total === 0) return "ยังไม่มีข้อมูลสำหรับการวิเคราะห์";
+
   const prompt = `
-    As a senior logistics analyst, analyze this delivery KPI data:
-    - Total Deliveries: ${summary.total}
-    - KPI Pass: ${summary.pass}
-    - KPI Fail: ${summary.fail}
-    - Fail Rate: ${((summary.fail / summary.total) * 100).toFixed(2)}%
+    ในฐานะผู้เชี่ยวชาญด้านโลจิสติกส์ โปรดวิเคราะห์ข้อมูล KPI การจัดส่งดังนี้:
+    - จำนวนการจัดส่งทั้งหมด: ${summary.total}
+    - ผ่าน KPI (ตรงเวลา): ${summary.pass}
+    - ไม่ผ่าน KPI (ล่าช้า): ${summary.fail}
+    - อัตราการล่าช้า: ${((summary.fail / summary.total) * 100).toFixed(2)}%
 
-    Context: Our KPI counts working days only (excluding Sundays/Holidays). 
-    If a delivery fails, a reason must be submitted.
+    บริบท: KPI ของเรานับเฉพาะวันทำการ (ไม่รวมวันอาทิตย์และวันหยุดที่กำหนด) 
+    หากการส่งมอบล่าช้า พนักงานต้องระบุเหตุผลประกอบ
 
-    Provide a short, professional analysis (2-3 paragraphs) on the logistics health and potential bottlenecks.
-    Keep it strictly business-oriented.
+    โปรดให้บทวิเคราะห์สั้นๆ (2-3 ย่อหน้า) เกี่ยวกับภาพรวมประสิทธิภาพและจุดที่ควรปรับปรุง
+    **สำคัญ: โปรดตอบเป็นภาษาไทยที่ดูเป็นมืออาชีพและกระชับ**
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-    return response.text;
-  } catch (error) {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error: any) {
     console.error("AI Insight Error:", error);
-    return "Unable to generate AI insights at this time.";
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      return "ระบบ AI (Gemini 1.5 Flash) ยังไม่เปิดให้ใช้งานในภูมิภาคของคุณ หรือ API Key มีข้อจำกัด กรุณาตรวจสอบการตั้งค่า";
+    }
+    if (error.message?.includes('API key')) {
+      return "กรุณาตั้งค่า API Key ให้ถูกต้องในไฟล์ .env เพื่อใช้งาน AI Insight";
+    }
+    return "ไม่สามารถสร้างบทวิเคราะห์ได้ในขณะนี้: " + (error.message || "Unknown Error");
   }
 };
 
 export const analyzeDelayPatterns = async (failedDeliveries: DeliveryRecord[]) => {
+  if (failedDeliveries.length === 0) return "ยังไม่พบรายการล่าช้าที่ต้องวิเคราะห์";
+
   const prompt = `
-    Analyze these ${failedDeliveries.length} failed logistics deliveries. 
-    Common failure reasons include: ${failedDeliveries.map(d => d.delayReason || 'Unspecified').slice(0, 5).join(', ')}.
+    วิเคราะห์รายการที่ส่งมอบล่าช้าจำนวน ${failedDeliveries.length} รายการ 
+    สาเหตุส่วนใหญ่ที่พบ: ${failedDeliveries.map(d => d.delayReason || 'ไม่ระบุ').slice(0, 5).join(', ')}
     
-    Predict 3 key risks for the next week and suggest 2 operational improvements.
+    โปรดสรุปความเสี่ยง 3 ข้อสำหรับสัปดาห์หน้า และเสนอแนะแนวทางแก้ไข 2 ข้อ
+    **คำสั่ง: ตอบเป็นภาษาไทยเท่านั้น**
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-    return response.text;
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
     console.error("AI Pattern Analysis Error:", error);
-    return "Operational analysis currently unavailable.";
+    return "ระบบวิเคราะห์รูปแบบการล่าช้าไม่พร้อมใช้งาน";
   }
 };

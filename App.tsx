@@ -1,50 +1,251 @@
-
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { Import } from './pages/Import';
 import { KpiExceptions } from './pages/KpiExceptions';
 import { WeekdayAnalysis } from './pages/WeekdayAnalysis';
-import { MOCK_DELIVERIES } from './constants';
-import { DeliveryRecord } from './types';
+import { MasterData } from './pages/MasterData';
+import { UploadHistory } from './pages/UploadHistory';
+import { DeliveryTracker } from './pages/DeliveryTracker';
+import { WeeklyReport } from './pages/WeeklyReport';
+import {
+  HOLIDAYS,
+  STORE_CLOSURES,
+  KPI_CONFIGS,
+  DELAY_REASONS,
+  DEFAULT_USER
+} from './constants';
+import {
+  DeliveryRecord,
+  Holiday,
+  StoreClosure,
+  KpiConfig,
+  DelayReason,
+  ImportLog,
+  ReasonAuditLog,
+  User,
+  ReasonStatus
+} from './types';
+import { getRealtimeDb } from './services/firebase';
+import { ref, onValue, set, get } from 'firebase/database';
+
+const KPI_CONFIGS_PATH = 'kpiConfigs';
+
+// Firebase keys cannot contain . # $ / [ ]
+function sanitizeFirebaseKey(key: string): string {
+  return key.replace(/[.#$\[\]/]/g, '_');
+}
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(MOCK_DELIVERIES);
-  const [user] = useState({ name: 'Somsak L.', role: 'Admin' });
+  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>(HOLIDAYS);
+  const [storeClosures, setStoreClosures] = useState<StoreClosure[]>(STORE_CLOSURES);
+  const [kpiConfigs, setKpiConfigs] = useState<KpiConfig[]>(KPI_CONFIGS);
+  const [delayReasons, setDelayReasons] = useState<DelayReason[]>(DELAY_REASONS);
+  const kpiLoadedFromFirebase = useRef(false);
+  const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
+  const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
+  const [currentUser] = useState<User>(DEFAULT_USER);
 
-  const handleImport = (newItems: DeliveryRecord[]) => {
-    // Basic de-duplication logic
+  const handleImportComplete = useCallback((newRecords: DeliveryRecord[], importLog: ImportLog) => {
     setDeliveries(prev => {
-      const existingIds = new Set(prev.map(d => d.orderNo));
-      const uniqueNewItems = newItems.filter(item => !existingIds.has(item.orderNo));
-      return [...prev, ...uniqueNewItems];
-    });
-    setActiveTab('dashboard');
-  };
+      // Use storeId as unique key; fallback to orderNo
+      const existingMap = new Map(prev.map(d => [d.storeId || d.orderNo, d]));
+      newRecords.forEach(record => {
+        existingMap.set(record.storeId || record.orderNo, record);
+      });
+      const merged = Array.from(existingMap.values());
 
-  const handleUpdateDelivery = (updated: DeliveryRecord) => {
+      // Sync merged deliveries to Firebase (strip productDetails to save bandwidth)
+      const db = getRealtimeDb();
+      if (db) {
+        const obj: Record<string, Omit<DeliveryRecord, 'productDetails'>> = {};
+        merged.forEach(d => {
+          const key = sanitizeFirebaseKey(d.storeId || d.orderNo);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { productDetails: _pd, ...rest } = d;
+          obj[key] = rest;
+        });
+        set(ref(db, 'deliveries'), obj).catch(e =>
+          console.warn('[Firebase] sync deliveries error:', e)
+        );
+      }
+
+      return merged;
+    });
+    setImportLogs(prev => [...prev, importLog]);
+
+    // Auto-detect new province/district combos not in KPI config → create drafts
+    setKpiConfigs(prevConfigs => {
+      const seen = new Set(
+        prevConfigs.map(c => `${c.province || ''}|${c.district}`)
+      );
+      const draftsToAdd: KpiConfig[] = [];
+      const combos = new Set<string>();
+      newRecords.forEach(r => {
+        const key = `${r.province || ''}|${r.district}`;
+        if (r.district && !seen.has(key) && !combos.has(key)) {
+          combos.add(key);
+          draftsToAdd.push({
+            id: `kpi-draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            province: r.province || undefined,
+            district: r.district,
+            onTimeLimit: 1,
+            isDraft: true
+          });
+        }
+      });
+      return draftsToAdd.length > 0 ? [...prevConfigs, ...draftsToAdd] : prevConfigs;
+    });
+
+    setActiveTab('dashboard');
+  }, []);
+
+  // Load deliveries from Firebase on mount (one-time read to minimize bandwidth)
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) return;
+    get(ref(db, 'deliveries'))
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          const records: DeliveryRecord[] = Object.values(snapshot.val());
+          setDeliveries(records);
+        }
+      })
+      .catch(e => console.warn('[Firebase] load deliveries error:', e));
+  }, []);
+
+  // Load kpiConfigs from Firebase on mount
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) {
+      kpiLoadedFromFirebase.current = true;
+      return;
+    }
+    try {
+      const kpiRef = ref(db, KPI_CONFIGS_PATH);
+      const unsub = onValue(kpiRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const configs: KpiConfig[] = Object.values(data);
+          setKpiConfigs(configs);
+        } else {
+          const obj: Record<string, KpiConfig> = {};
+          KPI_CONFIGS.forEach(c => { obj[c.id] = c; });
+          set(ref(db, KPI_CONFIGS_PATH), obj);
+        }
+        kpiLoadedFromFirebase.current = true;
+      });
+      return () => unsub();
+    } catch {
+      kpiLoadedFromFirebase.current = true;
+    }
+  }, []);
+
+  // Save kpiConfigs to Firebase whenever they change (after initial load)
+  useEffect(() => {
+    if (!kpiLoadedFromFirebase.current) return;
+    const db = getRealtimeDb();
+    if (!db) return;
+    try {
+      const obj: Record<string, KpiConfig> = {};
+      kpiConfigs.forEach(c => { obj[c.id] = c; });
+      set(ref(db, KPI_CONFIGS_PATH), obj);
+    } catch { /* silent */ }
+  }, [kpiConfigs]);
+
+  const handleAddKpiConfig = useCallback((newConfig: Omit<KpiConfig, 'id'>) => {
+    const config: KpiConfig = {
+      ...newConfig,
+      id: `kpi-${Date.now()}`
+    };
+    setKpiConfigs(prev => [...prev, config]);
+  }, []);
+
+  const handleUpdateDelivery = useCallback((updated: DeliveryRecord, action?: 'submitted' | 'approved' | 'rejected') => {
     setDeliveries(prev => prev.map(d => d.orderNo === updated.orderNo ? updated : d));
+
+    if (action) {
+      const auditLog: ReasonAuditLog = {
+        id: `audit-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        orderNo: updated.orderNo,
+        action,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        reason: updated.delayReason
+      };
+      setReasonAuditLogs(prev => [...prev, auditLog]);
+    }
+  }, [currentUser]);
+
+  const canAccess = (tab: string): boolean => {
+    if (currentUser.role === 'Admin') return true;
+    if (currentUser.role === 'Staff') {
+      return ['dashboard', 'import', 'exceptions', 'analysis'].includes(tab);
+    }
+    return ['dashboard', 'analysis'].includes(tab);
   };
 
   const renderContent = () => {
+    if (!canAccess(activeTab)) {
+      return (
+        <div className="p-8 text-center text-gray-500">
+          <i className="fas fa-lock text-6xl mb-4 text-gray-300"></i>
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p>You don't have permission to view this page.</p>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard deliveries={deliveries} />;
       case 'import':
-        return <Import onImportComplete={handleImport} />;
+        return (
+          <Import
+            onImportComplete={handleImportComplete}
+            existingDeliveries={deliveries}
+            kpiConfigs={kpiConfigs}
+            holidays={holidays}
+            storeClosures={storeClosures}
+            currentUser={currentUser}
+          />
+        );
       case 'exceptions':
-        return <KpiExceptions deliveries={deliveries} onUpdateDelivery={handleUpdateDelivery} userRole={user.role} />;
+        return (
+          <KpiExceptions
+            deliveries={deliveries}
+            onUpdateDelivery={handleUpdateDelivery}
+            userRole={currentUser.role}
+            delayReasons={delayReasons}
+          />
+        );
+      case 'upload-history':
+        return <UploadHistory importLogs={importLogs} deliveries={deliveries} />;
+      case 'delivery-status':
+        return <DeliveryTracker deliveries={deliveries} />;
+      case 'weekly-report':
+        return <WeeklyReport deliveries={deliveries} />;
       case 'analysis':
         return <WeekdayAnalysis deliveries={deliveries} />;
       case 'settings':
         return (
-          <div className="p-8 text-center text-gray-500">
-            <i className="fas fa-tools text-6xl mb-4"></i>
-            <h2 className="text-2xl font-bold">Master Data Configuration</h2>
-            <p>Holidays, KPI Thresholds, and Store Closures management coming soon.</p>
-          </div>
+          <MasterData
+            holidays={holidays}
+            storeClosures={storeClosures}
+            kpiConfigs={kpiConfigs}
+            delayReasons={delayReasons}
+            importLogs={importLogs}
+            onUpdateHolidays={setHolidays}
+            onUpdateStoreClosures={setStoreClosures}
+            onUpdateKpiConfigs={setKpiConfigs}
+            onAddKpiConfig={handleAddKpiConfig}
+            onUpdateDelayReasons={setDelayReasons}
+            userRole={currentUser.role}
+          />
         );
       default:
         return <Dashboard deliveries={deliveries} />;
@@ -53,9 +254,9 @@ const App: React.FC = () => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <Navbar user={user} />
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      
+      <Navbar user={currentUser} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole={currentUser.role} />
+
       <main className="flex-1 ml-64 pt-16 transition-all duration-300">
         <div className="max-w-7xl mx-auto p-4 lg:p-8">
           {renderContent()}

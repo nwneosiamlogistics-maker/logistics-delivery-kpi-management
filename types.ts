@@ -1,4 +1,3 @@
-
 export enum KpiStatus {
   PASS = 'PASS',
   NOT_PASS = 'NOT_PASS'
@@ -10,6 +9,14 @@ export enum ReasonStatus {
   SUBMITTED = 'SUBMITTED',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED'
+}
+
+export enum DeliveryStatus {
+  WAITING = 'รอจัด',
+  IN_TRANSIT = 'ขนส่ง',
+  DISTRIBUTING = 'กระจายสินค้า',
+  WAITING_DISTRIBUTE = 'รอกระจาย',
+  DELIVERED = 'ส่งเสร็จ'
 }
 
 export enum HolidayType {
@@ -30,15 +37,22 @@ export interface StoreClosure {
   id: string;
   storeId: string;
   date?: string;
-  closeRule?: string; // e.g., "Every Sunday"
+  closeRule?: 'every_sunday' | 'every_saturday' | 'every_weekend';
   reason: string;
 }
 
 export interface KpiConfig {
+  id: string;
+  province?: string;
   district: string;
-  onTimeLimit: number; // working days
-  minTripsPerWeek: number;
-  minQtyPerDay: number;
+  onTimeLimit: number;
+  isDraft?: boolean;
+}
+
+export interface DelayReason {
+  code: string;
+  label: string;
+  category: 'internal' | 'external';
 }
 
 export interface DeliveryRecord {
@@ -48,6 +62,12 @@ export interface DeliveryRecord {
   planDate: string;
   actualDate: string;
   qty: number;
+  sender?: string;
+  province?: string;
+  importFileId?: string;
+  deliveryStatus?: string;
+  actualDatetime?: string;
+  productDetails?: string;
   kpiStatus: KpiStatus;
   delayDays: number;
   reasonRequired: boolean;
@@ -58,16 +78,45 @@ export interface DeliveryRecord {
 }
 
 export interface User {
-  role: 'Admin' | 'Staff' | 'Viewer';
+  id: string;
   name: string;
+  role: 'Admin' | 'Staff' | 'Viewer';
+  email?: string;
 }
 
 export interface ImportLog {
   id: string;
   timestamp: string;
   fileName: string;
+  userId: string;
+  userName: string;
   recordsProcessed: number;
   created: number;
   updated: number;
   skipped: number;
+  errors: number;
+  errorDetails?: { row: number; error: string }[];
+  skippedDetails?: { row: number; reason: string }[];
+}
+
+export interface ReasonAuditLog {
+  id: string;
+  timestamp: string;
+  orderNo: string;
+  action: 'submitted' | 'approved' | 'rejected';
+  userId: string;
+  userName: string;
+  reason?: string;
+  comment?: string;
+}
+
+export interface AppState {
+  deliveries: DeliveryRecord[];
+  holidays: Holiday[];
+  storeClosures: StoreClosure[];
+  kpiConfigs: KpiConfig[];
+  delayReasons: DelayReason[];
+  importLogs: ImportLog[];
+  reasonAuditLogs: ReasonAuditLog[];
+  currentUser: User;
 }
