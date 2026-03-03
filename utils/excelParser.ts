@@ -115,6 +115,7 @@ function parseDate(v: any): string | null {
         if (d) {
           let y = d.y;
           if (y > 2400) y -= 543; // Handle Buddhist Era
+          if (y < 1900) return null; // Reject invalid years e.g. serial 0
           return `${y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
         }
       } catch (e) {
@@ -126,11 +127,16 @@ function parseDate(v: any): string | null {
   if (typeof v === 'string') {
     const s = v.trim();
     const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) return iso[0];
+    if (iso) {
+      const y = parseInt(iso[1], 10);
+      if (y < 1900) return null;
+      return iso[0];
+    }
     const thai = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (thai) {
       let y = parseInt(thai[3], 10);
       if (y > 2400) y -= 543;
+      if (y < 1900) return null; // Reject invalid years like 0544
       return `${y}-${thai[2].padStart(2, '0')}-${thai[1].padStart(2, '0')}`;
     }
   }
@@ -278,19 +284,25 @@ export function processImport(
       return;
     }
 
-    // Fallback: ถ้า planDate (นัดส่ง) ว่าง → คำนวณจาก openDate (วันที่) + onTimeLimit
-    if (!row.planDate && row.openDate) {
-      const cfg = kpiConfigs.find(c =>
-        c.district === row.district && (!c.province || c.province === row.province)
-      ) || kpiConfigs.find(c => c.district === row.district);
-      const limit = cfg?.onTimeLimit ?? 1;
-      const d = new Date(row.openDate);
-      d.setDate(d.getDate() + limit);
-      row = { ...row, planDate: d.toISOString().slice(0, 10) };
+    // Fallback: ถ้า planDate (นัดส่ง) ว่าง → คำนวณจาก baseDate + onTimeLimit
+    // baseDate priority: openDate (วันที่) → actualDate (วันที่แก้ไข) → actualDatetime (รายละเอียด)
+    if (!row.planDate) {
+      const baseDate = row.openDate
+        || row.actualDate
+        || (row.actualDatetime ? parseDate(row.actualDatetime) || undefined : undefined);
+      if (baseDate) {
+        const cfg = kpiConfigs.find(c =>
+          c.district === row.district && (!c.province || c.province === row.province)
+        ) || kpiConfigs.find(c => c.district === row.district);
+        const limit = cfg?.onTimeLimit ?? 1;
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + limit);
+        row = { ...row, planDate: d.toISOString().slice(0, 10) };
+      }
     }
 
     if (!row.planDate) {
-      result.errors.push({ row: index + 2, error: 'ไม่พบวันกำหนดส่ง (นัดส่ง) และไม่มีวันที่เปิดเอกสาร', data: row });
+      result.errors.push({ row: index + 2, error: 'ไม่พบวันกำหนดส่ง และไม่มีวันที่อ้างอิง', data: row });
       return;
     }
 
