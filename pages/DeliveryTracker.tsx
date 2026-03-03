@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { DeliveryRecord } from '../types';
+import { DeliveryRecord, KpiConfig } from '../types';
 
 interface DeliveryTrackerProps {
   deliveries: DeliveryRecord[];
+  kpiConfigs?: KpiConfig[];
 }
 
 const STATUS_TABS = [
@@ -94,16 +95,32 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries }) => {
+export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kpiConfigs = [] }) => {
   const [activeTab, setActiveTab] = useState('รอจัด');
   const [search, setSearch] = useState('');
+  const [filterBranch, setFilterBranch] = useState('');
   const [filterProvince, setFilterProvince] = useState('');
+  const [filterDistrict, setFilterDistrict] = useState('');
+
+  const districtBranchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    return map;
+  }, [kpiConfigs]);
+
+  const branches = useMemo(() => Array.from(new Set(kpiConfigs.filter(c => c.branch).map(c => c.branch!))).sort(), [kpiConfigs]);
 
   const provinces = useMemo(() => {
     const s = new Set<string>();
     deliveries.forEach(d => { if (d.province) s.add(d.province); });
     return Array.from(s).sort();
   }, [deliveries]);
+
+  const districts = useMemo(() => {
+    let src = deliveries;
+    if (filterProvince) src = src.filter(d => d.province === filterProvince);
+    return Array.from(new Set(src.map(d => d.district))).sort();
+  }, [deliveries, filterProvince]);
 
   const countByStatus = useMemo(() => {
     const map: Record<string, number> = {};
@@ -119,7 +136,9 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries }) 
     return deliveries
       .filter(d => (d.deliveryStatus || '') === activeTab)
       .filter(d => {
+        if (filterBranch && districtBranchMap.get(d.district) !== filterBranch) return false;
         if (filterProvince && d.province !== filterProvince) return false;
+        if (filterDistrict && d.district !== filterDistrict) return false;
         if (search) {
           const q = search.toLowerCase();
           return (
@@ -139,7 +158,7 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries }) 
         if (ob !== oa) return ob - oa;
         return a.planDate.localeCompare(b.planDate);
       });
-  }, [deliveries, activeTab, search, filterProvince]);
+  }, [deliveries, activeTab, search, filterBranch, filterProvince, filterDistrict, districtBranchMap]);
 
   const currentTab = STATUS_TABS.find(t => t.key === activeTab)!;
   const isDeliveredTab = activeTab === 'ส่งเสร็จ';
@@ -229,15 +248,35 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries }) 
                 </span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {branches.length > 0 && (
+                <select
+                  value={filterBranch}
+                  onChange={e => { setFilterBranch(e.target.value); setFilterProvince(''); setFilterDistrict(''); }}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-400 outline-none"
+                  aria-label="กรองตามสาขา"
+                >
+                  <option value="">ทุกสาขา</option>
+                  {branches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              )}
               <select
                 value={filterProvince}
-                onChange={e => setFilterProvince(e.target.value)}
+                onChange={e => { setFilterProvince(e.target.value); setFilterDistrict(''); }}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-400 outline-none"
                 aria-label="กรองตามจังหวัด"
               >
                 <option value="">ทุกจังหวัด</option>
                 {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select
+                value={filterDistrict}
+                onChange={e => setFilterDistrict(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-400 outline-none"
+                aria-label="กรองตามอำเภอ"
+              >
+                <option value="">ทุกอำเภอ</option>
+                {districts.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               <div className="relative">
                 <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>

@@ -51,10 +51,10 @@ const App: React.FC = () => {
 
   const handleImportComplete = useCallback((newRecords: DeliveryRecord[], importLog: ImportLog) => {
     setDeliveries(prev => {
-      // Use storeId as unique key; fallback to orderNo
-      const existingMap = new Map(prev.map(d => [d.storeId || d.orderNo, d]));
+      // Use orderNo as unique key — every Inv. stored separately
+      const existingMap = new Map(prev.map(d => [d.orderNo, d]));
       newRecords.forEach(record => {
-        existingMap.set(record.storeId || record.orderNo, record);
+        existingMap.set(record.orderNo, record);
       });
       const merged = Array.from(existingMap.values());
 
@@ -63,7 +63,7 @@ const App: React.FC = () => {
       if (db) {
         const obj: Record<string, Omit<DeliveryRecord, 'productDetails'>> = {};
         merged.forEach(d => {
-          const key = sanitizeFirebaseKey(d.storeId || d.orderNo);
+          const key = sanitizeFirebaseKey(d.orderNo);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { productDetails: _pd, ...rest } = d;
           obj[key] = rest;
@@ -167,6 +167,16 @@ const App: React.FC = () => {
   const handleUpdateDelivery = useCallback((updated: DeliveryRecord, action?: 'submitted' | 'approved' | 'rejected') => {
     setDeliveries(prev => prev.map(d => d.orderNo === updated.orderNo ? updated : d));
 
+    // Sync updated delivery to Firebase
+    const db = getRealtimeDb();
+    if (db) {
+      const key = sanitizeFirebaseKey(updated.orderNo);
+      const { productDetails: _pd, ...rest } = updated;
+      set(ref(db, `deliveries/${key}`), rest).catch(e =>
+        console.warn('[Firebase] sync updated delivery error:', e)
+      );
+    }
+
     if (action) {
       const auditLog: ReasonAuditLog = {
         id: `audit-${Date.now()}`,
@@ -202,7 +212,7 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard deliveries={deliveries} />;
+        return <Dashboard deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'import':
         return (
           <Import
@@ -221,16 +231,17 @@ const App: React.FC = () => {
             onUpdateDelivery={handleUpdateDelivery}
             userRole={currentUser.role}
             delayReasons={delayReasons}
+            kpiConfigs={kpiConfigs}
           />
         );
       case 'upload-history':
         return <UploadHistory importLogs={importLogs} deliveries={deliveries} />;
       case 'delivery-status':
-        return <DeliveryTracker deliveries={deliveries} />;
+        return <DeliveryTracker deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'weekly-report':
-        return <WeeklyReport deliveries={deliveries} />;
+        return <WeeklyReport deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'analysis':
-        return <WeekdayAnalysis deliveries={deliveries} />;
+        return <WeekdayAnalysis deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'settings':
         return (
           <MasterData

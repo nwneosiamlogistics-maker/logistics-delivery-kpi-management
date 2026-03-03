@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { DeliveryRecord, DeliveryStatus, KpiStatus } from '../types';
+import { DeliveryRecord, DeliveryStatus, KpiStatus, KpiConfig } from '../types';
 
 interface WeeklyReportProps {
   deliveries: DeliveryRecord[];
+  kpiConfigs?: KpiConfig[];
 }
 
 function getWeekRange(referenceDate: Date): { start: Date; end: Date; label: string } {
@@ -36,8 +37,23 @@ function daysBetween(a: Date, b: Date): number {
   return Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries }) => {
+export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfigs = [] }) => {
   const [weekOffset, setWeekOffset] = useState(0);
+  const [branchFilter, setBranchFilter] = useState<string>('All');
+
+  // Build district → branch map from kpiConfigs
+  const districtBranchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    return map;
+  }, [kpiConfigs]);
+
+  // All unique branches
+  const branches = useMemo(() => {
+    const set = new Set<string>();
+    kpiConfigs.forEach(c => { if (c.branch) set.add(c.branch); });
+    return Array.from(set).sort();
+  }, [kpiConfigs]);
 
   const today = new Date();
   const refDate = new Date(today);
@@ -45,14 +61,19 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries }) => {
 
   const { start, end, label } = useMemo(() => getWeekRange(refDate), [weekOffset]);
 
-  // Filter deliveries for this week by planDate
+  // Filter deliveries for this week by actualDate + branch
   const weekDeliveries = useMemo(() => {
     return deliveries.filter(d => {
-      const pd = parseLocalDate(d.planDate);
-      if (!pd) return false;
-      return pd >= start && pd <= end;
+      const ad = parseLocalDate(d.actualDate);
+      if (!ad) return false;
+      if (!(ad >= start && ad <= end)) return false;
+      if (branchFilter !== 'All') {
+        const branch = districtBranchMap.get(d.district);
+        if (branch !== branchFilter) return false;
+      }
+      return true;
     });
-  }, [deliveries, start, end]);
+  }, [deliveries, start, end, branchFilter, districtBranchMap]);
 
   // All delivered (ส่งเสร็จ) records for POD calculation
   const deliveredThisWeek = weekDeliveries.filter(d =>
@@ -138,7 +159,18 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries }) => {
             ตัดรอบทุกวันเสาร์ · {label}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {branches.length > 0 && (
+            <select
+              aria-label="กรองตามสาขา"
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 bg-white/70 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="All">ทุกสาขา</option>
+              {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
           <button
             onClick={() => setWeekOffset(w => w + 1)}
             title="สัปดาห์ก่อนหน้า"

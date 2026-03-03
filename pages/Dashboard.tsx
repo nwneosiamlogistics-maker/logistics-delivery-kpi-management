@@ -1,25 +1,51 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { DeliveryRecord, KpiStatus } from '../types';
+import { DeliveryRecord, KpiStatus, KpiConfig } from '../types';
 
 interface DashboardProps {
   deliveries: DeliveryRecord[];
+  kpiConfigs?: KpiConfig[];
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ deliveries }) => {
-  const total = deliveries.length;
-  const passCount = deliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
+export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [] }) => {
+  const [branchFilter, setBranchFilter] = useState('All');
+  const [provinceFilter, setProvinceFilter] = useState('All');
+  const [districtFilter, setDistrictFilter] = useState('All');
+
+  const districtBranchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    return map;
+  }, [kpiConfigs]);
+
+  const branches = useMemo(() => Array.from(new Set(kpiConfigs.filter(c => c.branch).map(c => c.branch!))).sort(), [kpiConfigs]);
+  const provinces = useMemo(() => Array.from(new Set(deliveries.map(d => d.province).filter(Boolean) as string[])).sort(), [deliveries]);
+  const districts = useMemo(() => {
+    let src = deliveries;
+    if (provinceFilter !== 'All') src = src.filter(d => d.province === provinceFilter);
+    return Array.from(new Set(src.map(d => d.district))).sort();
+  }, [deliveries, provinceFilter]);
+
+  const filtered = useMemo(() => deliveries.filter(d => {
+    if (branchFilter !== 'All' && districtBranchMap.get(d.district) !== branchFilter) return false;
+    if (provinceFilter !== 'All' && d.province !== provinceFilter) return false;
+    if (districtFilter !== 'All' && d.district !== districtFilter) return false;
+    return true;
+  }), [deliveries, branchFilter, provinceFilter, districtFilter, districtBranchMap]);
+
+  const total = filtered.length;
+  const passCount = filtered.filter(d => d.kpiStatus === KpiStatus.PASS).length;
   const failCount = total - passCount;
   const passRate = total > 0 ? (passCount / total) * 100 : 0;
-  const totalQty = deliveries.reduce((sum, d) => sum + d.qty, 0);
+  const totalQty = filtered.reduce((sum, d) => sum + d.qty, 0);
 
   const pieData = [
     { name: 'ตรงเวลา', value: passCount, color: '#10B981' },
     { name: 'ต้องดำเนินการ', value: failCount, color: '#EF4444' }
   ];
 
-  const districtData = Array.from(new Set(deliveries.map(d => d.district))).map(dist => {
-    const distItems = deliveries.filter(d => d.district === dist);
+  const districtData = Array.from(new Set(filtered.map(d => d.district))).map(dist => {
+    const distItems = filtered.filter(d => d.district === dist);
     return {
       name: dist,
       pass: distItems.filter(d => d.kpiStatus === KpiStatus.PASS).length,
@@ -29,16 +55,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries }) => {
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      <div className="flex justify-between items-center bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40">
         <div>
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
             ภาพรวมประสิทธิภาพ
           </h2>
           <p className="text-gray-500">ติดตาม KPI การจัดส่งแบบ Real-time</p>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-500">อัปเดตล่าสุด</p>
-          <p className="font-mono text-indigo-600">{new Date().toLocaleTimeString('th-TH')}</p>
+        <div className="flex flex-wrap gap-2 items-center">
+          {branches.length > 0 && (
+            <select aria-label="สาขา" value={branchFilter}
+              onChange={e => { setBranchFilter(e.target.value); setProvinceFilter('All'); setDistrictFilter('All'); }}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white/70 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="All">ทุกสาขา</option>
+              {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
+          <select aria-label="จังหวัด" value={provinceFilter}
+            onChange={e => { setProvinceFilter(e.target.value); setDistrictFilter('All'); }}
+            className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white/70 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="All">ทุกจังหวัด</option>
+            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <select aria-label="อำเภอ" value={districtFilter}
+            onChange={e => setDistrictFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white/70 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="All">ทุกอำเภอ</option>
+            {districts.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <div className="text-right">
+            <p className="text-xs font-semibold text-gray-500">อัปเดตล่าสุด</p>
+            <p className="font-mono text-indigo-600 text-sm">{new Date().toLocaleTimeString('th-TH')}</p>
+          </div>
         </div>
       </div>
 

@@ -43,6 +43,7 @@ export interface StoreClosure {
 
 export interface KpiConfig {
   id: string;
+  branch?: string;
   province?: string;
   district: string;
   onTimeLimit: number;

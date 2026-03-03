@@ -19,6 +19,7 @@ export interface ParsedRow {
   district: string;
   storeId: string;
   planDate: string;
+  openDate?: string;
   actualDate: string;
   qty: number;
   productDetails?: string;
@@ -38,14 +39,15 @@ export interface ImportResult {
   errors: { row: number; error: string; data?: any }[];
 }
 
-const REQUIRED_COLUMNS = ['orderNo', 'district', 'storeId', 'planDate'];
+const REQUIRED_COLUMNS = ['orderNo', 'district', 'storeId'];
 const QTY_COLUMNS = ['qty', 'productDetails']; // At least one must exist
 
 const COLUMN_ALIASES: Record<string, string[]> = {
   orderNo: ['orderNo', 'order_no', 'orderno', 'Order No', 'Order Number', 'เลขที่ใบสั่ง', 'เลขที่ออเดอร์', 'ใบสั่งซื้อ', 'เลขที่ใบสินค้า', 'รหัสใบสั่ง', 'ID', 'เลขที่'],
   district: ['district', 'District', 'อำเภอ', 'เขต', 'พื้นที่', 'สาขาที่'],
   storeId: ['storeId', 'store_id', 'storeid', 'Store ID', 'Store', 'ร้านค้า', 'รหัสร้าน', 'รหัสร้านค้า', 'รหัสสาขา', 'ผู้รับสินค้า', 'ลูกค้า', 'ผู้รับ', 'ปลายทาง'],
-  planDate: ['planDate', 'plan_date', 'plandate', 'Plan Date', 'Planned Date', 'วันที่แผน', 'วันกำหนดส่ง', 'วันที่ต้องส่ง', 'นัดส่ง', 'วันที่นัด', 'วันที่ตามแผน', 'วันที่', 'วันที่เพิ่ม'],
+  planDate: ['planDate', 'plan_date', 'plandate', 'Plan Date', 'Planned Date', 'วันที่แผน', 'วันกำหนดส่ง', 'วันที่ต้องส่ง', 'นัดส่ง', 'วันที่นัด', 'วันที่ตามแผน'],
+  openDate: ['openDate', 'open_date', 'วันที่', 'วันที่เพิ่ม', 'วันเปิด', 'วันเปิดเอกสาร'],
   actualDate: ['actualDate', 'actual_date', 'actualdate', 'Actual Date', 'Delivery Date', 'วันที่ส่งจริง', 'วันที่จัดส่ง', 'วันที่ส่ง', 'วันที่แก้ไข'],
   qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น'],
   productDetails: ['productDetails', 'สินค้า', 'product', 'Product', 'รายการสินค้า', 'รายละเอียดสินค้า'],
@@ -210,6 +212,7 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
       district: String(m.district || '').trim(),
       storeId: String(m.storeId || '').trim(),
       planDate: parseDate(m.planDate) || '',
+      openDate: m.openDate ? (parseDate(m.openDate) || undefined) : undefined,
       actualDate: parseDate(m.actualDate) || '',
       qty: (() => {
         const directQty = parseFloat(String(m.qty));
@@ -264,9 +267,9 @@ export function processImport(
   importFileId?: string
 ): ImportResult {
   const result: ImportResult = { created: [], updated: [], skipped: [], errors: [] };
-  // Use storeId as unique key (เลขที่อ้างอิง); fallback to orderNo if storeId absent
+  // Use orderNo as unique key — every Inv. stored separately
   const existingMap = new Map(
-    existingDeliveries.map(d => [d.storeId || d.orderNo, d])
+    existingDeliveries.map(d => [d.orderNo, d])
   );
 
   parsedRows.forEach((row, index) => {
@@ -274,8 +277,20 @@ export function processImport(
       result.errors.push({ row: index + 2, error: 'ไม่พบเลขที่ใบสินค้า', data: row });
       return;
     }
+
+    // Fallback: ถ้า planDate (นัดส่ง) ว่าง → คำนวณจาก openDate (วันที่) + onTimeLimit
+    if (!row.planDate && row.openDate) {
+      const cfg = kpiConfigs.find(c =>
+        c.district === row.district && (!c.province || c.province === row.province)
+      ) || kpiConfigs.find(c => c.district === row.district);
+      const limit = cfg?.onTimeLimit ?? 1;
+      const d = new Date(row.openDate);
+      d.setDate(d.getDate() + limit);
+      row = { ...row, planDate: d.toISOString().slice(0, 10) };
+    }
+
     if (!row.planDate) {
-      result.errors.push({ row: index + 2, error: 'รูปแบบวันที่ไม่ถูกต้อง', data: row });
+      result.errors.push({ row: index + 2, error: 'ไม่พบวันกำหนดส่ง (นัดส่ง) และไม่มีวันที่เปิดเอกสาร', data: row });
       return;
     }
 
@@ -283,15 +298,16 @@ export function processImport(
     const isDelivered = status === 'ส่งเสร็จ';
 
     // Logic:
-    // - วันที่เพิ่ม → planDate (document open date)
-    // - วันที่แก้ไข → actualDate (actual delivery date)
-    // - รายละเอียด → actualDatetime (timestamp of completion, supplementary)
-    // For KPI: only calculate when ส่งเสร็จ, use actualDate (วันที่แก้ไข) directly
-    // For รอจัด/ขนส่ง: not delivered yet, use planDate as placeholder, skip KPI
+    // - วันที่ (openDate) → วันเปิดเอกสาร ใช้ fallback คำนวณ planDate
+    // - นัดส่ง → planDate (วันกำหนดส่ง)
+    // - วันที่แก้ไข → actualDate (วันส่งจริง)
+    // - รายละเอียด → actualDatetime (timestamp ส่งเสร็จ)
+    // For KPI: only calculate when ส่งเสร็จ, use actualDate/actualDatetime directly
+    // For รอจัด/ขนส่ง: not delivered yet, skip KPI
     const resolvedActualDate = row.actualDate || row.planDate;
 
     if (!resolvedActualDate) {
-      result.errors.push({ row: index + 2, error: 'รูปแบบวันที่ไม่ถูกต้อง', data: row });
+      result.errors.push({ row: index + 2, error: 'ไม่พบวันที่ส่งจริง', data: row });
       return;
     }
 
@@ -300,24 +316,23 @@ export function processImport(
       ? (parseDate(row.actualDatetime) || resolvedActualDate)
       : resolvedActualDate;
 
-    // Lookup by storeId (unique key) or fallback to orderNo
-    const uniqueKey = row.storeId || row.orderNo;
-    const existing = existingMap.get(uniqueKey);
+    // Lookup by orderNo
+    const existing = existingMap.get(row.orderNo);
 
-    // Status-based merge guard
+    // Status-based merge guard (same orderNo imported again)
     if (existing) {
       const existingPriority = getStatusPriority(existing.deliveryStatus);
       const newPriority = getStatusPriority(status);
 
       // ส่งเสร็จ is final — never overwrite
       if (existingPriority >= STATUS_ORDER['ส่งเสร็จ']) {
-        result.skipped.push({ row: index + 2, reason: `สถานะ ส่งเสร็จ แล้ว (final) [${uniqueKey}]` });
+        result.skipped.push({ row: index + 2, reason: `สถานะ ส่งเสร็จ แล้ว (final) [${row.orderNo}]` });
         return;
       }
 
       // Skip if new status is lower than existing
       if (newPriority < existingPriority) {
-        result.skipped.push({ row: index + 2, reason: `สถานะใหม่ (${status || 'ไม่ระบุ'}) ต่ำกว่าเดิม (${existing.deliveryStatus}) [${uniqueKey}]` });
+        result.skipped.push({ row: index + 2, reason: `สถานะใหม่ (${status || 'ไม่ระบุ'}) ต่ำกว่าเดิม (${existing.deliveryStatus}) [${row.orderNo}]` });
         return;
       }
     }
@@ -346,10 +361,10 @@ export function processImport(
 
     if (existing) {
       result.updated.push(data);
-      existingMap.set(uniqueKey, data);
+      existingMap.set(row.orderNo, data);
     } else {
       result.created.push(data);
-      existingMap.set(uniqueKey, data);
+      existingMap.set(row.orderNo, data);
     }
   });
   return result;

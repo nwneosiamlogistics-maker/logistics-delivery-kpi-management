@@ -3,11 +3,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   ComposedChart, Line
 } from 'recharts';
-import { DeliveryRecord } from '../types';
+import { DeliveryRecord, KpiConfig } from '../types';
 import { getWeekday } from '../utils/kpiEngine';
 
 interface WeekdayAnalysisProps {
   deliveries: DeliveryRecord[];
+  kpiConfigs?: KpiConfig[];
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -21,23 +22,48 @@ const WEEKDAY_THAI: Record<string, string> = {
   'Sunday': 'อาทิตย์'
 };
 
-export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) => {
+export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kpiConfigs = [] }) => {
+  const [branchFilter, setBranchFilter] = useState<string>('All');
+  const [provinceFilter, setProvinceFilter] = useState<string>('All');
   const [districtFilter, setDistrictFilter] = useState<string>('All');
   const [storeFilter, setStoreFilter] = useState<string>('All');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  const districts = useMemo(() => Array.from(new Set(deliveries.map(d => d.district))), [deliveries]);
+  // Build district → branch map
+  const districtBranchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    return map;
+  }, [kpiConfigs]);
+
+  const branches = useMemo(() => {
+    const set = new Set<string>();
+    kpiConfigs.forEach(c => { if (c.branch) set.add(c.branch); });
+    return Array.from(set).sort();
+  }, [kpiConfigs]);
+
+  const provinces = useMemo(() =>
+    Array.from(new Set(deliveries.map(d => d.province).filter(Boolean) as string[])).sort()
+  , [deliveries]);
+
+  const districts = useMemo(() => {
+    let filtered = deliveries;
+    if (provinceFilter !== 'All') filtered = filtered.filter(d => d.province === provinceFilter);
+    return Array.from(new Set(filtered.map(d => d.district))).sort();
+  }, [deliveries, provinceFilter]);
+
   const stores = useMemo(() => {
     let filtered = deliveries;
-    if (districtFilter !== 'All') {
-      filtered = filtered.filter(d => d.district === districtFilter);
-    }
-    return Array.from(new Set(filtered.map(d => d.storeId)));
-  }, [deliveries, districtFilter]);
+    if (provinceFilter !== 'All') filtered = filtered.filter(d => d.province === provinceFilter);
+    if (districtFilter !== 'All') filtered = filtered.filter(d => d.district === districtFilter);
+    return Array.from(new Set(filtered.map(d => d.storeId))).sort();
+  }, [deliveries, provinceFilter, districtFilter]);
 
   const filteredData = useMemo(() => {
     return deliveries.filter(d => {
+      const matchBranch = branchFilter === 'All' || districtBranchMap.get(d.district) === branchFilter;
+      const matchProvince = provinceFilter === 'All' || d.province === provinceFilter;
       const matchDistrict = districtFilter === 'All' || d.district === districtFilter;
       const matchStore = storeFilter === 'All' || d.storeId === storeFilter;
 
@@ -45,9 +71,9 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
       if (startDate) matchDate = matchDate && d.actualDate >= startDate;
       if (endDate) matchDate = matchDate && d.actualDate <= endDate;
 
-      return matchDistrict && matchStore && matchDate;
+      return matchBranch && matchProvince && matchDistrict && matchStore && matchDate;
     });
-  }, [deliveries, districtFilter, storeFilter, startDate, endDate]);
+  }, [deliveries, branchFilter, districtBranchMap, provinceFilter, districtFilter, storeFilter, startDate, endDate]);
 
   const analyticsData = useMemo(() => {
     const map = new Map(WEEKDAYS.map(day => [day, { name: day, nameThai: WEEKDAY_THAI[day], count: 0, qty: 0 }]));
@@ -81,13 +107,40 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
         </div>
 
         <div className="flex flex-wrap gap-4 items-end">
+          {branches.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase">สาขา</label>
+              <select
+                aria-label="กรองตามสาขา"
+                className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                value={branchFilter}
+                onChange={(e) => { setBranchFilter(e.target.value); setProvinceFilter('All'); setDistrictFilter('All'); setStoreFilter('All'); }}
+              >
+                <option value="All">ทุกสาขา</option>
+                {branches.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">จังหวัด</label>
+            <select
+              aria-label="กรองตามจังหวัด"
+              className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              value={provinceFilter}
+              onChange={(e) => { setProvinceFilter(e.target.value); setDistrictFilter('All'); setStoreFilter('All'); }}
+            >
+              <option value="All">ทุกจังหวัด</option>
+              {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-500 uppercase">อำเภอ</label>
             <select
               aria-label="กรองตามอำเภอ"
               className="px-4 py-2 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               value={districtFilter}
-              onChange={(e) => setDistrictFilter(e.target.value)}
+              onChange={(e) => { setDistrictFilter(e.target.value); setStoreFilter('All'); }}
             >
               <option value="All">ทุกอำเภอ</option>
               {districts.map(d => <option key={d} value={d}>{d}</option>)}
@@ -133,7 +186,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
-          title="จำนวนเที่ยว"
+          title="จำนวน Inv"
           value={totalTrips.toLocaleString()}
           icon="fa-truck"
           color="blue"
@@ -148,14 +201,14 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries }) 
         <MetricCard
           title="วันที่ส่งมากที่สุด"
           value={maxTripDay.nameThai}
-          subValue={`${maxTripDay.count} เที่ยว`}
+          subValue={`${maxTripDay.count} Inv`}
           icon="fa-chart-line"
           color="emerald"
         />
         <MetricCard
           title="กิจกรรมวันหยุด"
           value={weekendTrips.toString()}
-          subValue="เที่ยว (ส.-อา.)"
+          subValue="Inv (ส.-อา.)"
           icon="fa-calendar-week"
           color={weekendTrips > 0 ? "orange" : "gray"}
         />

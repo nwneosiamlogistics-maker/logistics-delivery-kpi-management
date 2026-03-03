@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { DeliveryRecord, KpiStatus, ReasonStatus, DelayReason } from '../types';
+import { DeliveryRecord, KpiStatus, ReasonStatus, DelayReason, KpiConfig } from '../types';
 
 interface KpiExceptionsProps {
   deliveries: DeliveryRecord[];
   onUpdateDelivery: (updated: DeliveryRecord, action?: 'submitted' | 'approved' | 'rejected') => void;
   userRole: string;
   delayReasons?: DelayReason[];
+  kpiConfigs?: KpiConfig[];
 }
 
 const DEFAULT_REASONS: DelayReason[] = [
@@ -28,20 +29,49 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
   deliveries,
   onUpdateDelivery,
   userRole,
-  delayReasons = DEFAULT_REASONS
+  delayReasons = DEFAULT_REASONS,
+  kpiConfigs = []
 }) => {
+  const kpiMap = useMemo(() => {
+    const m = new Map<string, number>();
+    kpiConfigs.forEach(cfg => {
+      if (cfg.onTimeLimit !== undefined) {
+        if (cfg.province && cfg.district) m.set(`${cfg.province}||${cfg.district}`, cfg.onTimeLimit);
+        else if (cfg.district) m.set(`||${cfg.district}`, cfg.onTimeLimit);
+      }
+    });
+    return m;
+  }, [kpiConfigs]);
+
+  const getThreshold = (order: DeliveryRecord): number | undefined =>
+    kpiMap.get(`${order.province || ''}||${order.district}`) ??
+    kpiMap.get(`||${order.district}`);
+
+  const branches = useMemo(() => Array.from(new Set(kpiConfigs.filter(c => c.branch).map(c => c.branch!))).sort(), [kpiConfigs]);
+  const allProvinces = useMemo(() => Array.from(new Set(deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS && d.province).map(d => d.province!))).sort(), [deliveries]);
+  const allDistricts = useMemo(() => Array.from(new Set(deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS).map(d => d.district))).sort(), [deliveries]);
+
   const [selectedOrder, setSelectedOrder] = useState<DeliveryRecord | null>(null);
   const [reason, setReason] = useState('');
+  const [reasonNote, setReasonNote] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterBranch, setFilterBranch] = useState('All');
+  const [filterProvince, setFilterProvince] = useState('All');
+  const [filterDistrict, setFilterDistrict] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
 
   const exceptions = useMemo(() => {
     return deliveries
       .filter(d => d.kpiStatus === KpiStatus.NOT_PASS)
-      .filter(d => {
-        if (filterStatus === 'all') return true;
-        return d.reasonStatus === filterStatus;
-      })
+      .filter(d => filterStatus === 'all' || d.reasonStatus === filterStatus)
+      .filter(d => filterBranch === 'All' || kpiMap.get(`${d.province || ''}||${d.district}`) !== undefined
+        ? filterBranch === 'All' || (() => {
+            const cfg = kpiConfigs.find(c => c.district === d.district && (!c.province || c.province === d.province));
+            return cfg?.branch === filterBranch;
+          })()
+        : filterBranch === 'All')
+      .filter(d => filterProvince === 'All' || d.province === filterProvince)
+      .filter(d => filterDistrict === 'All' || d.district === filterDistrict)
       .filter(d => {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
@@ -52,7 +82,7 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
           (d.sender || '').toLowerCase().includes(term)
         );
       });
-  }, [deliveries, filterStatus, searchTerm]);
+  }, [deliveries, filterStatus, filterBranch, filterProvince, filterDistrict, searchTerm, kpiMap, kpiConfigs]);
 
   const statusCounts = useMemo(() => {
     const all = deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS);
@@ -67,15 +97,17 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
 
   const handleSubmitReason = () => {
     if (!selectedOrder || !reason) return;
+    const fullReason = reasonNote.trim() ? `${reason} — ${reasonNote.trim()}` : reason;
     const updated: DeliveryRecord = {
       ...selectedOrder,
-      delayReason: reason,
+      delayReason: fullReason,
       reasonStatus: ReasonStatus.SUBMITTED,
       updatedAt: new Date().toISOString()
     };
     onUpdateDelivery(updated, 'submitted');
     setSelectedOrder(null);
     setReason('');
+    setReasonNote('');
   };
 
   const handleApprove = (order: DeliveryRecord) => {
@@ -144,18 +176,44 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
         </div>
       </div>
 
-      <div className="glass-panel rounded-2xl p-4">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input
-              type="text"
-              placeholder="ค้นหาด้วยเลขที่ใบสั่ง, อำเภอ, หรือร้านค้า..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
+      <div className="glass-panel rounded-2xl p-4 space-y-3">
+        <div className="flex flex-wrap gap-2 items-center">
+          {branches.length > 0 && (
+            <select aria-label="กรองสาขา" value={filterBranch}
+              onChange={e => { setFilterBranch(e.target.value); setFilterProvince('All'); setFilterDistrict('All'); }}
+              className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="All">ทุกสาขา</option>
+              {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
+          <select aria-label="กรองจังหวัด" value={filterProvince}
+            onChange={e => { setFilterProvince(e.target.value); setFilterDistrict('All'); }}
+            className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="All">ทุกจังหวัด</option>
+            {allProvinces.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <select aria-label="กรองอำเภอ" value={filterDistrict}
+            onChange={e => setFilterDistrict(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="All">ทุกอำเภอ</option>
+            {allDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          {(filterBranch !== 'All' || filterProvince !== 'All' || filterDistrict !== 'All') && (
+            <button onClick={() => { setFilterBranch('All'); setFilterProvince('All'); setFilterDistrict('All'); }}
+              className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-100 transition-colors">
+              <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+            </button>
+          )}
+        </div>
+        <div className="relative">
+          <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <input
+            type="text"
+            placeholder="ค้นหาด้วยเลขที่ใบสั่ง, อำเภอ, หรือร้านค้า..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
         </div>
       </div>
 
@@ -170,6 +228,7 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                 <th className="px-6 py-4 font-bold">อำเภอ</th>
                 <th className="px-6 py-4 font-bold">ร้านค้า</th>
                 <th className="px-6 py-4 font-bold">กำหนดส่ง</th>
+                <th className="px-6 py-4 font-bold text-center">KPI (วัน)</th>
                 <th className="px-6 py-4 font-bold">ส่งจริง</th>
                 <th className="px-6 py-4 font-bold">ล่าช้า</th>
                 <th className="px-6 py-4 font-bold">เหตุผล</th>
@@ -186,6 +245,15 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                   <td className="px-6 py-4">{order.district}</td>
                   <td className="px-6 py-4 font-mono text-xs">{order.storeId}</td>
                   <td className="px-6 py-4 text-gray-400 font-mono text-xs">{order.planDate}</td>
+                  <td className="px-6 py-4 text-center">
+                    {getThreshold(order) !== undefined ? (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200">
+                        {getThreshold(order)} วัน
+                      </span>
+                    ) : (
+                      <span className="text-gray-300 text-xs">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-gray-900 font-mono text-xs">{order.actualDate}</td>
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200">
@@ -206,12 +274,16 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                   </td>
                   <td className="px-6 py-4 text-center">
                     {order.reasonStatus === ReasonStatus.PENDING && (
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow-md"
-                      >
-                        ระบุเหตุผล
-                      </button>
+                      order.deliveryStatus === 'ส่งเสร็จ' ? (
+                        <button
+                          onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
+                          className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow-md"
+                        >
+                          ระบุเหตุผล
+                        </button>
+                      ) : (
+                        <span className="text-xs text-amber-600 italic">รอสถานะ ส่งเสร็จ</span>
+                      )
                     )}
                     {order.reasonStatus === ReasonStatus.SUBMITTED && userRole === 'Admin' && (
                       <div className="flex justify-center gap-2">
@@ -241,7 +313,7 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                     )}
                     {order.reasonStatus === ReasonStatus.REJECTED && (
                       <button
-                        onClick={() => setSelectedOrder(order)}
+                        onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
                         className="text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg text-xs font-semibold"
                       >
                         ส่งใหม่
@@ -319,7 +391,7 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">เลือกรหัสเหตุผล</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">เลือกเหตุผล <span className="text-red-500">*</span></label>
                   <select
                     aria-label="เลือกรหัสเหตุผล"
                     value={reason}
@@ -338,6 +410,17 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                       ))}
                     </optgroup>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">รายละเอียดเพิ่มเติม <span className="text-gray-400 font-normal">(ไม่บังคับ)</span></label>
+                  <textarea
+                    aria-label="รายละเอียดเพิ่มเติม"
+                    value={reasonNote}
+                    onChange={(e) => setReasonNote(e.target.value)}
+                    rows={3}
+                    placeholder="รายละเอียดเพิ่มเติม เช่น เส้นทางน้ำท่วมถนนสายเอก..."
+                    className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                  />
                 </div>
               </div>
             </div>

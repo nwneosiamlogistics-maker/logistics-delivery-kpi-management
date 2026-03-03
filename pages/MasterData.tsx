@@ -383,6 +383,7 @@ const KpiConfigTab: React.FC<{
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-left font-bold text-gray-700">สาขา</th>
               <th className="px-4 py-3 text-left font-bold text-gray-700">จังหวัด</th>
               <th className="px-4 py-3 text-left font-bold text-gray-700">อำเภอ</th>
               <th className="px-4 py-3 text-left font-bold text-gray-700">ส่งตรงเวลา (วัน)</th>
@@ -392,6 +393,22 @@ const KpiConfigTab: React.FC<{
           <tbody>
             {configs.map(config => (
               <tr key={config.id} className={`border-b border-gray-50 hover:bg-gray-50 ${config.isDraft ? 'bg-amber-50/60' : ''}`}>
+                <td className="px-4 py-3 text-gray-600">
+                  {editValues?.id === config.id ? (
+                    <input
+                      type="text"
+                      value={editValues.branch || ''}
+                      onChange={e => setEditValues({ ...editValues, branch: e.target.value })}
+                      className="w-32 px-2 py-1 border rounded"
+                      placeholder="สาขา"
+                      aria-label="สาขา"
+                    />
+                  ) : (
+                    config.branch ? (
+                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded text-xs font-semibold">{config.branch}</span>
+                    ) : '-'
+                  )}
+                </td>
                 <td className="px-4 py-3 text-gray-600">
                   {editValues?.id === config.id ? (
                     <input
@@ -864,19 +881,31 @@ const AddKpiConfigModal: React.FC<{
   onSave: (config: Omit<KpiConfig, 'id'>) => void;
   onClose: () => void;
 }> = ({ onSave, onClose }) => {
+  const [branch, setBranch] = useState('');
   const [province, setProvince] = useState('');
   const [district, setDistrict] = useState('');
   const [onTimeLimit, setOnTimeLimit] = useState(1);
 
   const handleSubmit = () => {
     if (district) {
-      onSave({ province: province || undefined, district, onTimeLimit });
+      onSave({ branch: branch || undefined, province: province || undefined, district, onTimeLimit });
     }
   };
 
   return (
     <Modal title="เพิ่มเกณฑ์ KPI ใหม่" onClose={onClose}>
       <div className="space-y-4">
+        <div>
+          <label htmlFor="kpiBranch" className="block text-sm font-bold text-gray-700 mb-1">สาขา</label>
+          <input
+            id="kpiBranch"
+            type="text"
+            value={branch}
+            onChange={e => setBranch(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            placeholder="ชื่อสาขา เช่น สาขานครสวรรค์"
+          />
+        </div>
         <div>
           <label htmlFor="kpiProvince" className="block text-sm font-bold text-gray-700 mb-1">จังหวัด</label>
           <input
