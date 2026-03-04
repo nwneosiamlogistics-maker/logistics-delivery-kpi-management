@@ -512,10 +512,10 @@ export function processImport(
       if (isDelivered) {
         return calculateKpiStatus(kpiDeadline, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
       }
-      // For pending deliveries, use strict calculation (no grace period)
+      // For pending deliveries, use strict calculation with planDate (no grace period)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      return calculatePendingKpiStatus(kpiDeadline, today.toISOString().slice(0, 10), row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
+      return calculatePendingKpiStatus(row.planDate, today.toISOString().slice(0, 10), row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
     })();
 
     const data: DeliveryRecord = {
