@@ -179,31 +179,19 @@ const App: React.FC = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        // Calculate KPI deadline (openDate or planDate + onTimeLimit)
-        const kpiCfg = kpiConfigs.find(c => c.province === d.province && c.district === d.district) 
-          || kpiConfigs.find(c => c.district === d.district)
-          || kpiConfigs.find(c => c.province === d.province)
-          || kpiConfigs[0];
-        const kpiLimit = kpiCfg?.onTimeLimit ?? 1;
-        const deadlineBase = d.openDate || d.planDate;
-        const kpiDeadline = (() => {
-          if (!deadlineBase) return d.planDate;
-          const date = new Date(deadlineBase);
-          date.setDate(date.getDate() + kpiLimit);
-          return date.toISOString().slice(0, 10);
-        })();
-        const kpiDeadlineObj = new Date(kpiDeadline);
-
         // Recalculate KPI with new logic
         const kpi = (() => {
           if (isDelivered) {
-            return calculateKpiStatus(kpiDeadline, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+            // For delivered items, use standard KPI calculation
+            return calculateKpiStatus(d.planDate, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
-          // Pending delivery exceeded KPI deadline
-          if (today > kpiDeadlineObj) {
-            return calculateKpiStatus(kpiDeadline, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+          // For pending deliveries, check if exceeded planDate
+          const planDateObj = new Date(d.planDate);
+          if (today > planDateObj) {
+            // Exceeded planDate → calculate KPI using today as actualDate
+            return calculateKpiStatus(d.planDate, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
-          // Still within KPI deadline
+          // Still within planDate → PASS
           return { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
         })();
 
