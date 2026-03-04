@@ -31,7 +31,7 @@ import {
 } from './types';
 import { getRealtimeDb } from './services/firebase';
 import { ref, set, get } from 'firebase/database';
-import { calculateKpiStatus } from './utils/kpiEngine';
+import { calculateKpiStatus, calculatePendingKpiStatus } from './utils/kpiEngine';
 
 const KPI_CONFIGS_PATH = 'kpiConfigs';
 const HOLIDAYS_PATH = 'holidays';
@@ -185,14 +185,8 @@ const App: React.FC = () => {
             // For delivered items, use standard KPI calculation
             return calculateKpiStatus(d.planDate, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
-          // For pending deliveries, check if exceeded planDate
-          const planDateObj = new Date(d.planDate);
-          if (today > planDateObj) {
-            // Exceeded planDate → calculate KPI using today as actualDate
-            return calculateKpiStatus(d.planDate, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
-          }
-          // Still within planDate → PASS
-          return { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
+          // For pending deliveries, use strict calculation (no grace period)
+          return calculatePendingKpiStatus(d.planDate, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
         })();
 
         // Preserve existing reason if already submitted/approved

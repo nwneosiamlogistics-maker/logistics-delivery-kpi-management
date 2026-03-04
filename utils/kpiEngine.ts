@@ -109,6 +109,46 @@ export const calculateKpiStatus = (
   };
 };
 
+/**
+ * Calculate KPI for pending deliveries (not yet delivered)
+ * No grace period - exceeding planDate = KPI fail immediately
+ */
+export const calculatePendingKpiStatus = (
+  planDate: string,
+  currentDate: string,
+  district: string,
+  configs: KpiConfig[],
+  holidays: Holiday[],
+  storeClosures: StoreClosure[] = [],
+  storeId?: string,
+  province?: string
+) => {
+  const pDate = new Date(planDate);
+  const cDate = new Date(currentDate);
+  pDate.setHours(0, 0, 0, 0);
+  cDate.setHours(0, 0, 0, 0);
+
+  // Still within planDate → PASS
+  if (cDate <= pDate) {
+    return {
+      kpiStatus: KpiStatus.PASS,
+      delayDays: 0,
+      reasonRequired: false,
+      reasonStatus: ReasonStatus.NOT_REQUIRED
+    };
+  }
+
+  // Exceeded planDate → calculate delay and mark as FAIL
+  const delayInWorkingDays = getWorkingDaysBetween(pDate, cDate, holidays, storeClosures, storeId);
+  
+  return {
+    kpiStatus: KpiStatus.NOT_PASS,
+    delayDays: delayInWorkingDays,
+    reasonRequired: true,
+    reasonStatus: ReasonStatus.PENDING
+  };
+};
+
 export const getWeekday = (dateStr: string): string => {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { weekday: 'long' });
