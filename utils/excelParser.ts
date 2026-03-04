@@ -46,15 +46,33 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   orderNo: ['orderNo', 'order_no', 'orderno', 'Order No', 'Order Number', 'เลขที่ใบสั่ง', 'เลขที่ออเดอร์', 'ใบสั่งซื้อ', 'เลขที่ใบสินค้า', 'รหัสใบสั่ง', 'ID', 'เลขที่'],
   district: ['district', 'District', 'อำเภอ', 'เขต', 'พื้นที่', 'สาขาที่'],
   storeId: ['storeId', 'store_id', 'storeid', 'Store ID', 'Store', 'ร้านค้า', 'รหัสร้าน', 'รหัสร้านค้า', 'รหัสสาขา', 'ผู้รับสินค้า', 'ลูกค้า', 'ผู้รับ', 'ปลายทาง'],
-  planDate: ['planDate', 'plan_date', 'plandate', 'Plan Date', 'Planned Date', 'วันที่แผน', 'วันกำหนดส่ง', 'วันที่ต้องส่ง', 'นัดส่ง', 'วันที่นัด', 'วันที่ตามแผน'],
+  planDate: [
+    'planDate', 'plan_date', 'plandate', 'Plan Date', 'Planned Date',
+    'วันที่แผน', 'วันกำหนดส่ง', 'วันที่ต้องส่ง', 'นัดส่ง', 'วันที่นัด', 'วันที่ตามแผน',
+    // เพิ่มชื่อ column ที่พบบ่อยใน Thai ERP/Logistics
+    'วันนัดส่ง', 'วันจัดส่ง', 'วันที่จัดส่ง', 'วันส่ง', 'วันที่ส่งของ',
+  ],
   openDate: ['openDate', 'open_date', 'วันที่', 'วันที่เพิ่ม', 'วันเปิด', 'วันเปิดเอกสาร'],
-  actualDate: ['actualDate', 'actual_date', 'actualdate', 'Actual Date', 'Delivery Date', 'วันที่ส่งจริง', 'วันที่จัดส่ง', 'วันที่ส่ง', 'วันที่แก้ไข'],
+  actualDate: [
+    'actualDate', 'actual_date', 'actualdate', 'Actual Date', 'Delivery Date',
+    'วันที่ส่งจริง', 'วันที่จัดส่ง', 'วันที่แก้ไข',
+    // หมายเหตุ: ไม่ใส่ 'วันที่ส่ง' / 'วันส่ง' เพื่อป้องกัน conflict กับ planDate
+  ],
   qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น'],
   productDetails: ['productDetails', 'สินค้า', 'product', 'Product', 'รายการสินค้า', 'รายละเอียดสินค้า'],
   sender: ['sender', 'Sender', 'ผู้ส่ง', 'ต้นทาง', 'บริษัทผู้ส่ง', 'shipper', 'Shipper'],
   province: ['province', 'Province', 'จังหวัด', 'จว.', 'จว'],
   deliveryStatus: ['deliveryStatus', 'สถานะ', 'status', 'Status', 'สถานะการจัดส่ง'],
-  actualDatetime: ['actualDatetime', 'รายละเอียด', 'detail', 'Detail', 'วันส่งเสร็จ', 'เวลาส่งเสร็จ'],
+  actualDatetime: [
+    'actualDatetime', 'รายละเอียด', 'detail', 'Detail',
+    // ชื่อ column timestamp ส่งเสร็จที่พบบ่อยใน Thai Logistics ERP
+    'วันส่งเสร็จ', 'เวลาส่งเสร็จ',
+    'วันที่ส่งเสร็จ', 'วันส่งสำเร็จ', 'วันที่ส่งสำเร็จ',
+    'เวลาส่งสำเร็จ', 'วันและเวลาส่งเสร็จ', 'วันที่และเวลาส่งเสร็จ',
+    'วันจัดส่งเสร็จ', 'วันที่จัดส่งเสร็จ', 'วันที่จัดส่งสำเร็จ',
+    'เวลาจัดส่งเสร็จ', 'timestamp', 'Timestamp',
+    'วันส่งของเสร็จ', 'เวลาส่ง', 'เวลาส่งสินค้า',
+  ],
 
   updatedAt: ['updatedAt', 'updated_at', 'updatedat', 'Updated At', 'Last Updated'],
   version: ['version', 'Version', 'เวอร์ชัน']
@@ -87,6 +105,7 @@ function parseQtyFromProducts(text: string): number {
 function normalize(s: string): string {
   if (!s) return '';
   return s.toString()
+    .normalize('NFC') // Unicode normalization for consistent Thai character comparison
     .replace(/[^\u0020-\u007E\u0E00-\u0E7F]/g, '') // Remove hidden chars
     .replace(/["']/g, '') // Remove literal quotes
     .trim()
@@ -114,9 +133,35 @@ function parseDate(v: any): string | null {
         const d = ssf.parse_date_code(v);
         if (d) {
           let y = d.y;
-          if (y > 2400) y -= 543; // Handle Buddhist Era
-          if (y < 1900) return null; // Reject invalid years e.g. serial 0
-          return `${y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+          let m = d.m;
+          let day = d.d;
+
+          if (y > 2400) {
+            // กรณี Excel เก็บปี พ.ศ. โดยตรง — แปลงเป็น ค.ศ. และสลับ MM/DD กลับ
+            y -= 543;
+            const tmp = m; m = day; day = tmp;
+          } else if (y >= 2020 && y <= 2032 && m <= 12 && day <= 12) {
+            // ────────────────────────────────────────────────────────────────
+            // Heuristic: Thai Excel (US locale) — ผู้ใช้พิมพ์ DD/MM/YYYY
+            // แต่ Excel อ่านเป็น MM/DD และเก็บ serial เป็นวันนั้น
+            // ตัวอย่าง: พิมพ์ "10/2/2569" (10 ก.พ.) → Excel อ่านเป็น Oct 2
+            //
+            // ตรวจจับ: ถ้าวัน as-is อยู่ในอนาคต แต่สลับ DD↔MM แล้วได้วันในอดีต
+            //          → น่าจะเป็น DD/MM ที่ถูกกลับ ให้สลับกลับ
+            // ────────────────────────────────────────────────────────────────
+            const todayAnchor = new Date();
+            todayAnchor.setHours(0, 0, 0, 0);
+            const asIsDate = new Date(y, m - 1, day);
+            const swappedDate = new Date(y, day - 1, m);
+            const swappedMonthValid = day >= 1 && day <= 12; // เดือน (หลัง swap) ต้องถูกต้อง
+            if (swappedMonthValid && asIsDate > todayAnchor && swappedDate <= todayAnchor) {
+              console.log(`[parseDate] numeric swap: ${y}-${m}-${day} (future) → ${y}-${day}-${m} (past) — ปรับ DD/MM กลับ`);
+              const tmp = m; m = day; day = tmp;
+            }
+          }
+
+          if (y < 1900) return null;
+          return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         }
       } catch (e) {
         console.warn('Error parsing date code:', v, e);
@@ -136,7 +181,7 @@ function parseDate(v: any): string | null {
     if (thai) {
       let y = parseInt(thai[3], 10);
       if (y > 2400) y -= 543;
-      if (y < 1900) return null; // Reject invalid years like 0544
+      if (y < 1900) return null;
       return `${y}-${thai[2].padStart(2, '0')}-${thai[1].padStart(2, '0')}`;
     }
   }
@@ -157,7 +202,7 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
 
   let wb;
   try {
-    wb = XLSX.read(file, { type: 'array', cellDates: true });
+    wb = XLSX.read(file, { type: 'array', cellDates: false, raw: false });
   } catch (e: any) {
     console.error('XLSX Read Error:', e);
     throw new Error(`ไม่สามารถอ่านไฟล์ได้: ${e.message || 'รูปแบบไฟล์อาจไม่ถูกต้อง'}`);
@@ -211,13 +256,18 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
   return rows.map(r => {
     const m: Record<string, any> = {};
     for (const [orig, can] of Object.entries(columnMap)) {
-      m[can] = r[orig];
+      const val = r[orig];
+      // First non-empty value wins — prevents later columns from overwriting earlier ones
+      if (m[can] === undefined || m[can] === '') {
+        m[can] = val;
+      }
     }
+    const parsedPlanDate = parseDate(m.planDate) || '';
     return {
       orderNo: String(m.orderNo || '').trim(),
       district: String(m.district || '').trim(),
       storeId: String(m.storeId || '').trim(),
-      planDate: parseDate(m.planDate) || '',
+      planDate: parsedPlanDate,
       openDate: m.openDate ? (parseDate(m.openDate) || undefined) : undefined,
       actualDate: parseDate(m.actualDate) || '',
       qty: (() => {
@@ -225,17 +275,11 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
         // Sanity check: reject values that look like barcodes/IDs (>99999) or negative
         const isValidQty = directQty && !isNaN(directQty) && directQty > 0 && directQty <= 99999;
         if (isValidQty) {
-          console.log(`[qty] orderNo=${m.orderNo} directQty=${directQty}`);
           return directQty;
         }
         // Fallback: parse qty from productDetails column (สินค้า)
         if (m.productDetails) {
-          const parsed = parseQtyFromProducts(String(m.productDetails));
-          console.log(`[qty] orderNo=${m.orderNo} parsedFromProducts=${parsed} preview="${String(m.productDetails).slice(0,80)}"`);
-          return parsed;
-        }
-        if (directQty && directQty > 99999) {
-          console.warn(`[qty] orderNo=${m.orderNo} rejected barcode-like qty=${directQty}`);
+          return parseQtyFromProducts(String(m.productDetails));
         }
         return 0;
       })(),
@@ -336,21 +380,113 @@ export function processImport(
       const existingPriority = getStatusPriority(existing.deliveryStatus);
       const newPriority = getStatusPriority(status);
 
-      // ส่งเสร็จ is final — never overwrite
+      // ส่งเสร็จ is final — never overwrite status, but always recalculate KPI with latest dates
       if (existingPriority >= STATUS_ORDER['ส่งเสร็จ']) {
-        result.skipped.push({ row: index + 2, reason: `สถานะ ส่งเสร็จ แล้ว (final) [${row.orderNo}]` });
+        const newOpenDate = row.openDate || existing.openDate;
+        const patchedCfg = kpiConfigs.find(c =>
+          c.district === existing.district && (!c.province || c.province === existing.province)
+        ) || kpiConfigs.find(c => c.district === existing.district);
+        const patchedLimit = patchedCfg?.onTimeLimit ?? 1;
+        const patchedDeadline = (() => {
+          const base = newOpenDate || row.planDate || existing.planDate;
+          if (!base) return existing.planDate;
+          const d = new Date(base);
+          d.setDate(d.getDate() + patchedLimit);
+          return d.toISOString().slice(0, 10);
+        })();
+
+        // ── actualDate: ใช้ค่าใหม่จาก row ก่อน ถ้าว่างค่อย fallback เก่า ──────────────
+        const newActualDateRaw = row.actualDate || existing.actualDate;
+        const newActualDatetime = row.actualDatetime || existing.actualDatetime;
+
+        // ถ้า actualDatetime parse ได้เป็นวันที่สมเหตุสมผล (ไม่ใช่อนาคต)
+        // ให้ใช้เป็นวัน "ส่งจริง" ด้วย (ไม่ใช่แค่สำหรับ KPI)
+        const parsedDatetime = newActualDatetime ? parseDate(newActualDatetime) : null;
+        const today = new Date().toISOString().slice(0, 10);
+        const newActualDate = (() => {
+          // ถ้า actualDatetime ให้วันที่ดีกว่า (ไม่เป็นอนาคต) ใช้มันเป็น actualDate ด้วย
+          if (parsedDatetime && parsedDatetime <= today) return parsedDatetime;
+          // ถ้า actualDate ยังเป็นอนาคต และ planDate ใหม่ไม่เป็นอนาคต ใช้ planDate
+          if (newActualDateRaw > today && row.planDate && row.planDate <= today) return row.planDate;
+          return newActualDateRaw;
+        })();
+
+        const patchedActual = parsedDatetime || newActualDate;
+
+        // Debug log ช่วย diagnose ปัญหา column mapping
+        console.log(`[processImport][ส่งเสร็จ] ${row.orderNo}`, {
+          'row.planDate': row.planDate,
+          'row.actualDate': row.actualDate,
+          'row.actualDatetime': row.actualDatetime,
+          'existing.actualDate': existing.actualDate,
+          newActualDate,
+          parsedDatetime,
+          patchedActual,
+          patchedDeadline,
+        });
+
+        const patchedKpi = calculateKpiStatus(
+          patchedDeadline, patchedActual,
+          existing.district, kpiConfigs, holidays, storeClosures, undefined, existing.province
+        );
+        // Preserve approved/submitted reason if still NOT_PASS; reset if now PASS
+        const preserveReason = patchedKpi.kpiStatus === KpiStatus.NOT_PASS
+          && (existing.reasonStatus === ReasonStatus.APPROVED || existing.reasonStatus === ReasonStatus.SUBMITTED);
+        const patched: DeliveryRecord = {
+          ...existing,
+          // อัปเดต planDate จาก row ใหม่ (แก้ข้อมูลเก่าที่ parse ผิด)
+          planDate: row.planDate || existing.planDate,
+          openDate: newOpenDate,
+          actualDate: newActualDate,
+          actualDatetime: newActualDatetime,
+          ...patchedKpi,
+          ...(preserveReason ? { reasonStatus: existing.reasonStatus, delayReason: existing.delayReason } : {})
+        };
+        // Only push to updated if something actually changed
+        if (
+          patched.openDate !== existing.openDate ||
+          patched.actualDate !== existing.actualDate ||
+          patched.kpiStatus !== existing.kpiStatus ||
+          patched.delayDays !== existing.delayDays
+        ) {
+          result.updated.push(patched);
+          existingMap.set(row.orderNo, patched);
+        } else {
+          result.skipped.push({ row: index + 2, reason: `ส่งเสร็จ - ข้อมูล KPI ไม่เปลี่ยนแปลง [${row.orderNo}]` });
+        }
         return;
       }
 
-      // Skip if new status is lower than existing
+      // Skip if new status is lower than existing, but always patch openDate from new data
       if (newPriority < existingPriority) {
-        result.skipped.push({ row: index + 2, reason: `สถานะใหม่ (${status || 'ไม่ระบุ'}) ต่ำกว่าเดิม (${existing.deliveryStatus}) [${row.orderNo}]` });
+        if (row.openDate && row.openDate !== existing.openDate) {
+          const patched = { ...existing, openDate: row.openDate };
+          result.updated.push(patched);
+          existingMap.set(row.orderNo, patched);
+        } else {
+          result.skipped.push({ row: index + 2, reason: `สถานะใหม่ (${status || 'ไม่ระบุ'}) ต่ำกว่าเดิม (${existing.deliveryStatus}) [${row.orderNo}]` });
+        }
         return;
       }
     }
 
+    // Compute the true deadline = openDate + onTimeLimit (this is the date customer must receive by)
+    // planDate from Excel (นัดส่ง) is the appointment date, openDate is the document open date
+    // KPI deadline should be openDate + onTimeLimit
+    const kpiCfg = kpiConfigs.find(c =>
+      c.district === row.district && (!c.province || c.province === row.province)
+    ) || kpiConfigs.find(c => c.district === row.district);
+    const kpiLimit = kpiCfg?.onTimeLimit ?? 1;
+    const deadlineBase = row.openDate || row.planDate;
+    const kpiDeadline = (() => {
+      if (!deadlineBase) return row.planDate;
+      const d = new Date(deadlineBase);
+      d.setDate(d.getDate() + kpiLimit);
+      return d.toISOString().slice(0, 10);
+    })();
+
     const kpi = isDelivered
-      ? calculateKpiStatus(row.planDate, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province)
+      ? calculateKpiStatus(kpiDeadline, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province)
       : { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
 
     const data: DeliveryRecord = {
@@ -358,6 +494,7 @@ export function processImport(
       district: row.district,
       storeId: row.storeId,
       planDate: row.planDate,
+      openDate: row.openDate || existing?.openDate,
       actualDate: resolvedActualDate,
       qty: row.qty,
       sender: row.sender,

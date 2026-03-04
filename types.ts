@@ -61,6 +61,7 @@ export interface DeliveryRecord {
   district: string;
   storeId: string;
   planDate: string;
+  openDate?: string;
   actualDate: string;
   qty: number;
   sender?: string;

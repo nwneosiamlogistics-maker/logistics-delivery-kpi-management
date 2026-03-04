@@ -37,6 +37,21 @@ function sanitizeFirebaseKey(key: string): string {
   return key.replace(/[.#$\[\]/]/g, '_');
 }
 
+// Replace undefined with null recursively to satisfy Firebase and avoid runtime errors
+function cleanUndefined<T>(val: T): T {
+  if (val === undefined) return null as any;
+  if (Array.isArray(val)) return val.map(cleanUndefined) as any;
+  if (val && typeof val === 'object') {
+    const out: Record<string, any> = {};
+    Object.entries(val as Record<string, any>).forEach(([k, v]) => {
+      const cleaned = cleanUndefined(v);
+      if (cleaned !== undefined) out[k] = cleaned;
+    });
+    return out as any;
+  }
+  return val;
+}
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
@@ -66,7 +81,7 @@ const App: React.FC = () => {
           const key = sanitizeFirebaseKey(d.orderNo);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { productDetails: _pd, ...rest } = d;
-          obj[key] = rest;
+          obj[key] = cleanUndefined(rest);
         });
         set(ref(db, 'deliveries'), obj).catch(e =>
           console.warn('[Firebase] sync deliveries error:', e)
@@ -172,7 +187,7 @@ const App: React.FC = () => {
     if (db) {
       const key = sanitizeFirebaseKey(updated.orderNo);
       const { productDetails: _pd, ...rest } = updated;
-      set(ref(db, `deliveries/${key}`), rest).catch(e =>
+      set(ref(db, `deliveries/${key}`), cleanUndefined(rest)).catch(e =>
         console.warn('[Firebase] sync updated delivery error:', e)
       );
     }

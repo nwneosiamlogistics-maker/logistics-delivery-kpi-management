@@ -14,7 +14,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
 
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
-    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
     return map;
   }, [kpiConfigs]);
 
@@ -27,7 +27,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
   }, [deliveries, provinceFilter]);
 
   const filtered = useMemo(() => deliveries.filter(d => {
-    if (branchFilter !== 'All' && districtBranchMap.get(d.district) !== branchFilter) return false;
+    if (branchFilter !== 'All') {
+      const key = `${d.province || ''}||${d.district}`;
+      const keyNoProvince = `||${d.district}`;
+      const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
+      if (branch !== branchFilter) return false;
+    }
     if (provinceFilter !== 'All' && d.province !== provinceFilter) return false;
     if (districtFilter !== 'All' && d.district !== districtFilter) return false;
     return true;

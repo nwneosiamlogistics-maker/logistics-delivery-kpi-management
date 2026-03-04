@@ -33,7 +33,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
   // Build district → branch map
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
-    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
     return map;
   }, [kpiConfigs]);
 
@@ -62,7 +62,9 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
 
   const filteredData = useMemo(() => {
     return deliveries.filter(d => {
-      const matchBranch = branchFilter === 'All' || districtBranchMap.get(d.district) === branchFilter;
+      const key = `${d.province || ''}||${d.district}`;
+      const keyNoProvince = `||${d.district}`;
+      const matchBranch = branchFilter === 'All' || districtBranchMap.get(key) === branchFilter || districtBranchMap.get(keyNoProvince) === branchFilter;
       const matchProvince = provinceFilter === 'All' || d.province === provinceFilter;
       const matchDistrict = districtFilter === 'All' || d.district === districtFilter;
       const matchStore = storeFilter === 'All' || d.storeId === storeFilter;

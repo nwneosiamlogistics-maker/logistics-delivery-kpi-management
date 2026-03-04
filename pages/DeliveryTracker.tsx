@@ -69,9 +69,20 @@ const STATUS_TABS = [
   },
 ];
 
-function getDaysOverdue(planDate: string): number {
-  if (!planDate) return 0;
-  const plan = new Date(planDate);
+function getKpiDeadline(d: DeliveryRecord, kpiConfigs: KpiConfig[]): string {
+  const base = d.openDate || d.planDate;
+  if (!base) return d.planDate;
+  const cfg = kpiConfigs.find(c => c.district === d.district && (!c.province || c.province === d.province))
+    || kpiConfigs.find(c => c.district === d.district);
+  const limit = cfg?.onTimeLimit ?? 1;
+  const dt = new Date(base);
+  dt.setDate(dt.getDate() + limit);
+  return dt.toISOString().slice(0, 10);
+}
+
+function getDaysOverdue(deadline: string): number {
+  if (!deadline) return 0;
+  const plan = new Date(deadline);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   plan.setHours(0, 0, 0, 0);
@@ -104,7 +115,7 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
 
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
-    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
     return map;
   }, [kpiConfigs]);
 
@@ -136,7 +147,12 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
     return deliveries
       .filter(d => (d.deliveryStatus || '') === activeTab)
       .filter(d => {
-        if (filterBranch && districtBranchMap.get(d.district) !== filterBranch) return false;
+        if (filterBranch) {
+          const key = `${d.province || ''}||${d.district}`;
+          const keyNoProvince = `||${d.district}`;
+          const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
+          if (branch !== filterBranch) return false;
+        }
         if (filterProvince && d.province !== filterProvince) return false;
         if (filterDistrict && d.district !== filterDistrict) return false;
         if (search) {
@@ -152,17 +168,16 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
         return true;
       })
       .sort((a, b) => {
-        // Sort by overdue days desc (most urgent first), then by planDate asc
-        const oa = getDaysOverdue(a.planDate);
-        const ob = getDaysOverdue(b.planDate);
+        const oa = getDaysOverdue(getKpiDeadline(a, kpiConfigs));
+        const ob = getDaysOverdue(getKpiDeadline(b, kpiConfigs));
         if (ob !== oa) return ob - oa;
-        return a.planDate.localeCompare(b.planDate);
+        return getKpiDeadline(a, kpiConfigs).localeCompare(getKpiDeadline(b, kpiConfigs));
       });
   }, [deliveries, activeTab, search, filterBranch, filterProvince, filterDistrict, districtBranchMap]);
 
   const currentTab = STATUS_TABS.find(t => t.key === activeTab)!;
   const isDeliveredTab = activeTab === 'ส่งเสร็จ';
-  const urgentCount = isDeliveredTab ? 0 : tabRecords.filter(d => getDaysOverdue(d.planDate) > 0).length;
+  const urgentCount = isDeliveredTab ? 0 : tabRecords.filter(d => getDaysOverdue(getKpiDeadline(d, kpiConfigs)) > 0).length;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -310,16 +325,17 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                     <th className="px-4 py-3 text-left font-bold">จังหวัด</th>
                     <th className="px-4 py-3 text-left font-bold">อำเภอ / ร้าน</th>
                     <th className="px-4 py-3 text-left font-bold">จำนวน</th>
+                    <th className="px-4 py-3 text-left font-bold">วันที่เปิดบิล</th>
                     <th className="px-4 py-3 text-left font-bold">กำหนดส่ง</th>
                     <th className="px-4 py-3 text-left font-bold">
-                      {isDeliveredTab ? 'วันส่งเสร็จ' : 'ค้างกี่วัน'}
+                      {isDeliveredTab ? 'วันส่งเสร็จ' : 'เกินกำหนดส่ง'}
                     </th>
                     {isDeliveredTab && <th className="px-4 py-3 text-left font-bold">KPI</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {tabRecords.map(d => {
-                    const overdue = getDaysOverdue(d.planDate);
+                    const overdue = getDaysOverdue(getKpiDeadline(d, kpiConfigs));
                     const isUrgent = !isDeliveredTab && overdue > 0;
                     return (
                       <tr
@@ -338,7 +354,10 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                             {d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-mono text-gray-500 text-xs">{d.planDate}</td>
+                        <td className="px-4 py-3 font-mono text-gray-400 text-xs">{d.openDate || <span className="text-gray-300">-</span>}</td>
+                        <td className="px-4 py-3 font-mono text-xs">
+                          <span className="text-indigo-700 font-bold">{getKpiDeadline(d, kpiConfigs)}</span>
+                        </td>
                         <td className="px-4 py-3">
                           {isDeliveredTab ? (
                             <span className="text-green-700 font-mono text-xs">{d.actualDatetime || d.actualDate}</span>

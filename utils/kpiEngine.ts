@@ -69,7 +69,13 @@ export const calculateKpiStatus = (
     (province ? configs.find(c => c.province === province) : undefined) ||
     configs[0];
   const pDate = new Date(planDate);
-  const aDate = new Date(actualDate);
+
+  // Cap actualDate ที่วันนี้ — ป้องกันกรณีวันที่ในอนาคต (เช่น parse ปี พ.ศ. ผิด)
+  // ถ้า actualDate > today แสดงว่าข้อมูลผิดพลาด ให้นับถึงวันนี้แทน
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const rawActual = new Date(actualDate);
+  const aDate = rawActual > today ? today : rawActual;
 
   if (aDate < pDate) {
     return {
@@ -111,6 +117,17 @@ export const getWeekdayThai = (dateStr: string): string => {
   const weekdays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
   const date = new Date(dateStr);
   return weekdays[date.getDay()];
+};
+
+/**
+ * ตรวจสอบว่า actualDate อยู่ในอนาคต (ข้อมูลน่าสงสัย)
+ * ใช้สำหรับ UI แสดง warning badge
+ */
+export const isFutureDate = (dateStr: string): boolean => {
+  if (!dateStr) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(dateStr) > today;
 };
 
 

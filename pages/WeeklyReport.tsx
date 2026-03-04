@@ -44,7 +44,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
   // Build district → branch map from kpiConfigs
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
-    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(c.district, c.branch); });
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
     return map;
   }, [kpiConfigs]);
 
@@ -68,7 +68,9 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
       if (!ad) return false;
       if (!(ad >= start && ad <= end)) return false;
       if (branchFilter !== 'All') {
-        const branch = districtBranchMap.get(d.district);
+        const key = `${d.province || ''}||${d.district}`;
+        const keyNoProvince = `||${d.district}`;
+        const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
         if (branch !== branchFilter) return false;
       }
       return true;

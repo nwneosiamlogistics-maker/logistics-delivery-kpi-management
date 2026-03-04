@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DeliveryRecord, KpiStatus, ReasonStatus, DelayReason, KpiConfig } from '../types';
+import { isFutureDate } from '../utils/kpiEngine';
 
 interface KpiExceptionsProps {
   deliveries: DeliveryRecord[];
@@ -47,6 +48,15 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
     kpiMap.get(`${order.province || ''}||${order.district}`) ??
     kpiMap.get(`||${order.district}`);
 
+  const getDeadline = (order: DeliveryRecord): string | undefined => {
+    const base = order.openDate || order.planDate;
+    const limit = getThreshold(order);
+    if (!base || limit === undefined) return undefined;
+    const d = new Date(base);
+    d.setDate(d.getDate() + limit);
+    return d.toISOString().slice(0, 10);
+  };
+
   const branches = useMemo(() => Array.from(new Set(kpiConfigs.filter(c => c.branch).map(c => c.branch!))).sort(), [kpiConfigs]);
   const allProvinces = useMemo(() => Array.from(new Set(deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS && d.province).map(d => d.province!))).sort(), [deliveries]);
   const allDistricts = useMemo(() => Array.from(new Set(deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS).map(d => d.district))).sort(), [deliveries]);
@@ -66,9 +76,9 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
       .filter(d => filterStatus === 'all' || d.reasonStatus === filterStatus)
       .filter(d => filterBranch === 'All' || kpiMap.get(`${d.province || ''}||${d.district}`) !== undefined
         ? filterBranch === 'All' || (() => {
-            const cfg = kpiConfigs.find(c => c.district === d.district && (!c.province || c.province === d.province));
-            return cfg?.branch === filterBranch;
-          })()
+          const cfg = kpiConfigs.find(c => c.district === d.district && (!c.province || c.province === d.province));
+          return cfg?.branch === filterBranch;
+        })()
         : filterBranch === 'All')
       .filter(d => filterProvince === 'All' || d.province === filterProvince)
       .filter(d => filterDistrict === 'All' || d.district === filterDistrict)
@@ -159,16 +169,14 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
             <button
               key={tab.key}
               onClick={() => setFilterStatus(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                filterStatus === tab.key
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${filterStatus === tab.key
                   ? 'bg-indigo-600 text-white shadow-lg'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {tab.label}
-              <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs ${
-                filterStatus === tab.key ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs ${filterStatus === tab.key ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
                 {tab.count}
               </span>
             </button>
@@ -227,7 +235,8 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                 <th className="px-6 py-4 font-bold">จังหวัด</th>
                 <th className="px-6 py-4 font-bold">อำเภอ</th>
                 <th className="px-6 py-4 font-bold">ร้านค้า</th>
-                <th className="px-6 py-4 font-bold">กำหนดส่ง</th>
+                <th className="px-6 py-4 font-bold">วันนัดส่ง</th>
+                <th className="px-6 py-4 font-bold">ต้องส่งภายใน</th>
                 <th className="px-6 py-4 font-bold text-center">KPI (วัน)</th>
                 <th className="px-6 py-4 font-bold">ส่งจริง</th>
                 <th className="px-6 py-4 font-bold">ล่าช้า</th>
@@ -237,102 +246,108 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
               </tr>
             </thead>
             <tbody>
-              {exceptions.map(order => (
-                <tr key={order.orderNo} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-gray-900">{order.orderNo}</td>
-                  <td className="px-6 py-4 text-xs text-gray-700">{order.sender || <span className="text-gray-300 italic">-</span>}</td>
-                  <td className="px-6 py-4 text-xs">{order.province || <span className="text-gray-300 italic">-</span>}</td>
-                  <td className="px-6 py-4">{order.district}</td>
-                  <td className="px-6 py-4 font-mono text-xs">{order.storeId}</td>
-                  <td className="px-6 py-4 text-gray-400 font-mono text-xs">{order.planDate}</td>
-                  <td className="px-6 py-4 text-center">
-                    {getThreshold(order) !== undefined ? (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200">
-                        {getThreshold(order)} วัน
+              {exceptions.map(order => {
+                return (
+                  <tr key={order.orderNo} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-gray-900">{order.orderNo}</td>
+                    <td className="px-6 py-4 text-xs text-gray-700">{order.sender || <span className="text-gray-300 italic">-</span>}</td>
+                    <td className="px-6 py-4 text-xs">{order.province || <span className="text-gray-300 italic">-</span>}</td>
+                    <td className="px-6 py-4">{order.district}</td>
+                    <td className="px-6 py-4 font-mono text-xs">{order.storeId}</td>
+                    <td className="px-6 py-4 text-gray-400 font-mono text-xs">{order.planDate || <span className="text-gray-300 italic">-</span>}</td>
+                    <td className="px-6 py-4 font-mono text-xs">
+                      {getDeadline(order)
+                        ? <span className="text-indigo-700 font-bold">{getDeadline(order)}</span>
+                        : <span className="text-gray-300 italic">-</span>}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {getThreshold(order) !== undefined ? (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200">
+                          {getThreshold(order)} วัน
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-gray-900 font-mono text-xs">{order.actualDate}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200 inline-block w-fit">
+                          +{order.delayDays} วัน
+                        </span>
+                        {isFutureDate(order.actualDate) && (
+                          <span
+                            title={`วันส่งจริง (${order.actualDate}) อยู่ในอนาคต — ระบบใช้วันนี้คำนวณแทน กรุณาตรวจสอบข้อมูลต้นฉบับ`}
+                            className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-xs border border-amber-200 w-fit cursor-help"
+                          >
+                            ⚠️ วันส่งจริงผิด ({order.actualDate})
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {order.delayReason ? (
+                        <span className="text-gray-700 text-xs">{order.delayReason}</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">ยังไม่ระบุ</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getStatusBadge(order.reasonStatus)}`}>
+                        {STATUS_LABELS[order.reasonStatus]}
                       </span>
-                    ) : (
-                      <span className="text-gray-300 text-xs">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-gray-900 font-mono text-xs">{order.actualDate}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200">
-                      +{order.delayDays} วัน
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {order.delayReason ? (
-                      <span className="text-gray-700 text-xs">{order.delayReason}</span>
-                    ) : (
-                      <span className="text-gray-400 text-xs italic">ยังไม่ระบุ</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getStatusBadge(order.reasonStatus)}`}>
-                      {STATUS_LABELS[order.reasonStatus]}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {order.reasonStatus === ReasonStatus.PENDING && (
-                      order.deliveryStatus === 'ส่งเสร็จ' ? (
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {order.reasonStatus === ReasonStatus.PENDING && (
+                        order.deliveryStatus === 'ส่งเสร็จ' ? (
+                          <button
+                            onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
+                            className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow-md"
+                          >
+                            ระบุเหตุผล
+                          </button>
+                        ) : (
+                          <span className="text-xs text-amber-600 italic">รอสถานะ ส่งเสร็จ</span>
+                        )
+                      )}
+                      {order.reasonStatus === ReasonStatus.SUBMITTED && userRole === 'Admin' && (
+                        <div className="flex justify-center gap-2">
+                          <button
+                            aria-label="อนุมัติเหตุผล"
+                            onClick={() => handleApprove(order)}
+                            className="w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-colors flex items-center justify-center"
+                          >
+                            <i className="fas fa-check"></i>
+                          </button>
+                          <button
+                            aria-label="ปฏิเสธเหตุผล"
+                            onClick={() => handleReject(order)}
+                            className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors flex items-center justify-center"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      )}
+                      {order.reasonStatus === ReasonStatus.SUBMITTED && userRole !== 'Admin' && (
+                        <span className="text-xs text-gray-400 italic">รออนุมัติ</span>
+                      )}
+                      {order.reasonStatus === ReasonStatus.APPROVED && (
+                        <span className="text-xs text-green-600 font-semibold">
+                          <i className="fas fa-check-circle mr-1"></i>เสร็จสิ้น
+                        </span>
+                      )}
+                      {order.reasonStatus === ReasonStatus.REJECTED && (
                         <button
                           onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
-                          className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow-md"
+                          className="text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg text-xs font-semibold"
                         >
-                          ระบุเหตุผล
+                          ส่งใหม่
                         </button>
-                      ) : (
-                        <span className="text-xs text-amber-600 italic">รอสถานะ ส่งเสร็จ</span>
-                      )
-                    )}
-                    {order.reasonStatus === ReasonStatus.SUBMITTED && userRole === 'Admin' && (
-                      <div className="flex justify-center gap-2">
-                        <button
-                          aria-label="อนุมัติเหตุผล"
-                          onClick={() => handleApprove(order)}
-                          className="w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-colors flex items-center justify-center"
-                        >
-                          <i className="fas fa-check"></i>
-                        </button>
-                        <button
-                          aria-label="ปฏิเสธเหตุผล"
-                          onClick={() => handleReject(order)}
-                          className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors flex items-center justify-center"
-                        >
-                          <i className="fas fa-times"></i>
-                        </button>
-                      </div>
-                    )}
-                    {order.reasonStatus === ReasonStatus.SUBMITTED && userRole !== 'Admin' && (
-                      <span className="text-xs text-gray-400 italic">รออนุมัติ</span>
-                    )}
-                    {order.reasonStatus === ReasonStatus.APPROVED && (
-                      <span className="text-xs text-green-600 font-semibold">
-                        <i className="fas fa-check-circle mr-1"></i>เสร็จสิ้น
-                      </span>
-                    )}
-                    {order.reasonStatus === ReasonStatus.REJECTED && (
-                      <button
-                        onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
-                        className="text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg text-xs font-semibold"
-                      >
-                        ส่งใหม่
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {exceptions.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-6 py-12 text-center text-gray-400">
-                    <div className="flex flex-col items-center">
-                      <i className="fas fa-check-circle text-4xl text-green-200 mb-3"></i>
-                      <p className="font-semibold">ไม่พบรายการที่ต้องดำเนินการ</p>
-                      <p className="text-sm">ลองปรับตัวกรองใหม่</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
