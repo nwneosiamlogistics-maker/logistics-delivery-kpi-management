@@ -61,12 +61,15 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
 
   const { start, end, label } = useMemo(() => getWeekRange(refDate), [weekOffset]);
 
-  // Filter deliveries for this week by actualDate + branch
+  // Filter deliveries for this week by actualDate (delivered) or planDate (pending) + branch
   const weekDeliveries = useMemo(() => {
     return deliveries.filter(d => {
-      const ad = parseLocalDate(d.actualDate);
-      if (!ad) return false;
-      if (!(ad >= start && ad <= end)) return false;
+      // Use actualDate for delivered items, planDate for pending items
+      const isDelivered = d.deliveryStatus === DeliveryStatus.DELIVERED;
+      const dateToCheck = isDelivered ? d.actualDate : d.planDate;
+      const checkDate = parseLocalDate(dateToCheck);
+      if (!checkDate) return false;
+      if (!(checkDate >= start && checkDate <= end)) return false;
       if (branchFilter !== 'All') {
         const key = `${d.province || ''}||${d.district}`;
         const keyNoProvince = `||${d.district}`;
