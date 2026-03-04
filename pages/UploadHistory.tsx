@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ImportLog, DeliveryRecord, KpiStatus } from '../types';
+import { displayDate } from '../utils/kpiEngine';
 
 interface UploadHistoryProps {
   importLogs: ImportLog[];
@@ -33,7 +34,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
 
   const totalCreated = importLogs.reduce((s, l) => s + l.created, 0);
   const totalUpdated = importLogs.reduce((s, l) => s + l.updated, 0);
-  const totalErrors  = importLogs.reduce((s, l) => s + l.errors, 0);
+  const totalErrors = importLogs.reduce((s, l) => s + l.errors, 0);
 
   const formatDateTime = (iso: string) => {
     try {
@@ -46,7 +47,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
 
   const getFileIcon = (fileName: string) => {
     if (fileName.match(/\.xlsx?$/i)) return 'fa-file-excel text-green-500';
-    if (fileName.match(/\.csv$/i))   return 'fa-file-csv text-blue-500';
+    if (fileName.match(/\.csv$/i)) return 'fa-file-csv text-blue-500';
     return 'fa-file text-gray-400';
   };
 
@@ -113,12 +114,12 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
           const fileQ = (fileSearch[log.id] || '').toLowerCase();
           const fileDeliveries = fileQ
             ? allFileDeliveries.filter(d =>
-                d.orderNo.toLowerCase().includes(fileQ) ||
-                (d.sender || '').toLowerCase().includes(fileQ) ||
-                (d.province || '').toLowerCase().includes(fileQ) ||
-                d.district.toLowerCase().includes(fileQ) ||
-                d.storeId.toLowerCase().includes(fileQ)
-              )
+              d.orderNo.toLowerCase().includes(fileQ) ||
+              (d.sender || '').toLowerCase().includes(fileQ) ||
+              (d.province || '').toLowerCase().includes(fileQ) ||
+              d.district.toLowerCase().includes(fileQ) ||
+              d.storeId.toLowerCase().includes(fileQ)
+            )
             : allFileDeliveries;
 
           return (
@@ -251,7 +252,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
                               <td className="px-4 py-2.5 text-gray-400 font-mono">{d.planDate}</td>
                               <td className="px-4 py-2.5 font-mono text-gray-700">
                                 {d.deliveryStatus === 'ส่งเสร็จ' ? (
-                                  <span className="text-green-700">{d.actualDatetime || d.actualDate}</span>
+                                  <span className="text-green-700">{displayDate(d.actualDatetime || d.actualDate)}</span>
                                 ) : (
                                   <span className="text-gray-300 italic text-xs">ยังไม่ส่ง</span>
                                 )}

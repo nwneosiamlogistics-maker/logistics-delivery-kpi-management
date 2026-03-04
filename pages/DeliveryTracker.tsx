@@ -1,5 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { DeliveryRecord, KpiConfig } from '../types';
+import { displayDate } from '../utils/kpiEngine';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 
 interface DeliveryTrackerProps {
   deliveries: DeliveryRecord[];
@@ -179,6 +183,63 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
   const isDeliveredTab = activeTab === 'ส่งเสร็จ';
   const urgentCount = isDeliveredTab ? 0 : tabRecords.filter(d => getDaysOverdue(getKpiDeadline(d, kpiConfigs)) > 0).length;
 
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+
+  const statusSummary = useMemo(() => {
+    return STATUS_TABS.map(tab => {
+      const rows = deliveries.filter(d => (d.deliveryStatus || '') === tab.key);
+      if (rows.length === 0) return { key: tab.key, label: tab.label, icon: tab.icon, color: tab.color, count: 0, avgFromOpen: '-', avgOverPlan: '-', overdueCount: 0 };
+      const openRows = rows.filter(d => d.openDate);
+      const avgOpen = openRows.length > 0
+        ? openRows.reduce((s, d) => s + Math.floor((today.getTime() - new Date(d.openDate!).getTime()) / 86400000), 0) / openRows.length
+        : 0;
+      const overdueRows = tab.key !== 'ส่งเสร็จ'
+        ? rows.filter(d => getDaysOverdue(getKpiDeadline(d, kpiConfigs)) > 0)
+        : [];
+      const avgOver = overdueRows.length > 0
+        ? overdueRows.reduce((s, d) => s + getDaysOverdue(getKpiDeadline(d, kpiConfigs)), 0) / overdueRows.length
+        : 0;
+      return {
+        key: tab.key, label: tab.label, icon: tab.icon, color: tab.color,
+        count: rows.length,
+        avgFromOpen: openRows.length > 0 ? avgOpen.toFixed(1) : '-',
+        avgOverPlan: overdueRows.length > 0 ? avgOver.toFixed(1) : '-',
+        overdueCount: overdueRows.length,
+      };
+    });
+  }, [deliveries, kpiConfigs, today]);
+
+  const provinceChartData = useMemo(() => {
+    const map = new Map<string, Record<string, number>>();
+    deliveries.forEach(d => {
+      const prov = d.province || 'ไม่ระบุ';
+      const status = d.deliveryStatus || 'ไม่ระบุ';
+      if (!map.has(prov)) map.set(prov, {});
+      const entry = map.get(prov)!;
+      entry[status] = (entry[status] || 0) + 1;
+    });
+    return [...map.entries()]
+      .map(([name, counts]) => ({ name, total: Object.values(counts).reduce((s, v) => s + v, 0), ...counts }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 12);
+  }, [deliveries]);
+
+  const STATUS_COLORS: Record<string, string> = {
+    'รอจัด': '#9CA3AF',
+    'ขนส่ง': '#3B82F6',
+    'รอกระจาย': '#F97316',
+    'กระจายสินค้า': '#6366F1',
+    'ส่งเสร็จ': '#10B981',
+  };
+
+  const colorMap: Record<string, string> = {
+    gray: 'bg-gray-100 text-gray-700',
+    blue: 'bg-blue-100 text-blue-700',
+    indigo: 'bg-indigo-100 text-indigo-700',
+    orange: 'bg-orange-100 text-orange-700',
+    green: 'bg-green-100 text-green-700',
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
@@ -203,9 +264,8 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
           <button
             key={tab.key}
             onClick={() => { setActiveTab(tab.key); setSearch(''); }}
-            className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-              activeTab === tab.key ? tab.activeClass + ' shadow-lg scale-105' : 'bg-white border-gray-100 hover:border-gray-300'
-            }`}
+            className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${activeTab === tab.key ? tab.activeClass + ' shadow-lg scale-105' : 'bg-white border-gray-100 hover:border-gray-300'
+              }`}
           >
             {i < STATUS_TABS.length - 1 && (
               <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 text-xs">
@@ -225,6 +285,80 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
         ))}
       </div>
 
+      {/* Status Summary Table */}
+      <div className="glass-panel rounded-2xl p-5">
+        <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <i className="fas fa-table text-indigo-400"></i>
+          สรุประยะเวลาเฉลี่ยแต่ละสถานะ
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-3 text-left font-bold">สถานะ</th>
+                <th className="px-4 py-3 text-right font-bold">จำนวน (Inv.)</th>
+                <th className="px-4 py-3 text-right font-bold">% จากทั้งหมด</th>
+                <th className="px-4 py-3 text-right font-bold">เฉลี่ยวันจากเปิดบิล</th>
+                <th className="px-4 py-3 text-right font-bold">เฉลี่ยวันเกินกำหนด</th>
+                <th className="px-4 py-3 text-right font-bold">เลยกำหนด (Inv.)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {statusSummary.map(row => (
+                <tr key={row.key} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${colorMap[row.color]}`}>
+                      <i className={`fas ${row.icon} mr-1`}></i>{row.label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-gray-800">{row.count}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">
+                    {deliveries.length > 0 ? ((row.count / deliveries.length) * 100).toFixed(1) + '%' : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {row.avgFromOpen !== '-'
+                      ? <span className="font-bold text-indigo-700">{row.avgFromOpen} วัน</span>
+                      : <span className="text-gray-300">-</span>}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {row.avgOverPlan !== '-'
+                      ? <span className="font-bold text-red-600">{row.avgOverPlan} วัน</span>
+                      : <span className="text-green-500 text-xs font-bold">✓ ทันกำหนด</span>}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {row.overdueCount > 0
+                      ? <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded font-bold text-xs">{row.overdueCount}</span>
+                      : <span className="text-gray-300 text-xs">-</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Province Stacked Bar Chart */}
+      {provinceChartData.length > 0 && (
+        <div className="glass-panel rounded-2xl p-5">
+          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <i className="fas fa-flag text-blue-400"></i>
+            สัดส่วนสถานะสินค้าตามจังหวัด (Top 12)
+          </h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={provinceChartData} margin={{ top: 4, right: 20, left: 0, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
+              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              {Object.keys(STATUS_COLORS).map(status => (
+                <Bar key={status} dataKey={status} stackId="a" fill={STATUS_COLORS[status]} name={status} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Tab Bar */}
       <div className="glass-panel rounded-2xl overflow-hidden">
         <div className="flex border-b border-gray-100 overflow-x-auto">
@@ -232,17 +366,15 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
             <button
               key={tab.key}
               onClick={() => { setActiveTab(tab.key); setSearch(''); }}
-              className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-semibold transition-all border-b-2 ${
-                activeTab === tab.key
+              className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === tab.key
                   ? `border-current ${tab.bgClass}`
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <i className={`fas ${tab.icon} mr-2`}></i>
               {tab.label}
-              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${
-                activeTab === tab.key ? 'bg-white/30' : 'bg-gray-100 text-gray-600'
-              }`}>
+              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${activeTab === tab.key ? 'bg-white/30' : 'bg-gray-100 text-gray-600'
+                }`}>
                 {countByStatus[tab.key]}
               </span>
             </button>
@@ -360,7 +492,7 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                         </td>
                         <td className="px-4 py-3">
                           {isDeliveredTab ? (
-                            <span className="text-green-700 font-mono text-xs">{d.actualDatetime || d.actualDate}</span>
+                            <span className="text-green-700 font-mono text-xs">{displayDate(d.actualDatetime || d.actualDate)}</span>
                           ) : overdue > 0 ? (
                             <span className="px-2 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded font-bold text-xs">
                               <i className="fas fa-exclamation-circle mr-1"></i>+{overdue} วัน
@@ -377,11 +509,10 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                         </td>
                         {isDeliveredTab && (
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              d.kpiStatus === 'PASS'
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${d.kpiStatus === 'PASS'
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-red-100 text-red-700'
-                            }`}>
+                              }`}>
                               {d.kpiStatus === 'PASS' ? 'ผ่าน' : 'ไม่ผ่าน'}
                             </span>
                           </td>

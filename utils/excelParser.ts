@@ -301,7 +301,11 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
       sender: m.sender ? String(m.sender).trim() : undefined,
       province: m.province ? String(m.province).trim() : undefined,
       deliveryStatus: m.deliveryStatus ? String(m.deliveryStatus).trim() : undefined,
-      actualDatetime: m.actualDatetime ? String(m.actualDatetime).trim() : undefined,
+      // actualDatetime: parse ก่อนเก็บ — แปลง Excel serial เป็น ISO date เช่น "2026-02-11"
+      // ไม่งั้น UI จะแสดงเลข "244441.54305..." แทนที่จะเป็นวันที่
+      actualDatetime: m.actualDatetime
+        ? (parseDate(m.actualDatetime) || String(m.actualDatetime).trim() || undefined)
+        : undefined,
       updatedAt: m.updatedAt ? parseDate(m.updatedAt) || undefined : undefined,
       version: m.version ? parseInt(String(m.version), 10) : undefined
     };
@@ -459,7 +463,9 @@ export function processImport(
         // Only push to updated if something actually changed
         if (
           patched.openDate !== existing.openDate ||
+          patched.planDate !== existing.planDate ||
           patched.actualDate !== existing.actualDate ||
+          patched.actualDatetime !== existing.actualDatetime ||  // ← fix: serial "244441→ISO" ต้อง update
           patched.kpiStatus !== existing.kpiStatus ||
           patched.delayDays !== existing.delayDays
         ) {

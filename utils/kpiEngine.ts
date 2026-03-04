@@ -131,4 +131,19 @@ export const isFutureDate = (dateStr: string): boolean => {
   return new Date(dateStr) > today;
 };
 
+/**
+ * แสดงวันที่อย่างปลอดภัย — รองรับทั้ง ISO date และ raw Excel serial
+ * กรณี serial ดิบ (เช่น "244441.543...") จะแสดงเป็น "-" พร้อม tooltip
+ * หลัง re-import ข้อมูลจะถูกแปลงเป็น ISO date โดยอัตโนมัติ
+ */
+export const displayDate = (value: string | undefined | null, fallback = '-'): string => {
+  if (!value || value.trim() === '') return fallback;
+  // Raw Excel serial number (ตัวเลข เช่น "244441.54305...") — ยังไม่ได้แปลง
+  if (/^\d+(\.\d+)?$/.test(value.trim()) && parseFloat(value) > 1000) {
+    return fallback; // แสดง fallback; หลัง re-import จะเป็น ISO date แล้ว
+  }
+  // ISO date หรือ ISO datetime → ตัดเหลือแค่วันที่
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return value;
+};
 
