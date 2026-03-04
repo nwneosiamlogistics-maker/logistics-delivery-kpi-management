@@ -173,11 +173,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleRecalculateKpi = useCallback(() => {
+    console.log('[Recalculate KPI] Started');
     setDeliveries(prev => {
+      let failCount = 0;
       const recalculated = prev.map(d => {
         const isDelivered = d.deliveryStatus === 'ส่งเสร็จ';
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().slice(0, 10);
         
         // Recalculate KPI with new logic
         const kpi = (() => {
@@ -186,7 +189,12 @@ const App: React.FC = () => {
             return calculateKpiStatus(d.planDate, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
           // For pending deliveries, use strict calculation (no grace period)
-          return calculatePendingKpiStatus(d.planDate, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+          const result = calculatePendingKpiStatus(d.planDate, todayStr, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+          if (result.kpiStatus === KpiStatus.NOT_PASS) {
+            failCount++;
+            console.log(`[Recalculate KPI] FAIL: ${d.orderNo}, planDate=${d.planDate}, today=${todayStr}, status=${d.deliveryStatus}`);
+          }
+          return result;
         })();
 
         // Preserve existing reason if already submitted/approved
@@ -219,6 +227,7 @@ const App: React.FC = () => {
       // Update localStorage cache
       try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
 
+      console.log(`[Recalculate KPI] Completed. Total FAIL: ${failCount}, Total records: ${recalculated.length}`);
       return recalculated;
     });
   }, [kpiConfigs, holidays, storeClosures]);
