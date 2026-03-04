@@ -301,16 +301,12 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                     </td>
                     <td className="px-6 py-4 text-center">
                       {order.reasonStatus === ReasonStatus.PENDING && (
-                        order.deliveryStatus === 'ส่งเสร็จ' ? (
-                          <button
-                            onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
-                            className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow-md"
-                          >
-                            ระบุเหตุผล
-                          </button>
-                        ) : (
-                          <span className="text-xs text-amber-600 italic">รอสถานะ ส่งเสร็จ</span>
-                        )
+                        <button
+                          onClick={() => { setSelectedOrder(order); setReason(''); setReasonNote(''); }}
+                          className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow-md"
+                        >
+                          ระบุเหตุผล
+                        </button>
                       )}
                       {order.reasonStatus === ReasonStatus.SUBMITTED && userRole === 'Admin' && (
                         <div className="flex justify-center gap-2">

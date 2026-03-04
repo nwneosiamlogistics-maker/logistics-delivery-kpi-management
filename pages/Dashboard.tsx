@@ -38,8 +38,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
     return true;
   }), [deliveries, branchFilter, provinceFilter, districtFilter, districtBranchMap]);
 
-  const total = filtered.length;
-  const passCount = filtered.filter(d => d.kpiStatus === KpiStatus.PASS).length;
+  // Exclude 'รอจัด' from KPI calculation (items not yet at branch)
+  const activeDeliveries = filtered.filter(d => d.deliveryStatus !== 'รอจัด');
+  const total = activeDeliveries.length;
+  const passCount = activeDeliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
   const failCount = total - passCount;
   const passRate = total > 0 ? (passCount / total) * 100 : 0;
   const totalQty = filtered.reduce((sum, d) => sum + d.qty, 0);
@@ -49,8 +51,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
     { name: 'ต้องดำเนินการ', value: failCount, color: '#EF4444' }
   ];
 
-  const districtData = Array.from(new Set(filtered.map(d => d.district))).map(dist => {
-    const distItems = filtered.filter(d => d.district === dist);
+  const districtData = Array.from(new Set(activeDeliveries.map(d => d.district))).map(dist => {
+    const distItems = activeDeliveries.filter(d => d.district === dist);
     return {
       name: dist,
       pass: distItems.filter(d => d.kpiStatus === KpiStatus.PASS).length,

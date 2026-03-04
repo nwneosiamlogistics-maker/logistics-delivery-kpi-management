@@ -333,7 +333,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
             <thead className="text-xs text-gray-700 uppercase bg-gray-100/50">
               <tr>
                 <th className="px-6 py-4 font-bold">วัน</th>
-                <th className="px-6 py-4 font-bold">จำนวนเที่ยว</th>
+                <th className="px-6 py-4 font-bold">จำนวน Inv.</th>
                 <th className="px-6 py-4 font-bold">จำนวนชิ้น</th>
                 <th className="px-6 py-4 font-bold">สัดส่วน</th>
                 <th className="px-6 py-4 font-bold">สถานะ</th>

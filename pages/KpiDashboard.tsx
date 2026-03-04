@@ -136,6 +136,18 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
       .sort((a, b) => b.count - a.count).slice(0, 10);
   }, [filtered]);
 
+  const byStore = useMemo(() => {
+    const map = new Map<string, { count: number; totalDelay: number }>();
+    filtered.forEach(d => {
+      const key = d.storeId || 'ไม่ระบุ';
+      const cur = map.get(key) || { count: 0, totalDelay: 0 };
+      map.set(key, { count: cur.count + 1, totalDelay: cur.totalDelay + d.delayDays });
+    });
+    return [...map.entries()]
+      .map(([name, v]) => ({ name, count: v.count, avgDelay: +(v.totalDelay / v.count).toFixed(1) }))
+      .sort((a, b) => b.count - a.count).slice(0, 10);
+  }, [filtered]);
+
   const totalDelay = filtered.reduce((s, d) => s + d.delayDays, 0);
   const avgDelay = filtered.length > 0 ? (totalDelay / filtered.length).toFixed(1) : '0';
   const maxDelay = filtered.length > 0 ? Math.max(...filtered.map(d => d.delayDays)) : 0;
@@ -301,6 +313,27 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
                   />
                   <Bar dataKey="count" name="count" radius={[0, 6, 6, 0]}>
                     {bySender.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="glass-panel p-6 rounded-2xl">
+              <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i className="fas fa-store text-pink-400"></i>
+                Top 10 ร้านค้า — KPI ไม่ผ่านมากที่สุด
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={byStore} layout="vertical" margin={{ left: 0, right: 36, top: 4, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(val: any, name?: string) => [val, name === 'count' ? 'Inv.' : 'เฉลี่ย (วัน)']}
+                    contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="count" name="count" radius={[0, 6, 6, 0]}>
+                    {byStore.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

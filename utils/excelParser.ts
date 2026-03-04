@@ -505,9 +505,25 @@ export function processImport(
       return d.toISOString().slice(0, 10);
     })();
 
-    const kpi = isDelivered
-      ? calculateKpiStatus(kpiDeadline, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province)
-      : { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
+    // KPI calculation logic:
+    // - ส่งเสร็จ: calculate based on actual delivery date
+    // - ยังไม่ส่งเสร็จ แต่เกิน planDate แล้ว: calculate using today as temporary actual date
+    // - ยังไม่ส่งเสร็จ และยังไม่เกิน planDate: PASS (still on track)
+    const kpi = (() => {
+      if (isDelivered) {
+        return calculateKpiStatus(kpiDeadline, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
+      }
+      // Check if pending delivery has exceeded planDate
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const planDateObj = new Date(kpiDeadline);
+      if (today > planDateObj) {
+        // Exceeded planDate but not yet delivered → calculate KPI using today
+        return calculateKpiStatus(kpiDeadline, today.toISOString().slice(0, 10), row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
+      }
+      // Still within planDate → PASS
+      return { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
+    })();
 
     const data: DeliveryRecord = {
       orderNo: row.orderNo,

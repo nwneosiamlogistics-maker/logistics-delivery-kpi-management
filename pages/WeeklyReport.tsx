@@ -101,9 +101,11 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
   const podPendingCount = podPending.length;
   const podPendingPct = pct(podPendingCount, totalInv);
 
-  // KPI summary
-  const kpiPass = weekDeliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
-  const kpiFail = weekDeliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS).length;
+  // KPI summary — exclude 'รอจัด' (items not yet at branch)
+  const activeDeliveries = weekDeliveries.filter(d => d.deliveryStatus !== 'รอจัด');
+  const kpiPass = activeDeliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
+  const kpiFail = activeDeliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS).length;
+  const kpiTotal = activeDeliveries.length;
 
   const statCard = (
     icon: string,
@@ -205,7 +207,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
         {statCard('fa-file-invoice', 'text-indigo-600', 'bg-indigo-50', 'จำนวน Inv. ทั้งหมด', totalInv.toLocaleString(), `${totalQty % 1 === 0 ? totalQty.toLocaleString() : totalQty.toFixed(2)} ชิ้น/กล่อง`)}
         {statCard('fa-check-circle', 'text-green-600', 'bg-green-50', 'ส่งเสร็จ (POD)', podDone.toLocaleString(), `${pct(podDone, totalInv)}% ของทั้งหมด`)}
         {statCard('fa-clock', 'text-orange-600', 'bg-orange-50', 'POD ยังค้าง', podPendingCount.toLocaleString(), `${podPendingPct}% ของทั้งหมด`)}
-        {statCard('fa-trophy', 'text-blue-600', 'bg-blue-50', 'KPI ผ่าน', `${pct(kpiPass, totalInv)}%`, `ผ่าน ${kpiPass} / ไม่ผ่าน ${kpiFail}`)}
+        {statCard('fa-trophy', 'text-blue-600', 'bg-blue-50', 'KPI ผ่าน', `${pct(kpiPass, kpiTotal)}%`, `ผ่าน ${kpiPass} / ไม่ผ่าน ${kpiFail} (จาก ${kpiTotal} Inv.)`)}
       </div>
 
       {/* Delivery Timing Breakdown */}

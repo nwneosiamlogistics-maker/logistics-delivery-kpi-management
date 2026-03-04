@@ -26,12 +26,17 @@ import {
   ImportLog,
   ReasonAuditLog,
   User,
-  ReasonStatus
+  ReasonStatus,
+  KpiStatus
 } from './types';
 import { getRealtimeDb } from './services/firebase';
-import { ref, onValue, set, get } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
+import { calculateKpiStatus } from './utils/kpiEngine';
 
 const KPI_CONFIGS_PATH = 'kpiConfigs';
+const HOLIDAYS_PATH = 'holidays';
+const STORE_CLOSURES_PATH = 'storeClosures';
+const DELAY_REASONS_PATH = 'delayReasons';
 
 // Firebase keys cannot contain . # $ / [ ]
 function sanitizeFirebaseKey(key: string): string {
@@ -55,12 +60,16 @@ function cleanUndefined<T>(val: T): T {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>(HOLIDAYS);
   const [storeClosures, setStoreClosures] = useState<StoreClosure[]>(STORE_CLOSURES);
   const [kpiConfigs, setKpiConfigs] = useState<KpiConfig[]>(KPI_CONFIGS);
   const [delayReasons, setDelayReasons] = useState<DelayReason[]>(DELAY_REASONS);
   const kpiLoadedFromFirebase = useRef(false);
+  const holidaysLoadedFromFirebase = useRef(false);
+  const storeClosuresLoadedFromFirebase = useRef(false);
+  const delayReasonsLoadedFromFirebase = useRef(false);
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
   const [currentUser] = useState<User>(DEFAULT_USER);
@@ -70,24 +79,34 @@ const App: React.FC = () => {
       // Use orderNo as unique key — every Inv. stored separately
       const existingMap = new Map(prev.map(d => [d.orderNo, d]));
       newRecords.forEach(record => {
-        existingMap.set(record.orderNo, record);
+        const existing = existingMap.get(record.orderNo);
+        // ถ้า order เดิมมีการระบุเหตุผลแล้ว (SUBMITTED/APPROVED) → ให้คง reason ไว้
+        if (existing && (existing.reasonStatus === ReasonStatus.SUBMITTED || existing.reasonStatus === ReasonStatus.APPROVED)) {
+          existingMap.set(record.orderNo, {
+            ...record,
+            reasonStatus: existing.reasonStatus,
+            delayReason: existing.delayReason,
+            updatedAt: existing.updatedAt,
+          });
+        } else {
+          existingMap.set(record.orderNo, record);
+        }
       });
       const merged = Array.from(existingMap.values());
 
       // Sync merged deliveries to Firebase (strip productDetails to save bandwidth)
       const db = getRealtimeDb();
+      const stripped = merged.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
       if (db) {
-        const obj: Record<string, Omit<DeliveryRecord, 'productDetails'>> = {};
-        merged.forEach(d => {
-          const key = sanitizeFirebaseKey(d.orderNo);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { productDetails: _pd, ...rest } = d;
-          obj[key] = cleanUndefined(rest);
-        });
+        const obj: Record<string, any> = {};
+        stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
         set(ref(db, 'deliveries'), obj).catch(e =>
           console.warn('[Firebase] sync deliveries error:', e)
         );
       }
+
+      // Update localStorage cache so next page load uses fresh data (no Firebase read needed)
+      try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
 
       return merged;
     });
@@ -153,8 +172,73 @@ const App: React.FC = () => {
     setActiveTab('dashboard');
   }, []);
 
-  // Load deliveries from Firebase on mount (one-time read to minimize bandwidth)
+  const handleRecalculateKpi = useCallback(() => {
+    setDeliveries(prev => {
+      const recalculated = prev.map(d => {
+        const isDelivered = d.deliveryStatus === 'ส่งเสร็จ';
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const planDateObj = new Date(d.planDate);
+
+        // Recalculate KPI with new logic
+        const kpi = (() => {
+          if (isDelivered) {
+            return calculateKpiStatus(d.planDate, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+          }
+          // Pending delivery exceeded planDate
+          if (today > planDateObj) {
+            return calculateKpiStatus(d.planDate, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+          }
+          // Still within planDate
+          return { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
+        })();
+
+        // Preserve existing reason if already submitted/approved
+        if (d.reasonStatus === ReasonStatus.SUBMITTED || d.reasonStatus === ReasonStatus.APPROVED) {
+          return {
+            ...d,
+            kpiStatus: kpi.kpiStatus,
+            delayDays: kpi.delayDays,
+          };
+        }
+
+        return {
+          ...d,
+          kpiStatus: kpi.kpiStatus,
+          delayDays: kpi.delayDays,
+          reasonRequired: kpi.reasonRequired,
+          reasonStatus: kpi.reasonStatus,
+        };
+      });
+
+      // Sync to Firebase
+      const db = getRealtimeDb();
+      const stripped = recalculated.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
+      if (db) {
+        const obj: Record<string, any> = {};
+        stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
+        set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] recalculate sync error:', e));
+      }
+
+      // Update localStorage cache
+      try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+
+      return recalculated;
+    });
+  }, [kpiConfigs, holidays, storeClosures]);
+
+  // Load deliveries: localStorage cache first, Firebase fallback (saves bandwidth)
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem('deliveries_cache');
+      if (cached) {
+        const records: DeliveryRecord[] = JSON.parse(cached);
+        if (records.length > 0) {
+          setDeliveries(records);
+          return;
+        }
+      }
+    } catch { /* ignore parse errors */ }
     const db = getRealtimeDb();
     if (!db) return;
     get(ref(db, 'deliveries'))
@@ -162,24 +246,110 @@ const App: React.FC = () => {
         if (snapshot.exists()) {
           const records: DeliveryRecord[] = Object.values(snapshot.val());
           setDeliveries(records);
+          try { localStorage.setItem('deliveries_cache', JSON.stringify(records)); } catch { /* quota */ }
         }
       })
       .catch(e => console.warn('[Firebase] load deliveries error:', e));
   }, []);
 
-  // Load kpiConfigs from Firebase on mount
+  // Load holidays from Firebase on mount (one-time get)
   useEffect(() => {
     const db = getRealtimeDb();
-    if (!db) {
-      kpiLoadedFromFirebase.current = true;
-      return;
-    }
-    try {
-      const kpiRef = ref(db, KPI_CONFIGS_PATH);
-      const unsub = onValue(kpiRef, (snapshot) => {
+    if (!db) { holidaysLoadedFromFirebase.current = true; return; }
+    get(ref(db, HOLIDAYS_PATH))
+      .then(snapshot => {
         if (snapshot.exists()) {
-          const data = snapshot.val();
-          const configs: KpiConfig[] = Object.values(data);
+          setHolidays(Object.values(snapshot.val()) as Holiday[]);
+        } else {
+          const obj: Record<string, Holiday> = {};
+          HOLIDAYS.forEach(h => { obj[h.id] = h; });
+          set(ref(db, HOLIDAYS_PATH), obj);
+        }
+        holidaysLoadedFromFirebase.current = true;
+      })
+      .catch(() => { holidaysLoadedFromFirebase.current = true; });
+  }, []);
+
+  // Save holidays to Firebase whenever they change
+  useEffect(() => {
+    if (!holidaysLoadedFromFirebase.current) return;
+    const db = getRealtimeDb();
+    if (!db) return;
+    try {
+      const obj: Record<string, Holiday> = {};
+      holidays.forEach(h => { obj[h.id] = cleanUndefined(h); });
+      set(ref(db, HOLIDAYS_PATH), obj);
+    } catch { /* silent */ }
+  }, [holidays]);
+
+  // Load storeClosures from Firebase on mount (one-time get)
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) { storeClosuresLoadedFromFirebase.current = true; return; }
+    get(ref(db, STORE_CLOSURES_PATH))
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          setStoreClosures(Object.values(snapshot.val()) as StoreClosure[]);
+        } else {
+          const obj: Record<string, StoreClosure> = {};
+          STORE_CLOSURES.forEach(c => { obj[c.id] = c; });
+          set(ref(db, STORE_CLOSURES_PATH), obj);
+        }
+        storeClosuresLoadedFromFirebase.current = true;
+      })
+      .catch(() => { storeClosuresLoadedFromFirebase.current = true; });
+  }, []);
+
+  // Save storeClosures to Firebase whenever they change
+  useEffect(() => {
+    if (!storeClosuresLoadedFromFirebase.current) return;
+    const db = getRealtimeDb();
+    if (!db) return;
+    try {
+      const obj: Record<string, StoreClosure> = {};
+      storeClosures.forEach(c => { obj[c.id] = cleanUndefined(c); });
+      set(ref(db, STORE_CLOSURES_PATH), obj);
+    } catch { /* silent */ }
+  }, [storeClosures]);
+
+  // Load delayReasons from Firebase on mount (one-time get)
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) { delayReasonsLoadedFromFirebase.current = true; return; }
+    get(ref(db, DELAY_REASONS_PATH))
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          setDelayReasons(Object.values(snapshot.val()) as DelayReason[]);
+        } else {
+          const obj: Record<string, DelayReason> = {};
+          DELAY_REASONS.forEach(r => { obj[r.code] = r; });
+          set(ref(db, DELAY_REASONS_PATH), obj);
+        }
+        delayReasonsLoadedFromFirebase.current = true;
+      })
+      .catch(() => { delayReasonsLoadedFromFirebase.current = true; });
+  }, []);
+
+  // Save delayReasons to Firebase whenever they change
+  useEffect(() => {
+    if (!delayReasonsLoadedFromFirebase.current) return;
+    const db = getRealtimeDb();
+    if (!db) return;
+    try {
+      const obj: Record<string, DelayReason> = {};
+      delayReasons.forEach(r => { obj[r.code] = cleanUndefined(r); });
+      set(ref(db, DELAY_REASONS_PATH), obj);
+    } catch { /* silent */ }
+  }, [delayReasons]);
+
+  // Load kpiConfigs from Firebase on mount (one-time get)
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) { kpiLoadedFromFirebase.current = true; return; }
+    get(ref(db, KPI_CONFIGS_PATH))
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          const configs: KpiConfig[] = Object.values(snapshot.val());
           setKpiConfigs(configs);
         } else {
           const obj: Record<string, KpiConfig> = {};
@@ -187,11 +357,8 @@ const App: React.FC = () => {
           set(ref(db, KPI_CONFIGS_PATH), obj);
         }
         kpiLoadedFromFirebase.current = true;
-      });
-      return () => unsub();
-    } catch {
-      kpiLoadedFromFirebase.current = true;
-    }
+      })
+      .catch(() => { kpiLoadedFromFirebase.current = true; });
   }, []);
 
   // Save kpiConfigs to Firebase whenever they change (after initial load)
@@ -308,6 +475,7 @@ const App: React.FC = () => {
             onUpdateKpiConfigs={setKpiConfigs}
             onAddKpiConfig={handleAddKpiConfig}
             onUpdateDelayReasons={setDelayReasons}
+            onRecalculateKpi={handleRecalculateKpi}
             userRole={currentUser.role}
           />
         );
@@ -319,9 +487,14 @@ const App: React.FC = () => {
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <Navbar user={currentUser} />
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole={currentUser.role} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        userRole={currentUser.role}
+        onCollapseChange={setSidebarCollapsed}
+      />
 
-      <main className="flex-1 ml-64 pt-16 transition-all duration-300">
+      <main className={`flex-1 pt-16 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
         <div className="max-w-7xl mx-auto p-4 lg:p-8">
           {renderContent()}
         </div>

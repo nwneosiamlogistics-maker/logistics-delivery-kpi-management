@@ -13,6 +13,7 @@ interface MasterDataProps {
   onUpdateKpiConfigs: (configs: KpiConfig[]) => void;
   onAddKpiConfig: (config: Omit<KpiConfig, 'id'>) => void;
   onUpdateDelayReasons: (reasons: DelayReason[]) => void;
+  onRecalculateKpi: () => void;
   userRole: string;
 }
 
@@ -30,6 +31,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
   onUpdateKpiConfigs,
   onAddKpiConfig,
   onUpdateDelayReasons,
+  onRecalculateKpi,
   userRole
 }) => {
   const storeNames = useMemo(() => {
@@ -101,6 +103,13 @@ export const MasterData: React.FC<MasterDataProps> = ({
           </h2>
           <p className="text-gray-500 mt-1">จัดการวันหยุด, ร้านปิดทำการ, กฎ KPI, และเหตุผลความล่าช้า</p>
         </div>
+        <button
+          onClick={onRecalculateKpi}
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+        >
+          <i className="fas fa-sync-alt"></i>
+          คำนวณ KPI ใหม่ทั้งหมด
+        </button>
       </div>
 
       <div className="glass-panel rounded-2xl overflow-hidden">
