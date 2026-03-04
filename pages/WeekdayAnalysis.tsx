@@ -246,7 +246,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                     border: 'none',
                     padding: '12px'
                   }}
-                  formatter={(value: any, name?: string) => [value, name === 'count' ? 'เที่ยว' : 'ชิ้น']}
+                  formatter={(value: any, name?: string) => [value, name === 'count' ? 'Inv' : 'ชิ้น']}
                 />
                 <Bar yAxisId="left" dataKey="count" name="count" fill="url(#colorCount)" radius={[6, 6, 0, 0]} barSize={40}>
                   {analyticsData.map((entry, index) => (
@@ -272,7 +272,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                 <div>
                   <h4 className="font-semibold text-sm text-gray-900">วันที่งานหนาแน่น</h4>
                   <p className="text-xs text-gray-600 mt-1">
-                    วัน{maxTripDay.nameThai}เป็นวันที่ยุ่งที่สุดมี {maxTripDay.count} เที่ยว ควรเตรียมรถให้เพียงพอ
+                    วัน{maxTripDay.nameThai}เป็นวันที่ยุ่งที่สุดมี {maxTripDay.count} Inv ควรเตรียมรถให้เพียงพอ
                   </p>
                 </div>
               </li>
@@ -285,7 +285,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                   <h4 className="font-semibold text-sm text-gray-900">ความเสี่ยงวันหยุด</h4>
                   <p className="text-xs text-gray-600 mt-1">
                     {weekendTrips > 0
-                      ? `มี ${weekendTrips} เที่ยวในวันหยุดสัปดาห์ ตรวจสอบว่าร้านเปิดหรือไม่`
+                      ? `มี ${weekendTrips} Inv ในวันหยุดสัปดาห์ ตรวจสอบว่าร้านเปิดหรือไม่`
                       : "ไม่มีการจัดส่งในวันหยุดสัปดาห์ ลดความเสี่ยง KPI ไม่ผ่าน"}
                   </p>
                 </div>
@@ -298,7 +298,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                 <div>
                   <h4 className="font-semibold text-sm text-gray-900">สมดุลงาน</h4>
                   <p className="text-xs text-gray-600 mt-1">
-                    เฉลี่ย {(totalQty / (totalTrips || 1)).toFixed(0)} ชิ้นต่อเที่ยว
+                    เฉลี่ย {(totalQty / (totalTrips || 1)).toFixed(0)} ชิ้นต่อ Inv
                     {maxTripDay.qty > (totalQty / 7) * 1.5 ? ` วัน${maxTripDay.nameThai}มีปริมาณสูงผิดปกติ` : " ปริมาณกระจายดี"}
                   </p>
                 </div>

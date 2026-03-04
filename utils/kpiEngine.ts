@@ -15,7 +15,8 @@ export const isWorkingDay = (
   if (isHoliday) return false;
 
   if (storeId && storeClosures.length > 0) {
-    const storeRules = storeClosures.filter(sc => sc.storeId === storeId);
+    const normalizedId = storeId.trim().toLowerCase();
+    const storeRules = storeClosures.filter(sc => sc.storeId.trim().toLowerCase() === normalizedId);
 
     for (const rule of storeRules) {
       if (rule.date && rule.date === dateStr) {

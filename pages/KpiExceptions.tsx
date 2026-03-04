@@ -231,6 +231,7 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
             <thead className="text-xs text-gray-700 uppercase bg-gray-50/50 border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4 font-bold">เลขที่ใบสั่ง</th>
+                <th className="px-6 py-4 font-bold">วันที่เปิดบิล</th>
                 <th className="px-6 py-4 font-bold">ผู้ส่ง</th>
                 <th className="px-6 py-4 font-bold">จังหวัด</th>
                 <th className="px-6 py-4 font-bold">อำเภอ</th>
@@ -250,6 +251,7 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                 return (
                   <tr key={order.orderNo} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4 font-bold text-gray-900">{order.orderNo}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-500">{order.openDate || <span className="text-gray-300 italic">-</span>}</td>
                     <td className="px-6 py-4 text-xs text-gray-700">{order.sender || <span className="text-gray-300 italic">-</span>}</td>
                     <td className="px-6 py-4 text-xs">{order.province || <span className="text-gray-300 italic">-</span>}</td>
                     <td className="px-6 py-4">{order.district}</td>

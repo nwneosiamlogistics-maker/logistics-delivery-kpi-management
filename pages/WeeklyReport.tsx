@@ -276,6 +276,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
                   <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">ผู้ส่ง</th>
                   <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">จังหวัด / อำเภอ</th>
                   <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">จำนวน</th>
+                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">วันที่เปิดบิล</th>
                   <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">กำหนดส่ง</th>
                   <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">สถานะ</th>
                 </tr>
@@ -287,6 +288,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
                     <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                     <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
                     <td className="px-3 py-2 text-center text-gray-700">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
                     <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
                     <td className="px-3 py-2 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
@@ -327,6 +329,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
                   <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">ผู้ส่ง</th>
                   <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">จังหวัด / อำเภอ</th>
                   <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">จำนวน</th>
+                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">วันที่เปิดบิล</th>
                   <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">กำหนดส่ง</th>
                   <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">ช้ากี่วัน</th>
                 </tr>
@@ -338,6 +341,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({ deliveries, kpiConfi
                     <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                     <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
                     <td className="px-3 py-2 text-center">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
                     <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
                     <td className="px-3 py-2 text-center">
                       <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold">+{d.delayDays} วัน</span>

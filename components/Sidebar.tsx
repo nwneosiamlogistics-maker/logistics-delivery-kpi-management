@@ -14,6 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userR
     { id: 'weekly-report', label: 'รายงานประจำสัปดาห์', icon: 'fa-calendar-check', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'delivery-status', label: 'ติดตามสถานะสินค้า', icon: 'fa-truck-moving', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'exceptions', label: 'KPI ที่ไม่ผ่าน', icon: 'fa-exclamation-triangle', roles: ['Admin', 'Staff'] },
+    { id: 'kpi-dashboard', label: 'KPI Dashboard', icon: 'fa-chart-bar', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'analysis', label: 'วิเคราะห์รายวัน', icon: 'fa-calendar-alt', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'settings', label: 'ตั้งค่าระบบ', icon: 'fa-cogs', roles: ['Admin'] },
   ];
@@ -21,7 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userR
   const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
   const roleLabels: Record<string, string> = {
-    Admin: 'ผู้ดูแลระบบ',
+    Admin: 'neosiam admin',
     Staff: 'เจ้าหน้าที่',
     Viewer: 'ผู้ชม'
   };

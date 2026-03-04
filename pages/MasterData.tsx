@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Holiday, HolidayType, StoreClosure, KpiConfig, DelayReason, ImportLog } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Holiday, HolidayType, StoreClosure, KpiConfig, DelayReason, ImportLog, DeliveryRecord } from '../types';
 
 interface MasterDataProps {
   holidays: Holiday[];
@@ -7,6 +7,7 @@ interface MasterDataProps {
   kpiConfigs: KpiConfig[];
   delayReasons: DelayReason[];
   importLogs: ImportLog[];
+  deliveries: DeliveryRecord[];
   onUpdateHolidays: (holidays: Holiday[]) => void;
   onUpdateStoreClosures: (closures: StoreClosure[]) => void;
   onUpdateKpiConfigs: (configs: KpiConfig[]) => void;
@@ -23,6 +24,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
   kpiConfigs,
   delayReasons,
   importLogs,
+  deliveries,
   onUpdateHolidays,
   onUpdateStoreClosures,
   onUpdateKpiConfigs,
@@ -30,6 +32,11 @@ export const MasterData: React.FC<MasterDataProps> = ({
   onUpdateDelayReasons,
   userRole
 }) => {
+  const storeNames = useMemo(() => {
+    const s = new Set<string>();
+    deliveries.forEach(d => { if (d.storeId) s.add(d.storeId.trim()); });
+    return Array.from(s).sort();
+  }, [deliveries]);
   const [activeTab, setActiveTab] = useState<TabType>('holidays');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -131,6 +138,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
               onDelete={handleDeleteStoreClosure}
             />
           )}
+          {/* storeNames passed to modal below */}
 
           {activeTab === 'kpi' && (
             <KpiConfigTab
@@ -171,6 +179,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
         <AddStoreClosureModal
           onSave={handleAddStoreClosure}
           onClose={() => setShowAddModal(false)}
+          storeNames={storeNames}
         />
       )}
 
@@ -291,7 +300,7 @@ const StoreClosuresTab: React.FC<{
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left font-bold text-gray-700">รหัสร้านค้า</th>
+              <th className="px-4 py-3 text-left font-bold text-gray-700">ชื่อร้านค้า</th>
               <th className="px-4 py-3 text-left font-bold text-gray-700">วันที่ / กฎ</th>
               <th className="px-4 py-3 text-left font-bold text-gray-700">เหตุผล</th>
               {isAdmin && <th className="px-4 py-3 text-center font-bold text-gray-700">ดำเนินการ</th>}
@@ -680,7 +689,8 @@ const AddHolidayModal: React.FC<{
 const AddStoreClosureModal: React.FC<{
   onSave: (closure: Omit<StoreClosure, 'id'>) => void;
   onClose: () => void;
-}> = ({ onSave, onClose }) => {
+  storeNames: string[];
+}> = ({ onSave, onClose, storeNames }) => {
   const [storeId, setStoreId] = useState('');
   const [closureType, setClosureType] = useState<'date' | 'rule'>('date');
   const [date, setDate] = useState('');
@@ -701,14 +711,29 @@ const AddStoreClosureModal: React.FC<{
     <Modal title="เพิ่มการปิดร้านค้า" onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">รหัสร้านค้า</label>
+          <label htmlFor="storeNameInput" className="block text-sm font-bold text-gray-700 mb-1">
+            ชื่อร้านค้า
+            {storeNames.length > 0 && (
+              <span className="ml-2 text-xs font-normal text-indigo-500">({storeNames.length} ร้านในระบบ)</span>
+            )}
+          </label>
           <input
+            id="storeNameInput"
             type="text"
+            list="storeNameList"
             value={storeId}
             onChange={e => setStoreId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            placeholder="เช่น STR-A1"
+            placeholder="พิมพ์หรือเลือกชื่อร้าน..."
+            title="ชื่อร้านค้า"
+            autoComplete="off"
           />
+          <datalist id="storeNameList">
+            {storeNames.map(n => <option key={n} value={n} />)}
+          </datalist>
+          {storeNames.length === 0 && (
+            <p className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลร้านค้า — นำเข้า Excel ก่อนเพื่อให้ระบบแนะนำชื่อร้านได้</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">ประเภทการปิด</label>

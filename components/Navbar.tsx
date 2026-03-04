@@ -7,7 +7,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ user }) => {
   const roleLabels: Record<string, string> = {
-    Admin: 'ผู้ดูแลระบบ',
+    Admin: 'neosiam admin',
     Staff: 'เจ้าหน้าที่',
     Viewer: 'ผู้ชม'
   };

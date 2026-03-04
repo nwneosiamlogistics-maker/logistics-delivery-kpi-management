@@ -44,8 +44,10 @@ const QTY_COLUMNS = ['qty', 'productDetails']; // At least one must exist
 
 const COLUMN_ALIASES: Record<string, string[]> = {
   orderNo: ['orderNo', 'order_no', 'orderno', 'Order No', 'Order Number', 'เลขที่ใบสั่ง', 'เลขที่ออเดอร์', 'ใบสั่งซื้อ', 'เลขที่ใบสินค้า', 'รหัสใบสั่ง', 'ID', 'เลขที่'],
-  district: ['district', 'District', 'อำเภอ', 'เขต', 'พื้นที่', 'สาขาที่'],
-  storeId: ['storeId', 'store_id', 'storeid', 'Store ID', 'Store', 'ร้านค้า', 'รหัสร้าน', 'รหัสร้านค้า', 'รหัสสาขา', 'ผู้รับสินค้า', 'ลูกค้า', 'ผู้รับ', 'ปลายทาง'],
+  district: ['district', 'District', 'อำเภอ', 'เขต', 'พื้นที่'],
+  storeId: ['storeId', 'store_id', 'storeid', 'Store ID', 'Store', 'ร้านค้า', 'รหัสร้าน', 'รหัสร้านค้า', 'รหัสสาขา',
+    'สาขาที่', // ย้ายมาจาก district — มักเป็นชื่อร้าน/สาขา ไม่ใช่ชื่ออำเภอ
+    'ผู้รับสินค้า', 'ลูกค้า', 'ผู้รับ', 'ปลายทาง'],
   planDate: [
     'planDate', 'plan_date', 'plandate', 'Plan Date', 'Planned Date',
     'วันที่แผน', 'วันกำหนดส่ง', 'วันที่ต้องส่ง', 'นัดส่ง', 'วันที่นัด', 'วันที่ตามแผน',
@@ -171,6 +173,18 @@ function parseDate(v: any): string | null {
 
   if (typeof v === 'string') {
     const s = v.trim();
+
+    // ── กรณีพิเศษ: XLSX ส่งค่า datetime เป็น string ตัวเลข เช่น "244655.60833..." ──
+    // เกิดจาก String(m.actualDatetime) ที่ m.actualDatetime เป็น Excel serial number (ปี พ.ศ.)
+    // ให้แปลงกลับเป็น number แล้ว recurse ผ่าน numeric path (SSF) ซึ่งรองรับ BE year + swap
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const serial = parseFloat(s);
+      if (!isNaN(serial) && serial > 100) { // > 100 เพื่อกันค่า qty หรือ version ธรรมดา
+        console.log(`[parseDate] numeric-string detected: "${s}" → re-parse as serial`);
+        return parseDate(serial);
+      }
+    }
+
     const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) {
       const y = parseInt(iso[1], 10);

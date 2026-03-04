@@ -2,7 +2,7 @@ import { KpiConfig, Holiday, HolidayType, StoreClosure, DelayReason, User } from
 
 export const DEFAULT_USER: User = {
   id: 'user-001',
-  name: 'Somsak L.',
+  name: 'neosiam',
   role: 'Admin',
   email: 'somsak@company.com'
 };

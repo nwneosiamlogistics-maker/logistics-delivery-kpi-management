@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Import } from './pages/Import';
 import { KpiExceptions } from './pages/KpiExceptions';
 import { WeekdayAnalysis } from './pages/WeekdayAnalysis';
+import { KpiDashboard } from './pages/KpiDashboard';
 import { MasterData } from './pages/MasterData';
 import { UploadHistory } from './pages/UploadHistory';
 import { DeliveryTracker } from './pages/DeliveryTracker';
@@ -94,14 +95,44 @@ const App: React.FC = () => {
 
     // Auto-detect new province/district combos not in KPI config → create drafts
     setKpiConfigs(prevConfigs => {
-      const seen = new Set(
-        prevConfigs.map(c => `${c.province || ''}|${c.district}`)
-      );
+      // ── Normalize ก่อน compare เพื่อป้องกัน duplicate จาก whitespace / case ────
+      const normStr = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+
+      // ── Auto-deduplicate prevConfigs ที่มีอยู่ (กัน double จาก import คราวก่อน) ───
+      const seenIds = new Set<string>();
+      const dedupedConfigs = prevConfigs.filter(c => {
+        const key = `${normStr(c.province || '')}|${normStr(c.district)}`;
+        if (seenIds.has(key)) return false; // ซ้ำ → ตัดออก
+        seenIds.add(key);
+        return true;
+      });
+
+      // ── Build seen set จาก deduped configs ─────────────────────────────────────
+      const seen = new Set(dedupedConfigs.map(c =>
+        `${normStr(c.province || '')}|${normStr(c.district)}`
+      ));
+      // ตรวจ district เดี่ยวด้วย (กรณี config เก่าไม่มี province แต่ใหม่มี)
+      const seenByDistrict = new Set(dedupedConfigs.map(c => normStr(c.district)));
+
       const draftsToAdd: KpiConfig[] = [];
       const combos = new Set<string>();
+
+      // คำที่บ่งบอกว่าค่านี้เป็นชื่อบริษัท/ร้านค้า ไม่ใช่ชื่ออำเภอ
+      const COMPANY_KEYWORDS = ['จำกัด', 'บริษัท', 'ห้างหุ้นส่วน', 'มหาชน', 'หจก.', 'บจก.', ' co.', ' ltd'];
+
       newRecords.forEach(r => {
-        const key = `${r.province || ''}|${r.district}`;
-        if (r.district && !seen.has(key) && !combos.has(key)) {
+        if (!r.district) return;
+
+        // ข้ามถ้าค่า district ดูเหมือนชื่อบริษัท/ร้านค้า (ไม่ใช่ชื่ออำเภอ)
+        const districtLower = r.district.toLowerCase();
+        const looksLikeCompany = COMPANY_KEYWORDS.some(kw => districtLower.includes(kw));
+        const tooLong = r.district.length > 40;
+        if (looksLikeCompany || tooLong) return;
+
+        const key = `${normStr(r.province || '')}|${normStr(r.district)}`;
+        const distKey = normStr(r.district);
+        // ข้ามถ้า province+district ซ้ำ หรือ district เดียวกัน (ต่างกันแค่ province)
+        if (!seen.has(key) && !combos.has(key) && !seenByDistrict.has(distKey)) {
           combos.add(key);
           draftsToAdd.push({
             id: `kpi-draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -112,7 +143,11 @@ const App: React.FC = () => {
           });
         }
       });
-      return draftsToAdd.length > 0 ? [...prevConfigs, ...draftsToAdd] : prevConfigs;
+
+      // คืนค่า dedupedConfigs (แทน prevConfigs) เพื่อลบ duplicate ที่มีอยู่
+      return draftsToAdd.length > 0
+        ? [...dedupedConfigs, ...draftsToAdd]
+        : dedupedConfigs;
     });
 
     setActiveTab('dashboard');
@@ -255,6 +290,8 @@ const App: React.FC = () => {
         return <DeliveryTracker deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'weekly-report':
         return <WeeklyReport deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+      case 'kpi-dashboard':
+        return <KpiDashboard deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'analysis':
         return <WeekdayAnalysis deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'settings':
@@ -265,6 +302,7 @@ const App: React.FC = () => {
             kpiConfigs={kpiConfigs}
             delayReasons={delayReasons}
             importLogs={importLogs}
+            deliveries={deliveries}
             onUpdateHolidays={setHolidays}
             onUpdateStoreClosures={setStoreClosures}
             onUpdateKpiConfigs={setKpiConfigs}
