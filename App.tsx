@@ -178,18 +178,32 @@ const App: React.FC = () => {
         const isDelivered = d.deliveryStatus === 'ส่งเสร็จ';
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const planDateObj = new Date(d.planDate);
+        
+        // Calculate KPI deadline (openDate or planDate + onTimeLimit)
+        const kpiCfg = kpiConfigs.find(c => c.province === d.province && c.district === d.district) 
+          || kpiConfigs.find(c => c.district === d.district)
+          || kpiConfigs.find(c => c.province === d.province)
+          || kpiConfigs[0];
+        const kpiLimit = kpiCfg?.onTimeLimit ?? 1;
+        const deadlineBase = d.openDate || d.planDate;
+        const kpiDeadline = (() => {
+          if (!deadlineBase) return d.planDate;
+          const date = new Date(deadlineBase);
+          date.setDate(date.getDate() + kpiLimit);
+          return date.toISOString().slice(0, 10);
+        })();
+        const kpiDeadlineObj = new Date(kpiDeadline);
 
         // Recalculate KPI with new logic
         const kpi = (() => {
           if (isDelivered) {
-            return calculateKpiStatus(d.planDate, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+            return calculateKpiStatus(kpiDeadline, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
-          // Pending delivery exceeded planDate
-          if (today > planDateObj) {
-            return calculateKpiStatus(d.planDate, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+          // Pending delivery exceeded KPI deadline
+          if (today > kpiDeadlineObj) {
+            return calculateKpiStatus(kpiDeadline, today.toISOString().slice(0, 10), d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
-          // Still within planDate
+          // Still within KPI deadline
           return { kpiStatus: KpiStatus.PASS, delayDays: 0, reasonRequired: false, reasonStatus: ReasonStatus.NOT_REQUIRED };
         })();
 
