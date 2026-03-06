@@ -61,10 +61,12 @@ export const MasterData: React.FC<MasterDataProps> = ({
     };
     onUpdateHolidays([...holidays, newHoliday]);
     setShowAddModal(false);
+    setTimeout(() => { onRecalculateKpi(); alert('✅ เพิ่มวันหยุดและคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100);
   };
 
   const handleDeleteHoliday = (id: string) => {
     onUpdateHolidays(holidays.filter(h => h.id !== id));
+    setTimeout(() => { onRecalculateKpi(); alert('✅ ลบวันหยุดและคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100);
   };
 
   const handleAddStoreClosure = (closure: Omit<StoreClosure, 'id'>) => {
@@ -74,15 +76,18 @@ export const MasterData: React.FC<MasterDataProps> = ({
     };
     onUpdateStoreClosures([...storeClosures, newClosure]);
     setShowAddModal(false);
+    setTimeout(() => { onRecalculateKpi(); alert('✅ เพิ่มวันปิดร้านและคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100);
   };
 
   const handleDeleteStoreClosure = (id: string) => {
     onUpdateStoreClosures(storeClosures.filter(c => c.id !== id));
+    setTimeout(() => { onRecalculateKpi(); alert('✅ ลบวันปิดร้านและคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100);
   };
 
   const handleUpdateKpiConfig = (config: KpiConfig) => {
     onUpdateKpiConfigs(kpiConfigs.map(c => c.id === config.id ? config : c));
     setEditingItem(null);
+    setTimeout(() => { onRecalculateKpi(); alert('✅ อัพเดทกฎ KPI และคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100);
   };
 
   const handleAddDelayReason = (reason: DelayReason) => {
@@ -105,6 +110,11 @@ export const MasterData: React.FC<MasterDataProps> = ({
         </div>
         <button
           onClick={() => {
+            const password = prompt('กรุณาใส่รหัสเพื่อยืนยัน:');
+            if (password !== 'sansan856') {
+              if (password !== null) alert('❌ รหัสไม่ถูกต้อง');
+              return;
+            }
             onRecalculateKpi();
             alert('✅ คำนวณ KPI ใหม่ทั้งหมดเสร็จสิ้น\n\nกรุณาไปดูผลลัพธ์ที่หน้า "สรุปผลการทำงานประจำสัปดาห์" หรือ "แดชบอร์ด"');
           }}
@@ -161,7 +171,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
               onAdd={() => setShowAddKpiModal(true)}
               onSave={handleUpdateKpiConfig}
               onCancel={() => setEditingItem(null)}
-              onDelete={(id) => onUpdateKpiConfigs(kpiConfigs.filter(c => c.id !== id))}
+              onDelete={(id) => { onUpdateKpiConfigs(kpiConfigs.filter(c => c.id !== id)); setTimeout(() => { onRecalculateKpi(); alert('✅ ลบกฎ KPI และคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100); }}
             />
           )}
 

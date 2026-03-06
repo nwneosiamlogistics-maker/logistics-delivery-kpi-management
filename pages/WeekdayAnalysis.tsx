@@ -3,12 +3,14 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   ComposedChart, Line
 } from 'recharts';
-import { DeliveryRecord, KpiConfig } from '../types';
+import { DeliveryRecord, KpiConfig, Holiday, StoreClosure } from '../types';
 import { getWeekday } from '../utils/kpiEngine';
 
 interface WeekdayAnalysisProps {
   deliveries: DeliveryRecord[];
   kpiConfigs?: KpiConfig[];
+  holidays?: Holiday[];
+  storeClosures?: StoreClosure[];
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -22,7 +24,7 @@ const WEEKDAY_THAI: Record<string, string> = {
   'Sunday': 'อาทิตย์'
 };
 
-export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kpiConfigs = [] }) => {
+export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kpiConfigs = [], holidays = [], storeClosures = [] }) => {
   const [branchFilter, setBranchFilter] = useState<string>('All');
   const [provinceFilter, setProvinceFilter] = useState<string>('All');
   const [districtFilter, setDistrictFilter] = useState<string>('All');
@@ -96,7 +98,22 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
   const totalQty = analyticsData.reduce((s, d) => s + d.qty, 0);
   const maxTripDay = analyticsData.reduce((prev, current) => (prev.count > current.count) ? prev : current, analyticsData[0]);
   const minTripDay = analyticsData.filter(d => d.count > 0).reduce((prev, current) => (prev.count < current.count) ? prev : current, { name: '-', nameThai: '-', count: 0 } as any);
-  const weekendTrips = analyticsData.filter(d => d.name === 'Saturday' || d.name === 'Sunday').reduce((s, d) => s + d.count, 0);
+  // Calculate holiday trips: Sunday + public holidays + company holidays + store closures
+  const holidayTrips = useMemo(() => {
+    const holidayDates = new Set<string>();
+    // Add all holidays (public + company)
+    holidays.forEach(h => holidayDates.add(h.date));
+    // Add all store closures
+    storeClosures.forEach(sc => { if (sc.date) holidayDates.add(sc.date); });
+    
+    return filteredData.filter(d => {
+      if (!d.actualDate) return false;
+      const date = new Date(d.actualDate);
+      const dayOfWeek = date.getDay(); // 0 = Sunday
+      // Check if Sunday or in holiday/closure dates
+      return dayOfWeek === 0 || holidayDates.has(d.actualDate);
+    }).length;
+  }, [filteredData, holidays, storeClosures]);
 
   return (
     <div className="space-y-8 animate-fade-in-up">
@@ -209,10 +226,10 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
         />
         <MetricCard
           title="กิจกรรมวันหยุด"
-          value={weekendTrips.toString()}
-          subValue="Inv (ส.-อา.)"
+          value={holidayTrips.toString()}
+          subValue="Inv (อา.+วันหยุด)"
           icon="fa-calendar-week"
-          color={weekendTrips > 0 ? "orange" : "gray"}
+          color={holidayTrips > 0 ? "orange" : "gray"}
         />
       </div>
 
@@ -246,7 +263,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                     border: 'none',
                     padding: '12px'
                   }}
-                  formatter={(value: any, name?: string) => [value, name === 'count' ? 'Inv' : 'ชิ้น']}
+                  formatter={(value: any, name?: string) => [name === 'count' ? value.toLocaleString() : Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), name === 'count' ? 'Inv' : 'ชิ้น']}
                 />
                 <Bar yAxisId="left" dataKey="count" name="count" fill="url(#colorCount)" radius={[6, 6, 0, 0]} barSize={40}>
                   {analyticsData.map((entry, index) => (
@@ -284,9 +301,9 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                 <div>
                   <h4 className="font-semibold text-sm text-gray-900">ความเสี่ยงวันหยุด</h4>
                   <p className="text-xs text-gray-600 mt-1">
-                    {weekendTrips > 0
-                      ? `มี ${weekendTrips} Inv ในวันหยุดสัปดาห์ ตรวจสอบว่าร้านเปิดหรือไม่`
-                      : "ไม่มีการจัดส่งในวันหยุดสัปดาห์ ลดความเสี่ยง KPI ไม่ผ่าน"}
+                    {holidayTrips > 0
+                      ? `มี ${holidayTrips} Inv ในวันหยุด ตรวจสอบว่าร้านเปิดหรือไม่`
+                      : "ไม่มีการจัดส่งในวันหยุด ลดความเสี่ยง KPI ไม่ผ่าน"}
                   </p>
                 </div>
               </li>

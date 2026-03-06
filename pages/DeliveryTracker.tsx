@@ -140,12 +140,24 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
   const countByStatus = useMemo(() => {
     const map: Record<string, number> = {};
     STATUS_TABS.forEach(t => { map[t.key] = 0; });
-    deliveries.forEach(d => {
-      const s = d.deliveryStatus || '';
-      if (map[s] !== undefined) map[s]++;
-    });
+    deliveries
+      .filter(d => {
+        if (filterBranch) {
+          const key = `${d.province || ''}||${d.district}`;
+          const keyNoProvince = `||${d.district}`;
+          const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
+          if (branch !== filterBranch) return false;
+        }
+        if (filterProvince && d.province !== filterProvince) return false;
+        if (filterDistrict && d.district !== filterDistrict) return false;
+        return true;
+      })
+      .forEach(d => {
+        const s = d.deliveryStatus || '';
+        if (map[s] !== undefined) map[s]++;
+      });
     return map;
-  }, [deliveries]);
+  }, [deliveries, filterBranch, filterProvince, filterDistrict, districtBranchMap]);
 
   const tabRecords = useMemo(() => {
     return deliveries

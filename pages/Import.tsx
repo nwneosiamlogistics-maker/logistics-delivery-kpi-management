@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { DeliveryRecord, KpiConfig, Holiday, StoreClosure, ImportLog, User } from '../types';
+import { DeliveryRecord, KpiConfig, Holiday, StoreClosure, ImportLog, User, StoreMapping } from '../types';
 import { parseExcelFile, processImport, ImportResult } from '../utils/excelParser';
 
 interface ImportProps {
@@ -9,6 +9,8 @@ interface ImportProps {
   holidays: Holiday[];
   storeClosures: StoreClosure[];
   currentUser: User;
+  isDataLoaded?: boolean;
+  storeMappings?: StoreMapping[];
 }
 
 export const Import: React.FC<ImportProps> = ({
@@ -17,16 +19,24 @@ export const Import: React.FC<ImportProps> = ({
   kpiConfigs,
   holidays,
   storeClosures,
-  currentUser
+  currentUser,
+  isDataLoaded = true,
+  storeMappings = []
 }) => {
   const [isUploading, setIsUploading] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importResults, setImportResults] = useState<Array<{ fileName: string; result: ImportResult; error?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
 
-  const handleFile = useCallback(async (file: File) => {
-    if (!file) return;
+  const handleFiles = useCallback(async (files: File[]) => {
+    if (!files.length) return;
+
+    if (!isDataLoaded) {
+      setError('⚠️ กรุณารอให้ข้อมูลโหลดเสร็จก่อนนำเข้าข้อมูลใหม่ (รีเฟรชหน้าแล้วรอสักครู่)');
+      return;
+    }
 
     const validTypes = [
       'text/csv',
@@ -34,61 +44,87 @@ export const Import: React.FC<ImportProps> = ({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
 
-    if (!validTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls)$/i)) {
+    // Filter valid files
+    const validFiles = files.filter(file => 
+      validTypes.includes(file.type) || file.name.match(/\.(csv|xlsx|xls)$/i)
+    );
+
+    if (validFiles.length === 0) {
       setError('ประเภทไฟล์ไม่ถูกต้อง กรุณาอัปโหลดไฟล์ CSV หรือ Excel');
       return;
     }
 
     setIsUploading(true);
     setError(null);
-    setFileName(file.name);
-    setImportResult(null);
+    setImportResults([]);
+    setTotalFiles(validFiles.length);
+    setProcessedCount(0);
 
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const parsedRows = parseExcelFile(arrayBuffer);
+    const results: Array<{ fileName: string; result: ImportResult; error?: string }> = [];
+    let allNewRecords: DeliveryRecord[] = [];
+    let currentDeliveries = [...existingDeliveries];
 
-      if (parsedRows.length === 0) {
-        throw new Error('ไม่พบข้อมูลในไฟล์');
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      setProcessedCount(i + 1);
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const parsedRows = parseExcelFile(arrayBuffer);
+
+        if (parsedRows.length === 0) {
+          results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [{ row: 0, error: 'ไม่พบข้อมูลในไฟล์', data: {} }] }, error: 'ไม่พบข้อมูลในไฟล์' });
+          continue;
+        }
+
+        const importFileId = `log-${Date.now()}-${i}`;
+        const result = processImport(
+          parsedRows,
+          currentDeliveries,
+          kpiConfigs,
+          holidays,
+          storeClosures,
+          importFileId,
+          storeMappings
+        );
+
+        results.push({ fileName: file.name, result });
+
+        if (result.created.length > 0 || result.updated.length > 0) {
+          // Update currentDeliveries for next file processing
+          const newRecords = [...result.created, ...result.updated];
+          allNewRecords = [...allNewRecords, ...newRecords];
+          
+          // Merge into currentDeliveries for next iteration
+          const existingMap = new Map(currentDeliveries.map(d => [d.orderNo, d]));
+          newRecords.forEach(r => existingMap.set(r.orderNo, r));
+          currentDeliveries = Array.from(existingMap.values());
+
+          const importLog: ImportLog = {
+            id: importFileId,
+            timestamp: new Date().toISOString(),
+            fileName: file.name,
+            userId: currentUser.id,
+            userName: currentUser.name,
+            recordsProcessed: parsedRows.length,
+            created: result.created.length,
+            updated: result.updated.length,
+            skipped: result.skipped.length,
+            errors: result.errors.length,
+            errorDetails: result.errors.map(e => ({ row: e.row, error: e.error })),
+            skippedDetails: result.skipped.map(s => ({ row: s.row, reason: s.reason }))
+          };
+
+          onImportComplete(newRecords, importLog);
+        }
+      } catch (err: any) {
+        results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [] }, error: err.message || 'ไม่สามารถประมวลผลไฟล์ได้' });
       }
-
-      const importFileId = `log-${Date.now()}`;
-      const result = processImport(
-        parsedRows,
-        existingDeliveries,
-        kpiConfigs,
-        holidays,
-        storeClosures,
-        importFileId
-      );
-
-      setImportResult(result);
-
-      if (result.created.length > 0 || result.updated.length > 0) {
-        const importLog: ImportLog = {
-          id: importFileId,
-          timestamp: new Date().toISOString(),
-          fileName: file.name,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          recordsProcessed: parsedRows.length,
-          created: result.created.length,
-          updated: result.updated.length,
-          skipped: result.skipped.length,
-          errors: result.errors.length,
-          errorDetails: result.errors.map(e => ({ row: e.row, error: e.error })),
-          skippedDetails: result.skipped.map(s => ({ row: s.row, reason: s.reason }))
-        };
-
-        const allNewRecords = [...result.created, ...result.updated];
-        onImportComplete(allNewRecords, importLog);
-      }
-    } catch (err: any) {
-      setError(err.message || 'ไม่สามารถประมวลผลไฟล์ได้');
-    } finally {
-      setIsUploading(false);
     }
-  }, [existingDeliveries, kpiConfigs, holidays, storeClosures, currentUser, onImportComplete]);
+
+    setImportResults(results);
+    setIsUploading(false);
+  }, [existingDeliveries, kpiConfigs, holidays, storeClosures, currentUser, onImportComplete, isDataLoaded, storeMappings]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -105,22 +141,32 @@ export const Import: React.FC<ImportProps> = ({
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(Array.from(e.dataTransfer.files));
     }
-  }, [handleFile]);
+  }, [handleFiles]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(Array.from(e.target.files));
     }
-  }, [handleFile]);
+  }, [handleFiles]);
 
   const resetForm = () => {
-    setImportResult(null);
+    setImportResults([]);
     setError(null);
-    setFileName('');
+    setProcessedCount(0);
+    setTotalFiles(0);
   };
+
+  // Calculate totals
+  const totals = importResults.reduce((acc, r) => ({
+    created: acc.created + r.result.created.length,
+    updated: acc.updated + r.result.updated.length,
+    skipped: acc.skipped + r.result.skipped.length,
+    errors: acc.errors + r.result.errors.length,
+    filesWithError: acc.filesWithError + (r.error ? 1 : 0)
+  }), { created: 0, updated: 0, skipped: 0, errors: 0, filesWithError: 0 });
 
   return (
     <div className="space-y-8 animate-fade-in-up">
@@ -154,13 +200,14 @@ export const Import: React.FC<ImportProps> = ({
                 {dragActive ? 'วางไฟล์ที่นี่' : 'ลากและวางไฟล์ข้อมูลการจัดส่ง'}
               </h3>
               <p className="text-gray-500 mb-6 text-sm">
-                รองรับไฟล์: CSV, XLSX, XLS
+                รองรับไฟล์: CSV, XLSX, XLS (เลือกได้หลายไฟล์พร้อมกัน)
               </p>
               <input
                 type="file"
                 className="hidden"
                 id="file-upload"
                 accept=".csv,.xlsx,.xls"
+                multiple
                 onChange={handleInputChange}
               />
               <label
@@ -203,7 +250,27 @@ export const Import: React.FC<ImportProps> = ({
             </div>
           )}
 
-          {importResult && (
+          {/* Progress indicator */}
+          {isUploading && totalFiles > 0 && (
+            <div className="glass-panel rounded-2xl p-6">
+              <div className="flex items-center gap-4">
+                <i className="fas fa-spinner fa-spin text-2xl text-green-500"></i>
+                <div className="flex-1">
+                  <p className="font-bold text-gray-900">กำลังประมวลผล...</p>
+                  <p className="text-sm text-gray-500">ไฟล์ที่ {processedCount} / {totalFiles}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all" 
+                      style={{ width: `${(processedCount / totalFiles) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Results */}
+          {importResults.length > 0 && (
             <div className="glass-panel rounded-2xl overflow-hidden">
               <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4">
                 <div className="flex items-center justify-between">
@@ -213,7 +280,7 @@ export const Import: React.FC<ImportProps> = ({
                     </div>
                     <div>
                       <h4 className="font-bold text-white">นำเข้าสำเร็จ</h4>
-                      <p className="text-green-100 text-sm">{fileName}</p>
+                      <p className="text-green-100 text-sm">{importResults.length} ไฟล์ {totals.filesWithError > 0 && `(${totals.filesWithError} ไฟล์มีข้อผิดพลาด)`}</p>
                     </div>
                   </div>
                   <button aria-label="ปิด" onClick={resetForm} className="text-white/70 hover:text-white">
@@ -223,40 +290,51 @@ export const Import: React.FC<ImportProps> = ({
               </div>
 
               <div className="p-6">
+                {/* Total summary */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
                     <p className="text-xs text-green-600 font-bold uppercase mb-1">สร้างใหม่</p>
-                    <p className="text-2xl font-black text-green-700">{importResult.created.length}</p>
+                    <p className="text-2xl font-black text-green-700">{totals.created}</p>
                   </div>
                   <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
                     <p className="text-xs text-blue-600 font-bold uppercase mb-1">อัปเดต</p>
-                    <p className="text-2xl font-black text-blue-700">{importResult.updated.length}</p>
+                    <p className="text-2xl font-black text-blue-700">{totals.updated}</p>
                   </div>
                   <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center">
                     <p className="text-xs text-gray-600 font-bold uppercase mb-1">ข้าม</p>
-                    <p className="text-2xl font-black text-gray-700">{importResult.skipped.length}</p>
+                    <p className="text-2xl font-black text-gray-700">{totals.skipped}</p>
                   </div>
                   <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
                     <p className="text-xs text-red-600 font-bold uppercase mb-1">ข้อผิดพลาด</p>
-                    <p className="text-2xl font-black text-red-700">{importResult.errors.length}</p>
+                    <p className="text-2xl font-black text-red-700">{totals.errors}</p>
                   </div>
                 </div>
 
-                {importResult.errors.length > 0 && (
-                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                    <h5 className="font-bold text-red-800 mb-2 flex items-center gap-2">
-                      <i className="fas fa-exclamation-triangle"></i>
-                      รายละเอียดข้อผิดพลาด
-                    </h5>
-                    <div className="max-h-40 overflow-y-auto space-y-2">
-                      {importResult.errors.map((err, idx) => (
-                        <div key={idx} className="text-sm text-red-700 bg-white p-2 rounded">
-                          แถว {err.row}: {err.error}
+                {/* Per-file results */}
+                <div className="space-y-3">
+                  <h5 className="font-bold text-gray-800 flex items-center gap-2">
+                    <i className="fas fa-list text-gray-500"></i>
+                    รายละเอียดแต่ละไฟล์
+                  </h5>
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {importResults.map((r, idx) => (
+                      <div key={idx} className={`p-3 rounded-lg border ${r.error ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <i className={`fas ${r.error ? 'fa-times-circle text-red-500' : 'fa-check-circle text-green-500'}`}></i>
+                            <span className="font-medium text-gray-800 text-sm">{r.fileName}</span>
+                          </div>
+                          {!r.error && (
+                            <span className="text-xs text-gray-500">
+                              {r.result.created.length} ใหม่, {r.result.updated.length} อัปเดต, {r.result.skipped.length} ข้าม
+                            </span>
+                          )}
                         </div>
-                      ))}
-                    </div>
+                        {r.error && <p className="text-sm text-red-600 mt-1">{r.error}</p>}
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}

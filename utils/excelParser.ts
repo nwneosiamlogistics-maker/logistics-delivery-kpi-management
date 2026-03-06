@@ -11,7 +11,7 @@ const getXLSX = () => {
 
 const XLSX = getXLSX();
 
-import { DeliveryRecord, KpiStatus, ReasonStatus, Holiday, KpiConfig, StoreClosure, DeliveryStatus } from '../types';
+import { DeliveryRecord, KpiStatus, ReasonStatus, Holiday, KpiConfig, StoreClosure, DeliveryStatus, StoreMapping } from '../types';
 import { calculateKpiStatus, calculatePendingKpiStatus, getWeekday } from './kpiEngine';
 
 export interface ParsedRow {
@@ -332,7 +332,8 @@ export function processImport(
   kpiConfigs: KpiConfig[],
   holidays: Holiday[],
   storeClosures: StoreClosure[],
-  importFileId?: string
+  importFileId?: string,
+  storeMappings: StoreMapping[] = []
 ): ImportResult {
   const result: ImportResult = { created: [], updated: [], skipped: [], errors: [] };
   // Use orderNo as unique key — every Inv. stored separately
@@ -340,10 +341,25 @@ export function processImport(
     existingDeliveries.map(d => [d.orderNo, d])
   );
 
+  // Build storeId -> district/province map for auto-fill
+  const storeMappingMap = new Map<string, { district: string; province?: string }>();
+  storeMappings.forEach(m => {
+    storeMappingMap.set(m.storeId, { district: m.district, province: m.province });
+  });
+
   parsedRows.forEach((row, index) => {
     if (!row.orderNo) {
       result.errors.push({ row: index + 2, error: 'ไม่พบเลขที่ใบสินค้า', data: row });
       return;
+    }
+
+    // Auto-fill district from storeMapping if district is empty
+    if (!row.district && row.storeId) {
+      const mapping = storeMappingMap.get(row.storeId);
+      if (mapping) {
+        row = { ...row, district: mapping.district, province: mapping.province || row.province };
+        console.log(`[Import] Auto-fill district for ${row.orderNo}: ${mapping.district}`);
+      }
     }
 
     // Fallback: ถ้า planDate (นัดส่ง) ว่าง → คำนวณจาก baseDate + onTimeLimit
@@ -477,8 +493,9 @@ export function processImport(
         return;
       }
 
-      // Skip if new status is lower than existing, but always patch openDate from new data
+      // Skip if new status is lower than existing — ป้องกันไฟล์เก่า overwrite ไฟล์ใหม่
       if (newPriority < existingPriority) {
+        // อัปเดตเฉพาะ openDate ถ้ามีค่าใหม่
         if (row.openDate && row.openDate !== existing.openDate) {
           const patched = { ...existing, openDate: row.openDate };
           result.updated.push(patched);
@@ -518,22 +535,25 @@ export function processImport(
       return calculatePendingKpiStatus(kpiDeadline, today.toISOString().slice(0, 10), row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
     })();
 
+    // ถ้าสถานะไม่ใช่ 'ส่งเสร็จ' → ลบ actualDate ออก (ยังไม่ได้ส่งจริง)
+    const finalActualDate = isDelivered ? resolvedActualDate : '';
+
     const data: DeliveryRecord = {
       orderNo: row.orderNo,
       district: row.district,
       storeId: row.storeId,
       planDate: row.planDate,
       openDate: row.openDate || existing?.openDate,
-      actualDate: resolvedActualDate,
+      actualDate: finalActualDate,
       qty: row.qty,
       sender: row.sender,
       province: row.province,
       importFileId: importFileId || row.importFileId,
       deliveryStatus: status || undefined,
-      actualDatetime: row.actualDatetime,
+      actualDatetime: isDelivered ? row.actualDatetime : undefined, // ลบ datetime ด้วยถ้ายังไม่ส่งเสร็จ
       productDetails: row.productDetails,
       ...kpi,
-      weekday: getWeekday(resolvedActualDate),
+      weekday: isDelivered ? getWeekday(finalActualDate) : undefined,
       updatedAt: new Date().toISOString()
     };
 

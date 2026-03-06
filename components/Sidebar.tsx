@@ -20,6 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userR
     { id: 'import', label: 'นำเข้าข้อมูล', icon: 'fa-file-import', roles: ['Admin', 'Staff'] },
     { id: 'upload-history', label: 'ประวัติไฟล์', icon: 'fa-history', roles: ['Admin', 'Staff'] },
     { id: 'weekly-report', label: 'รายงานประจำสัปดาห์', icon: 'fa-calendar-check', roles: ['Admin', 'Staff', 'Viewer'] },
+    { id: 'document-import', label: 'Import ใบส่งคืน', icon: 'fa-file-import', roles: ['Admin', 'Staff'] },
+    { id: 'document-report', label: 'รายงานส่งคืนเอกสาร', icon: 'fa-file-signature', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'delivery-status', label: 'ติดตามสถานะสินค้า', icon: 'fa-truck-moving', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'exceptions', label: 'KPI ที่ไม่ผ่าน', icon: 'fa-exclamation-triangle', roles: ['Admin', 'Staff'] },
     { id: 'kpi-dashboard', label: 'KPI Dashboard', icon: 'fa-chart-bar', roles: ['Admin', 'Staff', 'Viewer'] },

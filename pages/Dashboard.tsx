@@ -40,6 +40,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
 
   // Exclude 'รอจัด' from KPI calculation (items not yet at branch)
   const activeDeliveries = filtered.filter(d => d.deliveryStatus !== 'รอจัด');
+  const totalAll = filtered.length;
+  const waitingCount = filtered.filter(d => d.deliveryStatus === 'รอจัด').length;
   const total = activeDeliveries.length;
   const passCount = activeDeliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
   const failCount = total - passCount;
@@ -97,65 +99,95 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="glass-card p-6 rounded-2xl">
-          <div className="flex justify-between items-start mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="glass-card p-5 rounded-2xl">
+          <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-sm font-medium text-gray-500">จำนวน Inv.</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-1">{total.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-gray-500">Inv. ทั้งหมด</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalAll.toLocaleString()}</h3>
             </div>
-            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+              <i className="fas fa-boxes"></i>
+            </div>
+          </div>
+          <div className="text-xs text-gray-400">
+            รวม <span className="text-blue-500 font-bold">{totalQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> ชิ้น
+          </div>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-xs font-medium text-gray-500">ใช้คำนวณ KPI</p>
+              <h3 className="text-2xl font-bold text-indigo-600 mt-1">{total.toLocaleString()}</h3>
+            </div>
+            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
               <i className="fas fa-box"></i>
             </div>
           </div>
           <div className="text-xs text-gray-400">
-            รวม <span className="text-indigo-500 font-bold">{totalQty.toLocaleString()}</span> ชิ้น
+            ไม่รวม "รอจัด"
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl">
-          <div className="flex justify-between items-start mb-4">
+        <div className="glass-card p-5 rounded-2xl">
+          <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-sm font-medium text-gray-500">ส่งตรงเวลา (KPI ผ่าน)</p>
-              <h3 className="text-3xl font-bold text-green-600 mt-1">{passCount.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-gray-500">รอจัด</p>
+              <h3 className="text-2xl font-bold text-amber-600 mt-1">{waitingCount.toLocaleString()}</h3>
             </div>
-            <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+              <i className="fas fa-hourglass-half"></i>
+            </div>
+          </div>
+          <div className="text-xs text-gray-400">
+            ยังไม่ถึงสาขา
+          </div>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-xs font-medium text-gray-500">KPI ผ่าน</p>
+              <h3 className="text-2xl font-bold text-green-600 mt-1">{passCount.toLocaleString()}</h3>
+            </div>
+            <div className="p-2 bg-green-50 text-green-600 rounded-lg">
               <i className="fas fa-check-circle"></i>
             </div>
           </div>
           <div className="text-xs text-gray-400">
-            เป้าหมาย: <span className="text-gray-600">98%</span>
+            ส่งตรงเวลา
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl">
-          <div className="flex justify-between items-start mb-4">
+        <div className="glass-card p-5 rounded-2xl">
+          <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-sm font-medium text-gray-500">ส่งล่าช้า (KPI ไม่ผ่าน)</p>
-              <h3 className="text-3xl font-bold text-red-600 mt-1">{failCount.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-gray-500">KPI ไม่ผ่าน</p>
+              <h3 className="text-2xl font-bold text-red-600 mt-1">{failCount.toLocaleString()}</h3>
             </div>
-            <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+            <div className="p-2 bg-red-50 text-red-600 rounded-lg">
               <i className="fas fa-clock"></i>
             </div>
           </div>
           <div className="text-xs text-gray-400">
-            ต้องระบุเหตุผล
+            ส่งล่าช้า
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl">
-          <div className="flex justify-between items-start mb-4">
+        <div className="glass-card p-5 rounded-2xl">
+          <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-sm font-medium text-gray-500">อัตรา KPI ผ่าน</p>
-              <h3 className={`text-3xl font-bold mt-1 ${passRate >= 98 ? 'text-green-600' : passRate >= 90 ? 'text-amber-500' : 'text-red-600'}`}>
+              <p className="text-xs font-medium text-gray-500">อัตรา KPI</p>
+              <h3 className={`text-2xl font-bold mt-1 ${passRate >= 98 ? 'text-green-600' : passRate >= 90 ? 'text-amber-500' : 'text-red-600'}`}>
                 {passRate.toFixed(1)}%
               </h3>
             </div>
-            <div className={`p-3 rounded-xl ${passRate >= 98 ? 'bg-green-50 text-green-600' : passRate >= 90 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+            <div className={`p-2 rounded-lg ${passRate >= 98 ? 'bg-green-50 text-green-600' : passRate >= 90 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
               <i className="fas fa-chart-pie"></i>
             </div>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+          <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1 overflow-hidden">
             <div
               className={`h-1.5 rounded-full dynamic-width-bar ${passRate >= 98 ? 'bg-green-500' : passRate >= 90 ? 'bg-amber-500' : 'bg-red-500'}`}
               style={{ '--target-width': `${passRate}%` } as React.CSSProperties}

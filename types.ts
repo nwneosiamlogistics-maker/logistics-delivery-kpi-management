@@ -77,6 +77,8 @@ export interface DeliveryRecord {
   delayReason?: string;
   updatedAt: string;
   weekday: string;
+  documentReturned?: boolean;
+  documentReturnedDate?: string;
 }
 
 export interface User {
@@ -112,6 +114,13 @@ export interface ReasonAuditLog {
   comment?: string;
 }
 
+export interface StoreMapping {
+  storeId: string;
+  district: string;
+  province?: string;
+  createdAt: string;
+}
+
 export interface AppState {
   deliveries: DeliveryRecord[];
   holidays: Holiday[];
@@ -120,5 +129,6 @@ export interface AppState {
   delayReasons: DelayReason[];
   importLogs: ImportLog[];
   reasonAuditLogs: ReasonAuditLog[];
+  storeMappings: StoreMapping[];
   currentUser: User;
 }

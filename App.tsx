@@ -10,6 +10,8 @@ import { MasterData } from './pages/MasterData';
 import { UploadHistory } from './pages/UploadHistory';
 import { DeliveryTracker } from './pages/DeliveryTracker';
 import { WeeklyReport } from './pages/WeeklyReport';
+import { DocumentImport } from './pages/DocumentImport';
+import { DocumentReturnReport } from './pages/DocumentReturnReport';
 import {
   HOLIDAYS,
   STORE_CLOSURES,
@@ -27,9 +29,11 @@ import {
   ReasonAuditLog,
   User,
   ReasonStatus,
-  KpiStatus
+  KpiStatus,
+  StoreMapping
 } from './types';
 import { getRealtimeDb } from './services/firebase';
+import { syncWeeklyDeliveriesToReturnNeosiam } from './services/returnNeosiamSync';
 import { ref, set, get } from 'firebase/database';
 import { calculateKpiStatus, calculatePendingKpiStatus } from './utils/kpiEngine';
 
@@ -37,6 +41,7 @@ const KPI_CONFIGS_PATH = 'kpiConfigs';
 const HOLIDAYS_PATH = 'holidays';
 const STORE_CLOSURES_PATH = 'storeClosures';
 const DELAY_REASONS_PATH = 'delayReasons';
+const STORE_MAPPINGS_PATH = 'storeMappings';
 
 // Firebase keys cannot contain . # $ / [ ]
 function sanitizeFirebaseKey(key: string): string {
@@ -66,10 +71,13 @@ const App: React.FC = () => {
   const [storeClosures, setStoreClosures] = useState<StoreClosure[]>(STORE_CLOSURES);
   const [kpiConfigs, setKpiConfigs] = useState<KpiConfig[]>(KPI_CONFIGS);
   const [delayReasons, setDelayReasons] = useState<DelayReason[]>(DELAY_REASONS);
+  const [storeMappings, setStoreMappings] = useState<StoreMapping[]>([]);
   const kpiLoadedFromFirebase = useRef(false);
   const holidaysLoadedFromFirebase = useRef(false);
   const storeClosuresLoadedFromFirebase = useRef(false);
   const delayReasonsLoadedFromFirebase = useRef(false);
+  const storeMappingsLoadedFromFirebase = useRef(false);
+  const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
   const [currentUser] = useState<User>(DEFAULT_USER);
@@ -104,6 +112,7 @@ const App: React.FC = () => {
           console.warn('[Firebase] sync deliveries error:', e)
         );
       }
+      syncWeeklyDeliveriesToReturnNeosiam(stripped, kpiConfigs);
 
       // Update localStorage cache so next page load uses fresh data (no Firebase read needed)
       try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
@@ -232,29 +241,66 @@ const App: React.FC = () => {
     });
   }, [kpiConfigs, holidays, storeClosures]);
 
-  // Load deliveries: localStorage cache first, Firebase fallback (saves bandwidth)
+  // Load deliveries: localStorage cache first for fast display, then sync with Firebase
   useEffect(() => {
+    let cachedRecords: DeliveryRecord[] = [];
+    
+    // Step 1: Load from localStorage for immediate display
     try {
       const cached = localStorage.getItem('deliveries_cache');
       if (cached) {
-        const records: DeliveryRecord[] = JSON.parse(cached);
-        if (records.length > 0) {
-          setDeliveries(records);
-          return;
+        cachedRecords = JSON.parse(cached);
+        if (cachedRecords.length > 0) {
+          console.log(`[Load] localStorage cache: ${cachedRecords.length} records`);
+          setDeliveries(cachedRecords);
         }
       }
     } catch { /* ignore parse errors */ }
+
+    // Step 2: Always load from Firebase and merge with cache (use larger dataset)
     const db = getRealtimeDb();
-    if (!db) return;
+    if (!db) {
+      setDeliveriesLoaded(true);
+      return;
+    }
+    
     get(ref(db, 'deliveries'))
       .then(snapshot => {
         if (snapshot.exists()) {
-          const records: DeliveryRecord[] = Object.values(snapshot.val());
-          setDeliveries(records);
-          try { localStorage.setItem('deliveries_cache', JSON.stringify(records)); } catch { /* quota */ }
+          const firebaseRecords: DeliveryRecord[] = Object.values(snapshot.val());
+          console.log(`[Load] Firebase: ${firebaseRecords.length} records`);
+          
+          // Merge: use orderNo as key, Firebase takes precedence for conflicts
+          const mergedMap = new Map<string, DeliveryRecord>();
+          
+          // Add cached records first
+          cachedRecords.forEach(d => mergedMap.set(d.orderNo, d));
+          
+          // Firebase records override/add
+          firebaseRecords.forEach(d => mergedMap.set(d.orderNo, d));
+          
+          const merged = Array.from(mergedMap.values());
+          console.log(`[Load] Merged total: ${merged.length} records`);
+          
+          setDeliveries(merged);
+          syncWeeklyDeliveriesToReturnNeosiam(merged, kpiConfigs);
+          
+          // Update localStorage with merged data
+          try { 
+            localStorage.setItem('deliveries_cache', JSON.stringify(merged)); 
+            console.log(`[Load] localStorage updated with ${merged.length} records`);
+          } catch (e) { 
+            console.warn('[Load] localStorage write failed:', e);
+          }
+        } else if (cachedRecords.length === 0) {
+          console.log('[Load] No data in Firebase or cache');
         }
+        setDeliveriesLoaded(true);
       })
-      .catch(e => console.warn('[Firebase] load deliveries error:', e));
+      .catch(e => {
+        console.warn('[Firebase] load deliveries error:', e);
+        setDeliveriesLoaded(true);
+      });
   }, []);
 
   // Load holidays from Firebase on mount (one-time get)
@@ -347,6 +393,32 @@ const App: React.FC = () => {
     } catch { /* silent */ }
   }, [delayReasons]);
 
+  // Load storeMappings from Firebase on mount
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) { storeMappingsLoadedFromFirebase.current = true; return; }
+    get(ref(db, STORE_MAPPINGS_PATH))
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          setStoreMappings(Object.values(snapshot.val()) as StoreMapping[]);
+        }
+        storeMappingsLoadedFromFirebase.current = true;
+      })
+      .catch(() => { storeMappingsLoadedFromFirebase.current = true; });
+  }, []);
+
+  // Save storeMappings to Firebase whenever they change
+  useEffect(() => {
+    if (!storeMappingsLoadedFromFirebase.current) return;
+    const db = getRealtimeDb();
+    if (!db) return;
+    try {
+      const obj: Record<string, StoreMapping> = {};
+      storeMappings.forEach(m => { obj[sanitizeFirebaseKey(m.storeId)] = cleanUndefined(m); });
+      set(ref(db, STORE_MAPPINGS_PATH), obj);
+    } catch { /* silent */ }
+  }, [storeMappings]);
+
   // Load kpiConfigs from Firebase on mount (one-time get)
   useEffect(() => {
     const db = getRealtimeDb();
@@ -365,6 +437,14 @@ const App: React.FC = () => {
       })
       .catch(() => { kpiLoadedFromFirebase.current = true; });
   }, []);
+
+  // Re-sync weekly deliveries to ReturnNeosiam when kpiConfigs is loaded from Firebase
+  // (deliveries load first, kpiConfigs loads async — need to re-sync with correct branch mapping)
+  useEffect(() => {
+    if (!kpiLoadedFromFirebase.current) return;
+    if (deliveries.length === 0) return;
+    syncWeeklyDeliveriesToReturnNeosiam(deliveries, kpiConfigs);
+  }, [kpiConfigs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save kpiConfigs to Firebase whenever they change (after initial load)
   useEffect(() => {
@@ -444,6 +524,8 @@ const App: React.FC = () => {
             holidays={holidays}
             storeClosures={storeClosures}
             currentUser={currentUser}
+            isDataLoaded={deliveriesLoaded}
+            storeMappings={storeMappings}
           />
         );
       case 'exceptions':
@@ -461,11 +543,46 @@ const App: React.FC = () => {
       case 'delivery-status':
         return <DeliveryTracker deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'weekly-report':
-        return <WeeklyReport deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+        return <WeeklyReport 
+          deliveries={deliveries} 
+          kpiConfigs={kpiConfigs} 
+          storeMappings={storeMappings}
+          onUpdateDeliveries={(updated) => {
+            setDeliveries(updated);
+            // Sync to Firebase
+            const db = getRealtimeDb();
+            const stripped = updated.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
+            if (db) {
+              const obj: Record<string, any> = {};
+              stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
+              set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] sync error:', e));
+            }
+            // Update localStorage
+            try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+          }}
+          onAddStoreMapping={(mapping) => setStoreMappings(prev => [...prev.filter(m => m.storeId !== mapping.storeId), mapping])}
+        />;
+      case 'document-import':
+        return <DocumentImport 
+          deliveries={deliveries}
+          onUpdateDeliveries={(updated) => {
+            setDeliveries(updated);
+            const db = getRealtimeDb();
+            const stripped = updated.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
+            if (db) {
+              const obj: Record<string, any> = {};
+              stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
+              set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] sync error:', e));
+            }
+            try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+          }}
+        />;
+      case 'document-report':
+        return <DocumentReturnReport deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'kpi-dashboard':
         return <KpiDashboard deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'analysis':
-        return <WeekdayAnalysis deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+        return <WeekdayAnalysis deliveries={deliveries} kpiConfigs={kpiConfigs} holidays={holidays} storeClosures={storeClosures} />;
       case 'settings':
         return (
           <MasterData
