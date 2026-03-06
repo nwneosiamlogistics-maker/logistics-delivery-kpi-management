@@ -79,6 +79,8 @@ export interface DeliveryRecord {
   weekday: string;
   documentReturned?: boolean;
   documentReturnedDate?: string;
+  manualPlanDate?: boolean;
+  manualActualDate?: boolean;
 }
 
 export interface User {

@@ -63,6 +63,22 @@ export const Import: React.FC<ImportProps> = ({
     const results: Array<{ fileName: string; result: ImportResult; error?: string }> = [];
     let allNewRecords: DeliveryRecord[] = [];
     let currentDeliveries = [...existingDeliveries];
+    
+    // Debug: ตรวจสอบว่า existingDeliveries มี flag หรือไม่
+    const recordsWithManualFlag = currentDeliveries.filter(d => d.manualPlanDate || d.manualActualDate);
+    console.log(`[Import] existingDeliveries with manual flags: ${recordsWithManualFlag.length}`, 
+      recordsWithManualFlag.map(d => ({ orderNo: d.orderNo, manualPlanDate: d.manualPlanDate, manualActualDate: d.manualActualDate }))
+    );
+    
+    // Debug: ตรวจสอบ B0226013518 โดยเฉพาะ
+    const b022 = currentDeliveries.find(d => d.orderNo === 'B0226013518');
+    console.log(`[Import] B0226013518 in existingDeliveries:`, b022 ? {
+      manualPlanDate: b022.manualPlanDate,
+      manualActualDate: b022.manualActualDate,
+      kpiStatus: b022.kpiStatus,
+      delayDays: b022.delayDays,
+      actualDate: b022.actualDate
+    } : 'NOT FOUND');
 
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];

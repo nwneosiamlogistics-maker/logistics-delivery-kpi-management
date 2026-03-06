@@ -114,8 +114,7 @@ const App: React.FC = () => {
       }
       syncWeeklyDeliveriesToReturnNeosiam(stripped, kpiConfigs);
 
-      // Update localStorage cache so next page load uses fresh data (no Firebase read needed)
-      try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+      // No localStorage cache - use Firebase only
 
       return merged;
     });
@@ -233,31 +232,15 @@ const App: React.FC = () => {
         set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] recalculate sync error:', e));
       }
 
-      // Update localStorage cache
-      try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+      // No localStorage cache - use Firebase only
 
       console.log(`[Recalculate KPI] Completed. Total FAIL: ${failCount}, Total records: ${recalculated.length}`);
       return recalculated;
     });
   }, [kpiConfigs, holidays, storeClosures]);
 
-  // Load deliveries: localStorage cache first for fast display, then sync with Firebase
+  // Load deliveries from Firebase only (no localStorage cache to avoid quota issues)
   useEffect(() => {
-    let cachedRecords: DeliveryRecord[] = [];
-    
-    // Step 1: Load from localStorage for immediate display
-    try {
-      const cached = localStorage.getItem('deliveries_cache');
-      if (cached) {
-        cachedRecords = JSON.parse(cached);
-        if (cachedRecords.length > 0) {
-          console.log(`[Load] localStorage cache: ${cachedRecords.length} records`);
-          setDeliveries(cachedRecords);
-        }
-      }
-    } catch { /* ignore parse errors */ }
-
-    // Step 2: Always load from Firebase and merge with cache (use larger dataset)
     const db = getRealtimeDb();
     if (!db) {
       setDeliveriesLoaded(true);
@@ -270,30 +253,26 @@ const App: React.FC = () => {
           const firebaseRecords: DeliveryRecord[] = Object.values(snapshot.val());
           console.log(`[Load] Firebase: ${firebaseRecords.length} records`);
           
-          // Merge: use orderNo as key, Firebase takes precedence for conflicts
-          const mergedMap = new Map<string, DeliveryRecord>();
+          // Debug: ตรวจสอบว่า flag ถูกโหลดจาก Firebase หรือไม่
+          const withManualFlag = firebaseRecords.filter(d => d.manualPlanDate || d.manualActualDate);
+          console.log(`[Load] Records with manual flags: ${withManualFlag.length}`, withManualFlag.map(d => d.orderNo));
           
-          // Add cached records first
-          cachedRecords.forEach(d => mergedMap.set(d.orderNo, d));
+          // Debug: ดูข้อมูล KPI ที่โหลดมาจาก Firebase สำหรับ records ที่มี manual flag
+          withManualFlag.forEach(d => {
+            console.log(`[Load] Manual flag record ${d.orderNo}:`, {
+              kpiStatus: d.kpiStatus,
+              delayDays: d.delayDays,
+              actualDate: d.actualDate,
+              planDate: d.planDate,
+              manualActualDate: d.manualActualDate,
+              manualPlanDate: d.manualPlanDate
+            });
+          });
           
-          // Firebase records override/add
-          firebaseRecords.forEach(d => mergedMap.set(d.orderNo, d));
-          
-          const merged = Array.from(mergedMap.values());
-          console.log(`[Load] Merged total: ${merged.length} records`);
-          
-          setDeliveries(merged);
-          syncWeeklyDeliveriesToReturnNeosiam(merged, kpiConfigs);
-          
-          // Update localStorage with merged data
-          try { 
-            localStorage.setItem('deliveries_cache', JSON.stringify(merged)); 
-            console.log(`[Load] localStorage updated with ${merged.length} records`);
-          } catch (e) { 
-            console.warn('[Load] localStorage write failed:', e);
-          }
-        } else if (cachedRecords.length === 0) {
-          console.log('[Load] No data in Firebase or cache');
+          setDeliveries(firebaseRecords);
+          syncWeeklyDeliveriesToReturnNeosiam(firebaseRecords, kpiConfigs);
+        } else {
+          console.log('[Load] No data in Firebase');
         }
         setDeliveriesLoaded(true);
       })
@@ -541,7 +520,51 @@ const App: React.FC = () => {
       case 'upload-history':
         return <UploadHistory importLogs={importLogs} deliveries={deliveries} />;
       case 'delivery-status':
-        return <DeliveryTracker deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+        return <DeliveryTracker 
+          deliveries={deliveries} 
+          kpiConfigs={kpiConfigs}
+          holidays={holidays}
+          storeClosures={storeClosures}
+          onUpdateDelivery={(updated) => {
+            // Debug log เพื่อยืนยันว่า flag ถูกส่งมา
+            console.log(`[App.tsx] onUpdateDelivery received:`, {
+              orderNo: updated.orderNo,
+              manualPlanDate: updated.manualPlanDate,
+              manualActualDate: updated.manualActualDate,
+              planDate: updated.planDate,
+              actualDate: updated.actualDate,
+              kpiStatus: updated.kpiStatus,
+              delayDays: updated.delayDays
+            });
+            
+            // Update single delivery in state + localStorage in one call
+            setDeliveries(prev => {
+              const newList = prev.map(d => d.orderNo === updated.orderNo ? updated : d);
+              // No localStorage cache - Firebase is source of truth
+              return newList;
+            });
+            // Sync to Firebase
+            const db = getRealtimeDb();
+            const { productDetails: _pd, ...rest } = updated;
+            const stripped = cleanUndefined(rest);
+            
+            // Debug log เพื่อดูว่า cleanUndefined ลบ flag/KPI หรือไม่
+            console.log(`[App.tsx] After cleanUndefined (sending to Firebase):`, {
+              orderNo: stripped.orderNo,
+              manualPlanDate: stripped.manualPlanDate,
+              manualActualDate: stripped.manualActualDate,
+              kpiStatus: stripped.kpiStatus,
+              delayDays: stripped.delayDays,
+              actualDate: stripped.actualDate
+            });
+            
+            if (db) {
+              set(ref(db, `deliveries/${sanitizeFirebaseKey(updated.orderNo)}`), stripped)
+                .then(() => console.log(`[Firebase] Saved ${updated.orderNo} with flags`))
+                .catch(e => console.warn('[Firebase] sync error:', e));
+            }
+          }}
+        />;
       case 'weekly-report':
         return <WeeklyReport 
           deliveries={deliveries} 
@@ -557,8 +580,7 @@ const App: React.FC = () => {
               stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
               set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] sync error:', e));
             }
-            // Update localStorage
-            try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+            // No localStorage cache - Firebase is source of truth
           }}
           onAddStoreMapping={(mapping) => setStoreMappings(prev => [...prev.filter(m => m.storeId !== mapping.storeId), mapping])}
         />;
@@ -574,7 +596,7 @@ const App: React.FC = () => {
               stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
               set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] sync error:', e));
             }
-            try { localStorage.setItem('deliveries_cache', JSON.stringify(stripped)); } catch { /* quota */ }
+            // No localStorage cache - Firebase is source of truth
           }}
         />;
       case 'document-report':

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { DeliveryRecord, KpiConfig } from '../types';
-import { displayDate } from '../utils/kpiEngine';
+import { DeliveryRecord, KpiConfig, Holiday, StoreClosure, KpiStatus, ReasonStatus } from '../types';
+import { displayDate, calculateKpiStatus, getWeekday } from '../utils/kpiEngine';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -8,6 +8,9 @@ import {
 interface DeliveryTrackerProps {
   deliveries: DeliveryRecord[];
   kpiConfigs?: KpiConfig[];
+  holidays?: Holiday[];
+  storeClosures?: StoreClosure[];
+  onUpdateDelivery?: (updated: DeliveryRecord) => void;
 }
 
 const STATUS_TABS = [
@@ -110,12 +113,36 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kpiConfigs = [] }) => {
+export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kpiConfigs = [], holidays = [], storeClosures = [], onUpdateDelivery }) => {
   const [activeTab, setActiveTab] = useState('รอจัด');
   const [search, setSearch] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
   const [filterProvince, setFilterProvince] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('');
+  
+  // Inline edit states
+  const [editingCell, setEditingCell] = useState<{ orderNo: string; field: 'planDate' | 'actualDate' } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [pendingEdit, setPendingEdit] = useState<{ orderNo: string; field: 'planDate' | 'actualDate'; value: string } | null>(null);
+  
+  // Track order search
+  const [trackOrderNo, setTrackOrderNo] = useState('');
+  const trackedOrder = useMemo(() => {
+    if (!trackOrderNo.trim()) return null;
+    const found = deliveries.find(d => d.orderNo.toLowerCase().includes(trackOrderNo.toLowerCase().trim()));
+    if (found) {
+      console.log(`[DeliveryTracker] trackedOrder found:`, {
+        orderNo: found.orderNo,
+        kpiStatus: found.kpiStatus,
+        delayDays: found.delayDays,
+        manualActualDate: found.manualActualDate
+      });
+    }
+    return found;
+  }, [deliveries, trackOrderNo]);
 
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -252,6 +279,106 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
     green: 'bg-green-100 text-green-700',
   };
 
+  // Handle click to start editing
+  const handleStartEdit = (orderNo: string, field: 'planDate' | 'actualDate', currentValue: string) => {
+    if (!onUpdateDelivery) return; // No callback = read-only
+    setEditingCell({ orderNo, field });
+    setEditValue(currentValue || '');
+  };
+
+  // Handle edit confirmation - show password modal
+  const handleConfirmEdit = () => {
+    if (!editingCell) return;
+    setPendingEdit({ orderNo: editingCell.orderNo, field: editingCell.field, value: editValue });
+    setShowPasswordModal(true);
+    setPassword('');
+    setPasswordError('');
+    setEditingCell(null);
+  };
+
+  // Handle password verification and save
+  const handlePasswordSubmit = () => {
+    if (password !== '1234') {
+      setPasswordError('รหัสผ่านไม่ถูกต้อง');
+      return;
+    }
+    if (!pendingEdit || !onUpdateDelivery) return;
+
+    const delivery = deliveries.find(d => d.orderNo === pendingEdit.orderNo);
+    if (!delivery) return;
+
+    // Update the delivery record
+    const updated: DeliveryRecord = { ...delivery };
+    if (pendingEdit.field === 'planDate') {
+      updated.planDate = pendingEdit.value;
+      updated.manualPlanDate = true; // Flag: แก้ไขด้วยมือ - ห้าม overwrite เมื่อ import
+    } else {
+      updated.actualDate = pendingEdit.value;
+      updated.manualActualDate = true; // Flag: แก้ไขด้วยมือ - ห้าม overwrite เมื่อ import
+      // Update deliveryStatus to 'ส่งเสร็จ' if actualDate is set
+      if (pendingEdit.value && !updated.deliveryStatus?.includes('ส่งเสร็จ')) {
+        updated.deliveryStatus = 'ส่งเสร็จ';
+      }
+    }
+
+    // Recalculate KPI if both dates exist
+    if (updated.planDate && updated.actualDate) {
+      // คำนวณ KPI deadline = openDate + onTimeLimit (เหมือน excelParser)
+      const kpiCfg = kpiConfigs.find(c =>
+        c.district === updated.district && (!c.province || c.province === updated.province)
+      ) || kpiConfigs.find(c => c.district === updated.district);
+      const kpiLimit = kpiCfg?.onTimeLimit ?? 1;
+      const deadlineBase = updated.openDate || updated.planDate;
+      const kpiDeadline = (() => {
+        if (!deadlineBase) return updated.planDate;
+        const d = new Date(deadlineBase);
+        d.setDate(d.getDate() + kpiLimit);
+        return d.toISOString().slice(0, 10);
+      })();
+
+      const kpiResult = calculateKpiStatus(
+        kpiDeadline,
+        updated.actualDate,
+        updated.district,
+        kpiConfigs,
+        holidays,
+        storeClosures,
+        updated.storeId,
+        updated.province
+      );
+      updated.kpiStatus = kpiResult.kpiStatus;
+      updated.delayDays = kpiResult.delayDays;
+      updated.reasonRequired = kpiResult.reasonRequired;
+      updated.reasonStatus = kpiResult.reasonStatus;
+      updated.weekday = getWeekday(updated.actualDate);
+    }
+
+    updated.updatedAt = new Date().toISOString();
+    
+    // Debug log เพื่อยืนยันว่า flag ถูก set
+    console.log(`[DeliveryTracker] Saving edit for ${updated.orderNo}:`, {
+      field: pendingEdit.field,
+      newValue: pendingEdit.value,
+      manualPlanDate: updated.manualPlanDate,
+      manualActualDate: updated.manualActualDate,
+      kpiStatus: updated.kpiStatus,
+      delayDays: updated.delayDays
+    });
+    
+    onUpdateDelivery(updated);
+
+    // Reset states
+    setShowPasswordModal(false);
+    setPendingEdit(null);
+    setPassword('');
+  };
+
+  // Cancel edit
+  const handleCancelEdit = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
@@ -268,6 +395,106 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
             {deliveries.filter(d => d.deliveryStatus !== 'ส่งเสร็จ').length}
           </span> รายการ</div>
         </div>
+      </div>
+
+      {/* Track Order Search */}
+      <div className="glass-panel rounded-2xl p-5">
+        <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+          <i className="fas fa-search text-indigo-400"></i>
+          ค้นหาเลขที่เอกสาร
+        </h3>
+        <div className="flex gap-3 items-center">
+          <div className="relative flex-1 max-w-md">
+            <i className="fas fa-file-invoice absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input
+              type="text"
+              value={trackOrderNo}
+              onChange={e => setTrackOrderNo(e.target.value)}
+              placeholder="พิมพ์เลขที่เอกสาร เช่น B0226013518"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+            />
+          </div>
+          {trackOrderNo && (
+            <button
+              onClick={() => setTrackOrderNo('')}
+              className="px-3 py-2 text-gray-500 hover:text-gray-700"
+              title="ล้างการค้นหา"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          )}
+        </div>
+        
+        {/* Search Result */}
+        {trackOrderNo.trim() && (
+          <div className="mt-4">
+            {trackedOrder ? (
+              <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-indigo-700">{trackedOrder.orderNo}</span>
+                    <StatusBadge status={trackedOrder.deliveryStatus || ''} />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveTab(trackedOrder.deliveryStatus || 'รอจัด');
+                      setSearch(trackedOrder.orderNo);
+                      setTrackOrderNo('');
+                    }}
+                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    <i className="fas fa-external-link-alt mr-1"></i>ดูในตาราง
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-500 text-xs">ร้าน</div>
+                    <div className="font-medium text-gray-800">{trackedOrder.storeId || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">อำเภอ/จังหวัด</div>
+                    <div className="font-medium text-gray-800">{trackedOrder.district}{trackedOrder.province ? `, ${trackedOrder.province}` : ''}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">วันที่เปิดบิล</div>
+                    <div className="font-medium text-gray-800">{displayDate(trackedOrder.openDate)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">กำหนดส่ง</div>
+                    <div className="font-medium text-gray-800">{displayDate(trackedOrder.planDate)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">ส่งจริง</div>
+                    <div className="font-medium text-gray-800">{trackedOrder.actualDate ? displayDate(trackedOrder.actualDate) : <span className="text-orange-500">ยังไม่ส่ง</span>}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">KPI</div>
+                    <div className={`font-bold ${trackedOrder.kpiStatus === 'PASS' ? 'text-green-600' : trackedOrder.kpiStatus === 'NOT_PASS' ? 'text-red-600' : 'text-gray-500'}`}>
+                      {trackedOrder.kpiStatus === 'PASS' ? 'ผ่าน' : trackedOrder.kpiStatus === 'NOT_PASS' ? 'ไม่ผ่าน' : 'รอดำเนินการ'}
+                      {trackedOrder.delayDays !== undefined && trackedOrder.delayDays !== null && (
+                        <span className="text-xs font-normal ml-1">({trackedOrder.delayDays} วัน)</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">จำนวน</div>
+                    <div className="font-medium text-gray-800">{trackedOrder.qty || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">ผู้ส่ง</div>
+                    <div className="font-medium text-gray-800">{trackedOrder.sender || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+                <i className="fas fa-search text-yellow-500 text-2xl mb-2"></i>
+                <div className="text-yellow-700 font-medium">ไม่พบเลขที่เอกสาร "{trackOrderNo}"</div>
+                <div className="text-yellow-600 text-sm mt-1">กรุณาตรวจสอบเลขที่เอกสารอีกครั้ง</div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Status Pipeline Summary */}
@@ -470,11 +697,16 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                     <th className="px-4 py-3 text-left font-bold">อำเภอ / ร้าน</th>
                     <th className="px-4 py-3 text-left font-bold">จำนวน</th>
                     <th className="px-4 py-3 text-left font-bold">วันที่เปิดบิล</th>
-                    <th className="px-4 py-3 text-left font-bold">กำหนดส่ง</th>
                     <th className="px-4 py-3 text-left font-bold">
-                      {isDeliveredTab ? 'วันส่งเสร็จ' : 'เกินกำหนดส่ง'}
+                      วันนัดส่ง {onUpdateDelivery && <i className="fas fa-edit text-blue-400 ml-1" title="คลิกเพื่อแก้ไข"></i>}
                     </th>
-                    {isDeliveredTab && <th className="px-4 py-3 text-left font-bold">KPI</th>}
+                    <th className="px-4 py-3 text-left font-bold">
+                      ส่งจริง {onUpdateDelivery && <i className="fas fa-edit text-blue-400 ml-1" title="คลิกเพื่อแก้ไข"></i>}
+                    </th>
+                    <th className="px-4 py-3 text-left font-bold">KPI (วัน)</th>
+                    <th className="px-4 py-3 text-left font-bold">
+                      {isDeliveredTab ? 'สถานะ KPI' : 'เกินกำหนด'}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -499,12 +731,81 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-gray-400 text-xs">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                        <td className="px-4 py-3 font-mono text-xs">
-                          <span className="text-indigo-700 font-bold">{getKpiDeadline(d, kpiConfigs)}</span>
+                        {/* Editable planDate */}
+                        <td className="px-4 py-3">
+                          {editingCell?.orderNo === d.orderNo && editingCell?.field === 'planDate' ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                className="border border-blue-300 rounded px-1 py-0.5 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                title="แก้ไขวันนัดส่ง"
+                                autoFocus
+                              />
+                              <button onClick={handleConfirmEdit} className="text-green-600 hover:text-green-800" title="ยืนยัน">
+                                <i className="fas fa-check text-xs"></i>
+                              </button>
+                              <button onClick={handleCancelEdit} className="text-red-500 hover:text-red-700" title="ยกเลิก">
+                                <i className="fas fa-times text-xs"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              onClick={() => handleStartEdit(d.orderNo, 'planDate', d.planDate)}
+                              className={`font-mono text-xs text-indigo-700 font-bold ${onUpdateDelivery ? 'cursor-pointer hover:bg-indigo-50 px-1 py-0.5 rounded' : ''}`}
+                              title={onUpdateDelivery ? 'คลิกเพื่อแก้ไข' : ''}
+                            >
+                              {d.planDate || '-'}
+                            </span>
+                          )}
                         </td>
+                        {/* Editable actualDate */}
+                        <td className="px-4 py-3">
+                          {editingCell?.orderNo === d.orderNo && editingCell?.field === 'actualDate' ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                className="border border-blue-300 rounded px-1 py-0.5 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                title="แก้ไขวันส่งจริง"
+                                autoFocus
+                              />
+                              <button onClick={handleConfirmEdit} className="text-green-600 hover:text-green-800" title="ยืนยัน">
+                                <i className="fas fa-check text-xs"></i>
+                              </button>
+                              <button onClick={handleCancelEdit} className="text-red-500 hover:text-red-700" title="ยกเลิก">
+                                <i className="fas fa-times text-xs"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              onClick={() => handleStartEdit(d.orderNo, 'actualDate', d.actualDate)}
+                              className={`font-mono text-xs ${d.actualDate ? 'text-green-700' : 'text-gray-300'} ${onUpdateDelivery ? 'cursor-pointer hover:bg-green-50 px-1 py-0.5 rounded' : ''}`}
+                              title={onUpdateDelivery ? 'คลิกเพื่อแก้ไข' : ''}
+                            >
+                              {displayDate(d.actualDatetime || d.actualDate) || '-'}
+                            </span>
+                          )}
+                        </td>
+                        {/* KPI Days */}
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            d.kpiStatus === 'PASS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {d.delayDays || 0}
+                          </span>
+                        </td>
+                        {/* Status / Overdue */}
                         <td className="px-4 py-3">
                           {isDeliveredTab ? (
-                            <span className="text-green-700 font-mono text-xs">{displayDate(d.actualDatetime || d.actualDate)}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${d.kpiStatus === 'PASS'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                              }`}>
+                              {d.kpiStatus === 'PASS' ? 'ผ่าน' : 'ไม่ผ่าน'}
+                            </span>
                           ) : overdue > 0 ? (
                             <span className="px-2 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded font-bold text-xs">
                               <i className="fas fa-exclamation-circle mr-1"></i>+{overdue} วัน
@@ -519,16 +820,6 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                             </span>
                           )}
                         </td>
-                        {isDeliveredTab && (
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${d.kpiStatus === 'PASS'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                              }`}>
-                              {d.kpiStatus === 'PASS' ? 'ผ่าน' : 'ไม่ผ่าน'}
-                            </span>
-                          </td>
-                        )}
                       </tr>
                     );
                   })}
@@ -541,6 +832,55 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
           )}
         </div>
       </div>
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <i className="fas fa-lock text-indigo-500"></i>
+              ยืนยันการแก้ไข
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              กรุณาใส่รหัสผ่านเพื่อยืนยันการแก้ไขข้อมูล
+            </p>
+            {pendingEdit && (
+              <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+                <div className="text-gray-500">แก้ไข: <span className="font-bold text-gray-800">{pendingEdit.field === 'planDate' ? 'วันนัดส่ง' : 'ส่งจริง'}</span></div>
+                <div className="text-gray-500">ค่าใหม่: <span className="font-bold text-indigo-600">{pendingEdit.value || '(ลบ)'}</span></div>
+              </div>
+            )}
+            <input
+              type="password"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
+              placeholder="ใส่รหัสผ่าน"
+              className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handlePasswordSubmit(); }}
+            />
+            {passwordError && (
+              <p className="text-red-500 text-sm mb-3">
+                <i className="fas fa-exclamation-circle mr-1"></i>{passwordError}
+              </p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { setShowPasswordModal(false); setPendingEdit(null); setPassword(''); }}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 font-medium"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handlePasswordSubmit}
+                className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 font-medium"
+              >
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

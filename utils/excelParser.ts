@@ -459,22 +459,51 @@ export function processImport(
           patchedDeadline,
         });
 
-        const patchedKpi = calculateKpiStatus(
+        // ถ้ามี manual flag → ใช้ KPI เดิมจาก existing แทนที่จะคำนวณใหม่
+        const hasManualFlag = existing.manualPlanDate || existing.manualActualDate;
+        
+        const patchedKpi = hasManualFlag ? {
+          kpiStatus: existing.kpiStatus,
+          delayDays: existing.delayDays,
+          reasonRequired: existing.reasonRequired,
+          reasonStatus: existing.reasonStatus,
+          delayReason: existing.delayReason
+        } : calculateKpiStatus(
           patchedDeadline, patchedActual,
           existing.district, kpiConfigs, holidays, storeClosures, undefined, existing.province
         );
+        
+        // Debug log สำหรับ B0226013518
+        if (row.orderNo === 'B0226013518') {
+          console.log(`[processImport][ส่งเสร็จ branch] B0226013518:`, {
+            hasManualFlag,
+            manualPlanDate: existing.manualPlanDate,
+            manualActualDate: existing.manualActualDate,
+            existingKpiStatus: existing.kpiStatus,
+            existingDelayDays: existing.delayDays,
+            patchedKpi
+          });
+        }
+        
         // Preserve approved/submitted reason if still NOT_PASS; reset if now PASS
         const preserveReason = patchedKpi.kpiStatus === KpiStatus.NOT_PASS
           && (existing.reasonStatus === ReasonStatus.APPROVED || existing.reasonStatus === ReasonStatus.SUBMITTED);
+        // ป้องกัน overwrite ข้อมูลที่แก้ไขด้วยมือ
+        const safePlanDate = existing.manualPlanDate ? existing.planDate : (row.planDate || existing.planDate);
+        const safeActualDate = existing.manualActualDate ? existing.actualDate : newActualDate;
+
         const patched: DeliveryRecord = {
           ...existing,
-          // อัปเดต planDate จาก row ใหม่ (แก้ข้อมูลเก่าที่ parse ผิด)
-          planDate: row.planDate || existing.planDate,
+          // อัปเดต planDate จาก row ใหม่ (แก้ข้อมูลเก่าที่ parse ผิด) - แต่ถ้าแก้ไขด้วยมือให้คงค่าเดิม
+          planDate: safePlanDate,
           openDate: newOpenDate,
-          actualDate: newActualDate,
-          actualDatetime: newActualDatetime,
+          actualDate: safeActualDate,
+          actualDatetime: existing.manualActualDate ? existing.actualDatetime : newActualDatetime,
           ...patchedKpi,
-          ...(preserveReason ? { reasonStatus: existing.reasonStatus, delayReason: existing.delayReason } : {})
+          ...(preserveReason ? { reasonStatus: existing.reasonStatus, delayReason: existing.delayReason } : {}),
+          // คงค่า flag ไว้
+          manualPlanDate: existing.manualPlanDate,
+          manualActualDate: existing.manualActualDate
         };
         // Only push to updated if something actually changed
         if (
@@ -495,9 +524,15 @@ export function processImport(
 
       // Skip if new status is lower than existing — ป้องกันไฟล์เก่า overwrite ไฟล์ใหม่
       if (newPriority < existingPriority) {
-        // อัปเดตเฉพาะ openDate ถ้ามีค่าใหม่
+        // อัปเดตเฉพาะ openDate ถ้ามีค่าใหม่ แต่คงค่า flag และข้อมูลที่แก้ไขด้วยมือ
         if (row.openDate && row.openDate !== existing.openDate) {
-          const patched = { ...existing, openDate: row.openDate };
+          const patched = { 
+            ...existing, 
+            openDate: row.openDate,
+            // คงค่า flag ไว้
+            manualPlanDate: existing.manualPlanDate,
+            manualActualDate: existing.manualActualDate
+          };
           result.updated.push(patched);
           existingMap.set(row.orderNo, patched);
         } else {
@@ -538,23 +573,68 @@ export function processImport(
     // ถ้าสถานะไม่ใช่ 'ส่งเสร็จ' → ลบ actualDate ออก (ยังไม่ได้ส่งจริง)
     const finalActualDate = isDelivered ? resolvedActualDate : '';
 
+    // ป้องกันการ overwrite ข้อมูลที่แก้ไขด้วยมือ
+    const hasManualPlanDate = existing?.manualPlanDate === true;
+    const hasManualActualDate = existing?.manualActualDate === true;
+    
+    // Debug log สำหรับ B0226013518 เสมอ
+    if (row.orderNo === 'B0226013518') {
+      console.log(`[processImport] B0226013518 check:`, {
+        existingFound: !!existing,
+        existingManualPlanDate: existing?.manualPlanDate,
+        existingManualActualDate: existing?.manualActualDate,
+        existingKpiStatus: existing?.kpiStatus,
+        existingDelayDays: existing?.delayDays,
+        hasManualPlanDate,
+        hasManualActualDate
+      });
+    }
+    
+    // Debug log เพื่อตรวจสอบว่า flag ถูกส่งมาหรือไม่
+    if (existing && (hasManualPlanDate || hasManualActualDate)) {
+      console.log(`[processImport] Manual edit detected for ${row.orderNo}:`, {
+        manualPlanDate: hasManualPlanDate,
+        manualActualDate: hasManualActualDate,
+        existingPlanDate: existing.planDate,
+        existingActualDate: existing.actualDate,
+        newPlanDate: row.planDate,
+        newActualDate: finalActualDate
+      });
+    }
+    
+    const usePlanDate = hasManualPlanDate ? existing!.planDate : row.planDate;
+    const useActualDate = hasManualActualDate ? existing!.actualDate : finalActualDate;
+
+    // ถ้ามีการแก้ไขวันที่ด้วยมือ → คงค่า KPI เดิมที่คำนวณตอนแก้ไข
+    // ไม่ให้ import คำนวณทับ KPI ที่ user ตั้งใจแก้ไข
+    const useKpi = (hasManualPlanDate || hasManualActualDate) && existing ? {
+      kpiStatus: existing.kpiStatus,
+      delayDays: existing.delayDays,
+      reasonRequired: existing.reasonRequired,
+      reasonStatus: existing.reasonStatus,
+      delayReason: existing.delayReason
+    } : kpi;
+
     const data: DeliveryRecord = {
       orderNo: row.orderNo,
       district: row.district,
       storeId: row.storeId,
-      planDate: row.planDate,
+      planDate: usePlanDate,
       openDate: row.openDate || existing?.openDate,
-      actualDate: finalActualDate,
+      actualDate: useActualDate,
       qty: row.qty,
       sender: row.sender,
       province: row.province,
       importFileId: importFileId || row.importFileId,
-      deliveryStatus: status || undefined,
+      deliveryStatus: (hasManualActualDate && existing?.deliveryStatus) || status || undefined,
       actualDatetime: isDelivered ? row.actualDatetime : undefined, // ลบ datetime ด้วยถ้ายังไม่ส่งเสร็จ
       productDetails: row.productDetails,
-      ...kpi,
-      weekday: isDelivered ? getWeekday(finalActualDate) : undefined,
-      updatedAt: new Date().toISOString()
+      ...useKpi,
+      weekday: isDelivered && (useActualDate || finalActualDate) ? getWeekday(useActualDate || finalActualDate) : '',
+      updatedAt: new Date().toISOString(),
+      // คงค่า flag ไว้ถ้าเคยแก้ไขด้วยมือ
+      manualPlanDate: existing?.manualPlanDate,
+      manualActualDate: existing?.manualActualDate
     };
 
     if (existing) {
