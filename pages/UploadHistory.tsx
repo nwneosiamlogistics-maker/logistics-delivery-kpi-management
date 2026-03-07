@@ -1,16 +1,37 @@
-import React, { useState, useMemo } from 'react';
-import { ImportLog, DeliveryRecord, KpiStatus } from '../types';
+import React, { useState, useMemo, useCallback } from 'react';
+import { ImportLog, DeliveryRecord, KpiStatus, KpiConfig } from '../types';
 import { displayDate } from '../utils/kpiEngine';
 
 interface UploadHistoryProps {
   importLogs: ImportLog[];
   deliveries: DeliveryRecord[];
+  kpiConfigs?: KpiConfig[];
 }
 
-export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, deliveries }) => {
+export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, deliveries, kpiConfigs = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fileSearch, setFileSearch] = useState<Record<string, string>>({});
+  const [allDeliveriesPage, setAllDeliveriesPage] = useState(1);
+  const [allDeliveriesSearch, setAllDeliveriesSearch] = useState('');
+  const [allDeliveriesBranch, setAllDeliveriesBranch] = useState('');
+  const [allDeliveriesProvince, setAllDeliveriesProvince] = useState('');
+  const [allDeliveriesDistrict, setAllDeliveriesDistrict] = useState('');
+  const itemsPerPage = 50;
+
+  // Build district → branch map
+  const districtBranchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
+    return map;
+  }, [kpiConfigs]);
+
+  // Get branch for a delivery
+  const getBranch = useCallback((d: DeliveryRecord): string => {
+    const key = `${d.province || ''}||${d.district}`;
+    const keyNoProvince = `||${d.district}`;
+    return districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince) || '-';
+  }, [districtBranchMap]);
 
   const filtered = useMemo(() => {
     if (!searchTerm) return importLogs;
@@ -292,6 +313,213 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
           );
         })}
       </div>
+
+      {/* All Deliveries Table with Pagination */}
+      {deliveries.length > 0 && (() => {
+        // Get all branches, provinces, districts
+        const allBranches = Array.from(new Set(deliveries.map(d => getBranch(d)).filter(b => b && b !== '-'))).sort();
+        const allProvinces = Array.from(new Set(deliveries.map(d => d.province).filter(Boolean))).sort() as string[];
+        const filteredProvinceDistricts = allDeliveriesProvince 
+          ? deliveries.filter(d => d.province === allDeliveriesProvince) 
+          : deliveries;
+        const allDistricts = Array.from(new Set(filteredProvinceDistricts.map(d => d.district).filter(Boolean))).sort() as string[];
+        
+        // Filter deliveries based on all filters
+        const searchLower = allDeliveriesSearch.toLowerCase();
+        let filteredDeliveries = deliveries;
+        
+        // Apply branch filter
+        if (allDeliveriesBranch) {
+          filteredDeliveries = filteredDeliveries.filter(d => getBranch(d) === allDeliveriesBranch);
+        }
+        
+        // Apply province filter
+        if (allDeliveriesProvince) {
+          filteredDeliveries = filteredDeliveries.filter(d => d.province === allDeliveriesProvince);
+        }
+        
+        // Apply district filter
+        if (allDeliveriesDistrict) {
+          filteredDeliveries = filteredDeliveries.filter(d => d.district === allDeliveriesDistrict);
+        }
+        
+        // Apply search filter
+        if (allDeliveriesSearch) {
+          filteredDeliveries = filteredDeliveries.filter(d =>
+            d.orderNo.toLowerCase().includes(searchLower) ||
+            (d.sender || '').toLowerCase().includes(searchLower) ||
+            (d.province || '').toLowerCase().includes(searchLower) ||
+            d.district.toLowerCase().includes(searchLower) ||
+            d.storeId.toLowerCase().includes(searchLower)
+          );
+        }
+        
+        // Sort by openDate descending
+        const sortedDeliveries = [...filteredDeliveries].sort((a, b) => {
+          const dateA = new Date(a.openDate || '');
+          const dateB = new Date(b.openDate || '');
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        const totalPages = Math.ceil(sortedDeliveries.length / itemsPerPage);
+        const startIndex = (allDeliveriesPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, sortedDeliveries.length);
+        const paginatedDeliveries = sortedDeliveries.slice(startIndex, endIndex);
+        
+        return (
+          <div className="glass-panel p-6 rounded-2xl border-2 border-indigo-200 bg-indigo-50/50 mt-8">
+            <h3 className="text-base font-bold text-indigo-800 mb-4 flex items-center gap-2">
+              <i className="fas fa-table text-indigo-600"></i>
+              📋 รายการ Import ทั้งหมด ({sortedDeliveries.length.toLocaleString()} รายการ)
+            </h3>
+            
+            {/* Search and Filter */}
+            <div className="mb-4 space-y-3">
+              {/* Dropdowns Row */}
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={allDeliveriesBranch}
+                  onChange={e => { setAllDeliveriesBranch(e.target.value); setAllDeliveriesPage(1); }}
+                  title="เลือกสาขา"
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white min-w-[140px]"
+                >
+                  <option value="">ทุกสาขา</option>
+                  {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <select
+                  value={allDeliveriesProvince}
+                  onChange={e => { setAllDeliveriesProvince(e.target.value); setAllDeliveriesDistrict(''); setAllDeliveriesPage(1); }}
+                  title="เลือกจังหวัด"
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white min-w-[160px]"
+                >
+                  <option value="">ทุกจังหวัด</option>
+                  {allProvinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <select
+                  value={allDeliveriesDistrict}
+                  onChange={e => { setAllDeliveriesDistrict(e.target.value); setAllDeliveriesPage(1); }}
+                  title="เลือกอำเภอ"
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white min-w-[160px]"
+                >
+                  <option value="">ทุกอำเภอ</option>
+                  {allDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {(allDeliveriesSearch || allDeliveriesBranch || allDeliveriesProvince || allDeliveriesDistrict) && (
+                  <button
+                    onClick={() => { setAllDeliveriesSearch(''); setAllDeliveriesBranch(''); setAllDeliveriesProvince(''); setAllDeliveriesDistrict(''); setAllDeliveriesPage(1); }}
+                    className="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                  >
+                    <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
+              {/* Search Row */}
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input
+                  type="text"
+                  placeholder="ค้นหาด้วยเลขที่ใบสั่ง, อำเภอ, หรือร้านค้า..."
+                  value={allDeliveriesSearch}
+                  onChange={e => { setAllDeliveriesSearch(e.target.value); setAllDeliveriesPage(1); }}
+                  className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                />
+                {allDeliveriesSearch && (
+                  <button
+                    onClick={() => { setAllDeliveriesSearch(''); setAllDeliveriesPage(1); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    title="ล้างการค้นหา"
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm bg-white rounded-lg">
+                <thead>
+                  <tr className="border-b border-indigo-200">
+                    <th className="px-3 py-2 text-left text-indigo-700">เลขที่เอกสาร</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">ร้านค้า</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">ผู้ส่ง</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">สาขา</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">จังหวัด/อำเภอ</th>
+                    <th className="px-3 py-2 text-right text-indigo-700">จำนวน</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">วันที่เปิดบิล</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">กำหนดส่ง</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">วันที่ส่งเสร็จ</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">วันคืนบิล</th>
+                    <th className="px-3 py-2 text-left text-indigo-700">วันที่บันทึก</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedDeliveries.map(doc => (
+                    <tr key={doc.orderNo} className="border-b border-gray-100 hover:bg-indigo-50/30">
+                      <td className="px-3 py-2 font-mono text-gray-800">{doc.orderNo}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.storeId}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{getBranch(doc)}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.actualDate || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.documentReturnBillDate || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.documentReturnedDate || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-indigo-200">
+                <span className="text-sm text-gray-600">
+                  แสดง {startIndex + 1}-{endIndex} จาก {sortedDeliveries.length.toLocaleString()} รายการ
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setAllDeliveriesPage(1)}
+                    disabled={allDeliveriesPage === 1}
+                    className="px-2 py-1 text-sm rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="หน้าแรก"
+                  >
+                    <i className="fas fa-angles-left"></i>
+                  </button>
+                  <button
+                    onClick={() => setAllDeliveriesPage(p => Math.max(1, p - 1))}
+                    disabled={allDeliveriesPage === 1}
+                    className="px-2 py-1 text-sm rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="ก่อนหน้า"
+                  >
+                    <i className="fas fa-angle-left"></i>
+                  </button>
+                  <span className="px-3 py-1 text-sm font-medium text-indigo-800">
+                    หน้า {allDeliveriesPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setAllDeliveriesPage(p => Math.min(totalPages, p + 1))}
+                    disabled={allDeliveriesPage === totalPages}
+                    className="px-2 py-1 text-sm rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="ถัดไป"
+                  >
+                    <i className="fas fa-angle-right"></i>
+                  </button>
+                  <button
+                    onClick={() => setAllDeliveriesPage(totalPages)}
+                    disabled={allDeliveriesPage === totalPages}
+                    className="px-2 py-1 text-sm rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="หน้าสุดท้าย"
+                  >
+                    <i className="fas fa-angles-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 };

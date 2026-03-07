@@ -57,8 +57,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   openDate: ['openDate', 'open_date', 'วันที่', 'วันที่เพิ่ม', 'วันเปิด', 'วันเปิดเอกสาร'],
   actualDate: [
     'actualDate', 'actual_date', 'actualdate', 'Actual Date', 'Delivery Date',
-    'วันที่ส่งจริง', 'วันที่จัดส่ง', 'วันที่แก้ไข',
-    // หมายเหตุ: ไม่ใส่ 'วันที่ส่ง' / 'วันส่ง' เพื่อป้องกัน conflict กับ planDate
+    'วันที่ส่งจริง',
+    // หมายเหตุ: ไม่ใส่ 'วันที่ส่ง' / 'วันส่ง' / 'วันที่แก้ไข' / 'วันที่จัดส่ง' เพื่อป้องกัน conflict
   ],
   qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น'],
   productDetails: ['productDetails', 'สินค้า', 'product', 'Product', 'รายการสินค้า', 'รายละเอียดสินค้า'],
@@ -429,8 +429,9 @@ export function processImport(
           return d.toISOString().slice(0, 10);
         })();
 
-        // ── actualDate: ใช้ค่าใหม่จาก row ก่อน ถ้าว่างค่อย fallback เก่า ──────────────
-        const newActualDateRaw = row.actualDate || existing.actualDate;
+        // ── actualDate: ใช้ค่าจาก row เท่านั้น ไม่ fallback ค่าเก่า (เพราะค่าเก่าอาจผิด) ──
+        // ถ้า row ไม่มี actualDate ให้เป็นค่าว่าง (ไม่ใช้ค่าเก่าที่อาจมาจาก "วันที่แก้ไข")
+        const newActualDateRaw = row.actualDate || '';
         const newActualDatetime = row.actualDatetime || existing.actualDatetime;
 
         // ถ้า actualDatetime parse ได้เป็นวันที่สมเหตุสมผล (ไม่ใช่อนาคต)

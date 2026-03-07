@@ -52,6 +52,15 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const [selectedDistricts, setSelectedDistricts] = useState<Record<string, string>>({}); // displayKey -> selected district
   const [selectedProvinces, setSelectedProvinces] = useState<Record<string, string>>({}); // displayKey -> selected province
   const [rememberStore, setRememberStore] = useState<Record<string, boolean>>({});
+  const [podPendingPage, setPodPendingPage] = useState(1);
+  const [over2DaysPage, setOver2DaysPage] = useState(1);
+  const [podSearch, setPodSearch] = useState('');
+  const [podProvince, setPodProvince] = useState('');
+  const [podDistrict, setPodDistrict] = useState('');
+  const [over2Search, setOver2Search] = useState('');
+  const [over2Province, setOver2Province] = useState('');
+  const [over2District, setOver2District] = useState('');
+  const itemsPerPage = 50;
 
   // Build district → branch map from kpiConfigs
   const districtBranchMap = useMemo(() => {
@@ -602,92 +611,212 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
             <i className="fas fa-check-circle text-4xl mb-2 text-green-400"></i>
             <p className="text-green-600 font-medium">ส่งเอกสารครบทุกบิลแล้ว ✓</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">เลขที่ใบส่ง</th>
-                  <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">ผู้ส่ง</th>
-                  <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">จังหวัด / อำเภอ</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">จำนวน</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">วันที่เปิดบิล</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">กำหนดส่ง</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {podPending.slice(0, 50).map((d, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-orange-50 transition-colors">
-                    <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
-                    <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
-                    <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
-                    <td className="px-3 py-2 text-center text-gray-700">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                    <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        d.deliveryStatus === DeliveryStatus.IN_TRANSIT ? 'bg-blue-100 text-blue-700' :
-                        d.deliveryStatus === DeliveryStatus.DISTRIBUTING ? 'bg-purple-100 text-purple-700' :
-                        d.deliveryStatus === DeliveryStatus.WAITING_DISTRIBUTE ? 'bg-orange-100 text-orange-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {d.deliveryStatus || 'รอจัด'}
-                      </span>
-                    </td>
+        ) : (() => {
+          // Get provinces and districts for filters
+          const podProvinces = Array.from(new Set(podPending.map(d => d.province).filter(Boolean))).sort() as string[];
+          const filteredByPodProv = podProvince ? podPending.filter(d => d.province === podProvince) : podPending;
+          const podDistricts = Array.from(new Set(filteredByPodProv.map(d => d.district).filter(Boolean))).sort() as string[];
+          
+          // Apply filters
+          const searchLower = podSearch.toLowerCase();
+          let filteredPod = podPending;
+          if (podProvince) filteredPod = filteredPod.filter(d => d.province === podProvince);
+          if (podDistrict) filteredPod = filteredPod.filter(d => d.district === podDistrict);
+          if (podSearch) filteredPod = filteredPod.filter(d => 
+            d.orderNo.toLowerCase().includes(searchLower) || 
+            (d.sender || '').toLowerCase().includes(searchLower) ||
+            d.storeId.toLowerCase().includes(searchLower)
+          );
+          
+          const paginatedPod = filteredPod.slice((podPendingPage - 1) * itemsPerPage, podPendingPage * itemsPerPage);
+          
+          return (
+            <>
+              {/* Filters */}
+              <div className="mb-4 space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  <select value={podProvince} onChange={e => { setPodProvince(e.target.value); setPodDistrict(''); setPodPendingPage(1); }} title="เลือกจังหวัด" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white min-w-[160px]">
+                    <option value="">ทุกจังหวัด</option>
+                    {podProvinces.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <select value={podDistrict} onChange={e => { setPodDistrict(e.target.value); setPodPendingPage(1); }} title="เลือกอำเภอ" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white min-w-[160px]">
+                    <option value="">ทุกอำเภอ</option>
+                    {podDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  {(podSearch || podProvince || podDistrict) && (
+                    <button onClick={() => { setPodSearch(''); setPodProvince(''); setPodDistrict(''); setPodPendingPage(1); }} className="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                      <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                  <input type="text" placeholder="ค้นหาด้วยเลขที่ใบสั่ง, อำเภอ, หรือร้านค้า..." value={podSearch} onChange={e => { setPodSearch(e.target.value); setPodPendingPage(1); }} className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white" />
+                  {podSearch && <button onClick={() => { setPodSearch(''); setPodPendingPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
+                </div>
+              </div>
+              
+              <div className="flex justify-end mb-2">
+                <span className="text-xs text-gray-500">
+                  แสดง {filteredPod.length > 0 ? ((podPendingPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(podPendingPage * itemsPerPage, filteredPod.length)} จาก {filteredPod.length}
+                </span>
+              </div>
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 z-10 bg-white">
+                    <tr className="border-b border-gray-100">
+                      <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">เลขที่ใบส่ง</th>
+                      <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">ผู้ส่ง</th>
+                      <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">จังหวัด / อำเภอ</th>
+                      <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">จำนวน</th>
+                      <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">วันที่เปิดบิล</th>
+                      <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">กำหนดส่ง</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">สถานะ</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {podPending.length > 50 && (
-              <p className="text-xs text-gray-400 text-center py-3">
-                แสดง 50 รายการแรก จากทั้งหมด {podPending.length} รายการ
-              </p>
+                </thead>
+                <tbody>
+                  {paginatedPod.map((d, i) => (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-orange-50 transition-colors">
+                      <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
+                      <td className="px-3 py-2 text-center text-gray-700">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          d.deliveryStatus === DeliveryStatus.IN_TRANSIT ? 'bg-blue-100 text-blue-700' :
+                          d.deliveryStatus === DeliveryStatus.DISTRIBUTING ? 'bg-purple-100 text-purple-700' :
+                          d.deliveryStatus === DeliveryStatus.WAITING_DISTRIBUTE ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {d.deliveryStatus || 'รอจัด'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {Math.ceil(podPending.length / itemsPerPage) > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <button onClick={() => setPodPendingPage(p => Math.max(1, p - 1))} disabled={podPendingPage === 1} className="px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+                </button>
+                <span className="text-sm text-orange-700">หน้า {podPendingPage} / {Math.ceil(podPending.length / itemsPerPage)}</span>
+                <button onClick={() => setPodPendingPage(p => Math.min(Math.ceil(podPending.length / itemsPerPage), p + 1))} disabled={podPendingPage === Math.ceil(podPending.length / itemsPerPage)} className="px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+                </button>
+              </div>
             )}
-          </div>
-        )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Over 2 days detail */}
-      {over2Days.length > 0 && (
-        <div className="glass-panel p-6 rounded-2xl border-l-4 border-red-400">
-          <h3 className="text-base font-bold text-gray-800 mb-1 flex items-center gap-2">
-            <i className="fas fa-exclamation-triangle text-red-500"></i>
-            รายการส่งช้าเกิน 2 วัน ({over2Days.length} Inv.)
-          </h3>
-          <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {over2Days.reduce((s, d) => s + d.qty, 0).toFixed(2)} ชิ้น/กล่อง</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">เลขที่ใบส่ง</th>
-                  <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">ผู้ส่ง</th>
-                  <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase">จังหวัด / อำเภอ</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">จำนวน</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">วันที่เปิดบิล</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">กำหนดส่ง</th>
-                  <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase">ช้ากี่วัน</th>
-                </tr>
-              </thead>
-              <tbody>
-                {over2Days.sort((a, b) => b.delayDays - a.delayDays).slice(0, 30).map((d, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-red-50 transition-colors">
-                    <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
-                    <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
-                    <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
-                    <td className="px-3 py-2 text-center">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                    <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold">+{d.delayDays} วัน</span>
-                    </td>
+      {over2Days.length > 0 && (() => {
+        // Get provinces and districts for filters
+        const over2Provinces = Array.from(new Set(over2Days.map(d => d.province).filter(Boolean))).sort() as string[];
+        const filteredByOver2Prov = over2Province ? over2Days.filter(d => d.province === over2Province) : over2Days;
+        const over2Districts = Array.from(new Set(filteredByOver2Prov.map(d => d.district).filter(Boolean))).sort() as string[];
+        
+        // Apply filters
+        const searchLower = over2Search.toLowerCase();
+        let filteredOver2 = over2Days;
+        if (over2Province) filteredOver2 = filteredOver2.filter(d => d.province === over2Province);
+        if (over2District) filteredOver2 = filteredOver2.filter(d => d.district === over2District);
+        if (over2Search) filteredOver2 = filteredOver2.filter(d => 
+          d.orderNo.toLowerCase().includes(searchLower) || 
+          (d.sender || '').toLowerCase().includes(searchLower) ||
+          d.storeId.toLowerCase().includes(searchLower)
+        );
+        
+        const sortedOver2Days = [...filteredOver2].sort((a, b) => b.delayDays - a.delayDays);
+        const totalOver2DaysPages = Math.ceil(sortedOver2Days.length / itemsPerPage);
+        const paginatedOver2 = sortedOver2Days.slice((over2DaysPage - 1) * itemsPerPage, over2DaysPage * itemsPerPage);
+        
+        return (
+          <div className="glass-panel p-6 rounded-2xl border-l-4 border-red-400">
+            <h3 className="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <i className="fas fa-exclamation-triangle text-red-500"></i>
+              รายการส่งช้าเกิน 2 วัน ({filteredOver2.length} Inv.)
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {filteredOver2.reduce((s, d) => s + d.qty, 0).toFixed(2)} ชิ้น/กล่อง</p>
+            
+            {/* Filters */}
+            <div className="mb-4 space-y-3">
+              <div className="flex flex-wrap gap-3">
+                <select value={over2Province} onChange={e => { setOver2Province(e.target.value); setOver2District(''); setOver2DaysPage(1); }} title="เลือกจังหวัด" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกจังหวัด</option>
+                  {over2Provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <select value={over2District} onChange={e => { setOver2District(e.target.value); setOver2DaysPage(1); }} title="เลือกอำเภอ" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกอำเภอ</option>
+                  {over2Districts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {(over2Search || over2Province || over2District) && (
+                  <button onClick={() => { setOver2Search(''); setOver2Province(''); setOver2District(''); setOver2DaysPage(1); }} className="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                    <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="ค้นหาด้วยเลขที่ใบสั่ง, อำเภอ, หรือร้านค้า..." value={over2Search} onChange={e => { setOver2Search(e.target.value); setOver2DaysPage(1); }} className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white" />
+                {over2Search && <button onClick={() => { setOver2Search(''); setOver2DaysPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
+              </div>
+            </div>
+            
+            <div className="flex justify-end mb-2">
+              <span className="text-xs text-gray-500">
+                แสดง {sortedOver2Days.length > 0 ? ((over2DaysPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(over2DaysPage * itemsPerPage, sortedOver2Days.length)} จาก {sortedOver2Days.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-white">
+                  <tr className="border-b border-gray-100">
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">เลขที่ใบส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">ผู้ส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">จังหวัด / อำเภอ</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">จำนวน</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">วันที่เปิดบิล</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">กำหนดส่ง</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">ช้ากี่วัน</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginatedOver2.map((d, i) => (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-red-50 transition-colors">
+                      <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
+                      <td className="px-3 py-2 text-center">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold">+{d.delayDays} วัน</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalOver2DaysPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <button onClick={() => setOver2DaysPage(p => Math.max(1, p - 1))} disabled={over2DaysPage === 1} className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+                </button>
+                <span className="text-sm text-red-700">หน้า {over2DaysPage} / {totalOver2DaysPages}</span>
+                <button onClick={() => setOver2DaysPage(p => Math.min(totalOver2DaysPages, p + 1))} disabled={over2DaysPage === totalOver2DaysPages} className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+                </button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

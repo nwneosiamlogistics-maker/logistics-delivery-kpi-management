@@ -41,6 +41,13 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
   const [manualInput, setManualInput] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [returnedPage, setReturnedPage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [weekReturnedPage, setWeekReturnedPage] = useState(1);
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterProvince, setFilterProvince] = useState('');
+  const [filterDistrict, setFilterDistrict] = useState('');
+  const itemsPerPage = 50;
 
   const { start, end, label } = getWeekRange(weekOffset);
 
@@ -202,29 +209,74 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
       </div>
 
       {/* All returned documents - TOP PRIORITY DISPLAY */}
-      {allReturnedDocs.length > 0 && (
-        <div className="glass-panel p-6 rounded-2xl border-2 border-teal-300 bg-teal-50">
-          <h3 className="text-base font-bold text-teal-800 mb-4 flex items-center gap-2">
-            <i className="fas fa-list-check text-teal-600"></i>
-            📋 รายการที่บันทึกส่งคืนทั้งหมด ({allReturnedDocs.length} รายการ)
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm bg-white rounded-lg">
-              <thead>
-                <tr className="border-b border-teal-200">
-                  <th className="px-3 py-2 text-left text-teal-700">เลขที่เอกสาร</th>
-                  <th className="px-3 py-2 text-left text-teal-700">ร้านค้า</th>
-                  <th className="px-3 py-2 text-left text-teal-700">ผู้ส่ง</th>
-                  <th className="px-3 py-2 text-left text-teal-700">จังหวัด/อำเภอ</th>
-                  <th className="px-3 py-2 text-right text-teal-700">จำนวน</th>
-                  <th className="px-3 py-2 text-left text-teal-700">วันที่เปิดบิล</th>
-                  <th className="px-3 py-2 text-left text-teal-700">กำหนดส่ง</th>
-                  <th className="px-3 py-2 text-left text-teal-700">วันที่ส่งเสร็จ</th>
-                  <th className="px-3 py-2 text-left text-teal-700">วันที่บันทึก</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allReturnedDocs.slice(0, 50).map(doc => (
+      {allReturnedDocs.length > 0 && (() => {
+        // Get provinces and districts for filters
+        const allProvinces = Array.from(new Set(allReturnedDocs.map(d => d.province).filter(Boolean))).sort() as string[];
+        const filteredByProvince = filterProvince ? allReturnedDocs.filter(d => d.province === filterProvince) : allReturnedDocs;
+        const allDistricts = Array.from(new Set(filteredByProvince.map(d => d.district).filter(Boolean))).sort() as string[];
+        
+        // Apply filters
+        const searchLower = filterSearch.toLowerCase();
+        let filteredDocs = allReturnedDocs;
+        if (filterProvince) filteredDocs = filteredDocs.filter(d => d.province === filterProvince);
+        if (filterDistrict) filteredDocs = filteredDocs.filter(d => d.district === filterDistrict);
+        if (filterSearch) filteredDocs = filteredDocs.filter(d => 
+          d.orderNo.toLowerCase().includes(searchLower) || 
+          (d.sender || '').toLowerCase().includes(searchLower) ||
+          d.storeId.toLowerCase().includes(searchLower)
+        );
+        
+        const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
+        const paginatedDocs = filteredDocs.slice((returnedPage - 1) * itemsPerPage, returnedPage * itemsPerPage);
+        
+        return (
+          <div className="glass-panel p-6 rounded-2xl border-2 border-teal-300 bg-teal-50">
+            <h3 className="text-base font-bold text-teal-800 mb-4 flex items-center gap-2">
+              <i className="fas fa-list-check text-teal-600"></i>
+              📋 รายการที่บันทึกส่งคืนทั้งหมด ({filteredDocs.length} รายการ)
+            </h3>
+            
+            {/* Filters */}
+            <div className="mb-4 space-y-3">
+              <div className="flex flex-wrap gap-3">
+                <select value={filterProvince} onChange={e => { setFilterProvince(e.target.value); setFilterDistrict(''); setReturnedPage(1); }} title="เลือกจังหวัด" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกจังหวัด</option>
+                  {allProvinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <select value={filterDistrict} onChange={e => { setFilterDistrict(e.target.value); setReturnedPage(1); }} title="เลือกอำเภอ" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกอำเภอ</option>
+                  {allDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {(filterSearch || filterProvince || filterDistrict) && (
+                  <button onClick={() => { setFilterSearch(''); setFilterProvince(''); setFilterDistrict(''); setReturnedPage(1); }} className="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                    <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="ค้นหาด้วยเลขที่ใบสั่ง, อำเภอ, หรือร้านค้า..." value={filterSearch} onChange={e => { setFilterSearch(e.target.value); setReturnedPage(1); }} className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" />
+                {filterSearch && <button onClick={() => { setFilterSearch(''); setReturnedPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-sm bg-white rounded-lg">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-teal-200 bg-teal-50">
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">เลขที่เอกสาร</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">ร้านค้า</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">ผู้ส่ง</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">จังหวัด/อำเภอ</th>
+                    <th className="px-3 py-2 text-right text-teal-700 bg-teal-50">จำนวน</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">วันที่เปิดบิล</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">กำหนดส่ง</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">วันที่ส่งเสร็จ</th>
+                    <th className="px-3 py-2 text-left text-teal-700 bg-teal-50">วันที่บันทึก</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedDocs.map(doc => (
                   <tr key={doc.orderNo} className="border-b border-gray-100">
                     <td className="px-3 py-2 font-mono text-gray-800">{doc.orderNo}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.storeId}</td>
@@ -240,8 +292,20 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
               </tbody>
             </table>
           </div>
+          {Math.ceil(allReturnedDocs.length / itemsPerPage) > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <button onClick={() => setReturnedPage(p => Math.max(1, p - 1))} disabled={returnedPage === 1} className="px-3 py-1.5 text-sm bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+              </button>
+              <span className="text-sm text-teal-700">หน้า {returnedPage} / {Math.ceil(allReturnedDocs.length / itemsPerPage)}</span>
+              <button onClick={() => setReturnedPage(p => Math.min(Math.ceil(allReturnedDocs.length / itemsPerPage), p + 1))} disabled={returnedPage === Math.ceil(allReturnedDocs.length / itemsPerPage)} className="px-3 py-1.5 text-sm bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+              </button>
+            </div>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="glass-card p-5 rounded-2xl">
@@ -345,23 +409,28 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
 
       {pendingDocs.length > 0 && (
         <div className="glass-panel p-6 rounded-2xl">
-          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <i className="fas fa-exclamation-triangle text-amber-500"></i>
-            รายการค้างส่งเอกสาร ({pendingDocs.length} รายการ)
-          </h3>
-          <div className="overflow-x-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+              <i className="fas fa-exclamation-triangle text-amber-500"></i>
+              รายการค้างส่งเอกสาร ({pendingDocs.length} รายการ)
+            </h3>
+            <span className="text-xs text-gray-500">
+              แสดง {((pendingPage - 1) * itemsPerPage) + 1}-{Math.min(pendingPage * itemsPerPage, pendingDocs.length)} จาก {pendingDocs.length}
+            </span>
+          </div>
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left text-gray-600">เลขที่เอกสาร</th>
-                  <th className="px-3 py-2 text-left text-gray-600">ร้านค้า</th>
-                  <th className="px-3 py-2 text-left text-gray-600">พื้นที่</th>
-                  <th className="px-3 py-2 text-left text-gray-600">วันที่ส่งเสร็จ</th>
-                  <th className="px-3 py-2 text-left text-gray-600">ค้างมา</th>
+                  <th className="px-3 py-2 text-left text-gray-600 bg-white">เลขที่เอกสาร</th>
+                  <th className="px-3 py-2 text-left text-gray-600 bg-white">ร้านค้า</th>
+                  <th className="px-3 py-2 text-left text-gray-600 bg-white">พื้นที่</th>
+                  <th className="px-3 py-2 text-left text-gray-600 bg-white">วันที่ส่งเสร็จ</th>
+                  <th className="px-3 py-2 text-left text-gray-600 bg-white">ค้างมา</th>
                 </tr>
               </thead>
               <tbody>
-                {pendingDocs.slice(0, 50).map(doc => {
+                {pendingDocs.slice((pendingPage - 1) * itemsPerPage, pendingPage * itemsPerPage).map(doc => {
                   const deliveredDate = parseLocalDate(doc.actualDate!);
                   const today = new Date();
                   const daysAgo = deliveredDate ? Math.floor((today.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
@@ -379,49 +448,79 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
                 })}
               </tbody>
             </table>
-            {pendingDocs.length > 50 && <p className="text-center text-gray-500 text-sm py-2">แสดง 50 รายการแรก จากทั้งหมด {pendingDocs.length} รายการ</p>}
           </div>
+          {Math.ceil(pendingDocs.length / itemsPerPage) > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <button onClick={() => setPendingPage(p => Math.max(1, p - 1))} disabled={pendingPage === 1} className="px-3 py-1.5 text-sm bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+              </button>
+              <span className="text-sm text-amber-700">หน้า {pendingPage} / {Math.ceil(pendingDocs.length / itemsPerPage)}</span>
+              <button onClick={() => setPendingPage(p => Math.min(Math.ceil(pendingDocs.length / itemsPerPage), p + 1))} disabled={pendingPage === Math.ceil(pendingDocs.length / itemsPerPage)} className="px-3 py-1.5 text-sm bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {stats.returned > 0 && (
-        <div className="glass-panel p-6 rounded-2xl">
-          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <i className="fas fa-check-double text-green-500"></i>
-            ส่งเอกสารคืนแล้ว (สัปดาห์นี้ {stats.returned} รายการ)
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left text-gray-600">เลขที่เอกสาร</th>
-                  <th className="px-3 py-2 text-left text-gray-600">ร้านค้า</th>
-                  <th className="px-3 py-2 text-left text-gray-600">ผู้ส่ง</th>
-                  <th className="px-3 py-2 text-left text-gray-600">จังหวัด/อำเภอ</th>
-                  <th className="px-3 py-2 text-right text-gray-600">จำนวน</th>
-                  <th className="px-3 py-2 text-left text-gray-600">วันที่เปิดบิล</th>
-                  <th className="px-3 py-2 text-left text-gray-600">กำหนดส่ง</th>
-                  <th className="px-3 py-2 text-left text-gray-600">วันที่บันทึก</th>
-                </tr>
-              </thead>
-              <tbody>
-                {weekDeliveries.filter(d => d.documentReturned).slice(0, 50).map(doc => (
-                  <tr key={doc.orderNo} className="border-b border-gray-100">
-                    <td className="px-3 py-2 font-mono text-gray-800">{doc.orderNo}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.storeId}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600">{doc.documentReturnedDate || '-'}</td>
+      {(() => {
+        const weekReturnedDocs = weekDeliveries.filter(d => d.documentReturned);
+        const totalWeekPages = Math.ceil(weekReturnedDocs.length / itemsPerPage);
+        return weekReturnedDocs.length > 0 && (
+          <div className="glass-panel p-6 rounded-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                <i className="fas fa-check-double text-green-500"></i>
+                ส่งเอกสารคืนแล้ว (สัปดาห์นี้ {weekReturnedDocs.length} รายการ)
+              </h3>
+              <span className="text-xs text-gray-500">
+                แสดง {((weekReturnedPage - 1) * itemsPerPage) + 1}-{Math.min(weekReturnedPage * itemsPerPage, weekReturnedDocs.length)} จาก {weekReturnedDocs.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-white">
+                  <tr className="border-b border-gray-200">
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">เลขที่เอกสาร</th>
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">ร้านค้า</th>
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">ผู้ส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">จังหวัด/อำเภอ</th>
+                    <th className="px-3 py-2 text-right text-gray-600 bg-white">จำนวน</th>
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">วันที่เปิดบิล</th>
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">กำหนดส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-600 bg-white">วันที่บันทึก</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {weekReturnedDocs.slice((weekReturnedPage - 1) * itemsPerPage, weekReturnedPage * itemsPerPage).map(doc => (
+                    <tr key={doc.orderNo} className="border-b border-gray-100">
+                      <td className="px-3 py-2 font-mono text-gray-800">{doc.orderNo}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.storeId}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{doc.documentReturnedDate || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalWeekPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <button onClick={() => setWeekReturnedPage(p => Math.max(1, p - 1))} disabled={weekReturnedPage === 1} className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+                </button>
+                <span className="text-sm text-green-700">หน้า {weekReturnedPage} / {totalWeekPages}</span>
+                <button onClick={() => setWeekReturnedPage(p => Math.min(totalWeekPages, p + 1))} disabled={weekReturnedPage === totalWeekPages} className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+                </button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

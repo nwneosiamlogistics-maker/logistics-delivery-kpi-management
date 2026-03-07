@@ -79,6 +79,7 @@ export interface DeliveryRecord {
   weekday: string;
   documentReturned?: boolean;
   documentReturnedDate?: string;
+  documentReturnBillDate?: string;
   manualPlanDate?: boolean;
   manualActualDate?: boolean;
 }

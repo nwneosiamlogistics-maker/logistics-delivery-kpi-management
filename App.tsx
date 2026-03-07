@@ -34,7 +34,7 @@ import {
 } from './types';
 import { getRealtimeDb } from './services/firebase';
 import { syncWeeklyDeliveriesToReturnNeosiam } from './services/returnNeosiamSync';
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, onValue, off } from 'firebase/database';
 import { calculateKpiStatus, calculatePendingKpiStatus } from './utils/kpiEngine';
 
 const KPI_CONFIGS_PATH = 'kpiConfigs';
@@ -181,20 +181,37 @@ const App: React.FC = () => {
   }, []);
 
   const handleRecalculateKpi = useCallback(() => {
-    console.log('[Recalculate KPI] Started');
+    console.log('[Recalculate KPI] Started - will also reset invalid actualDate');
     setDeliveries(prev => {
       let failCount = 0;
+      let resetCount = 0;
       const recalculated = prev.map(d => {
         const isDelivered = d.deliveryStatus === 'ส่งเสร็จ';
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().slice(0, 10);
         
+        // ตรวจสอบว่า actualDate ถูกต้องหรือไม่
+        // ถ้า actualDate ห่างจาก planDate มากเกินไป (> 60 วัน) หรือเป็นค่าที่ไม่สมเหตุสมผล
+        // ให้ reset เป็น planDate (ถือว่าส่งตรงเวลา)
+        let correctedActualDate = d.actualDate;
+        if (isDelivered && d.actualDate && d.planDate) {
+          const actualMs = new Date(d.actualDate).getTime();
+          const planMs = new Date(d.planDate).getTime();
+          const diffDays = Math.abs(actualMs - planMs) / (1000 * 60 * 60 * 24);
+          // ถ้า actualDate ห่างจาก planDate มากกว่า 60 วัน → น่าจะผิด → reset เป็น planDate
+          if (diffDays > 60) {
+            console.log(`[Recalculate KPI] Reset actualDate for ${d.orderNo}: ${d.actualDate} → ${d.planDate} (diff: ${diffDays.toFixed(0)} days)`);
+            correctedActualDate = d.planDate;
+            resetCount++;
+          }
+        }
+        
         // Recalculate KPI with new logic
         const kpi = (() => {
           if (isDelivered) {
-            // For delivered items, use standard KPI calculation
-            return calculateKpiStatus(d.planDate, d.actualDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
+            // For delivered items, use standard KPI calculation with corrected actualDate
+            return calculateKpiStatus(d.planDate, correctedActualDate || d.planDate, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
           }
           // For pending deliveries, use strict calculation (no grace period)
           const result = calculatePendingKpiStatus(d.planDate, todayStr, d.district, kpiConfigs, holidays, storeClosures, d.storeId, d.province);
@@ -209,6 +226,7 @@ const App: React.FC = () => {
         if (d.reasonStatus === ReasonStatus.SUBMITTED || d.reasonStatus === ReasonStatus.APPROVED) {
           return {
             ...d,
+            actualDate: correctedActualDate, // Update corrected actualDate
             kpiStatus: kpi.kpiStatus,
             delayDays: kpi.delayDays,
           };
@@ -216,6 +234,7 @@ const App: React.FC = () => {
 
         return {
           ...d,
+          actualDate: correctedActualDate, // Update corrected actualDate
           kpiStatus: kpi.kpiStatus,
           delayDays: kpi.delayDays,
           reasonRequired: kpi.reasonRequired,
@@ -234,12 +253,12 @@ const App: React.FC = () => {
 
       // No localStorage cache - use Firebase only
 
-      console.log(`[Recalculate KPI] Completed. Total FAIL: ${failCount}, Total records: ${recalculated.length}`);
+      console.log(`[Recalculate KPI] Completed. Total FAIL: ${failCount}, Reset actualDate: ${resetCount}, Total records: ${recalculated.length}`);
       return recalculated;
     });
   }, [kpiConfigs, holidays, storeClosures]);
 
-  // Load deliveries from Firebase only (no localStorage cache to avoid quota issues)
+  // Load deliveries from Firebase with realtime listener for cross-device sync
   useEffect(() => {
     const db = getRealtimeDb();
     if (!db) {
@@ -247,40 +266,34 @@ const App: React.FC = () => {
       return;
     }
     
-    get(ref(db, 'deliveries'))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          const firebaseRecords: DeliveryRecord[] = Object.values(snapshot.val());
-          console.log(`[Load] Firebase: ${firebaseRecords.length} records`);
-          
-          // Debug: ตรวจสอบว่า flag ถูกโหลดจาก Firebase หรือไม่
-          const withManualFlag = firebaseRecords.filter(d => d.manualPlanDate || d.manualActualDate);
-          console.log(`[Load] Records with manual flags: ${withManualFlag.length}`, withManualFlag.map(d => d.orderNo));
-          
-          // Debug: ดูข้อมูล KPI ที่โหลดมาจาก Firebase สำหรับ records ที่มี manual flag
-          withManualFlag.forEach(d => {
-            console.log(`[Load] Manual flag record ${d.orderNo}:`, {
-              kpiStatus: d.kpiStatus,
-              delayDays: d.delayDays,
-              actualDate: d.actualDate,
-              planDate: d.planDate,
-              manualActualDate: d.manualActualDate,
-              manualPlanDate: d.manualPlanDate
-            });
-          });
-          
-          setDeliveries(firebaseRecords);
-          syncWeeklyDeliveriesToReturnNeosiam(firebaseRecords, kpiConfigs);
-        } else {
-          console.log('[Load] No data in Firebase');
-        }
-        setDeliveriesLoaded(true);
-      })
-      .catch(e => {
-        console.warn('[Firebase] load deliveries error:', e);
-        setDeliveriesLoaded(true);
-      });
-  }, []);
+    const deliveriesRef = ref(db, 'deliveries');
+    
+    // Use onValue for realtime sync across devices
+    const unsubscribe = onValue(deliveriesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const firebaseRecords: DeliveryRecord[] = Object.values(snapshot.val());
+        console.log(`[Realtime Sync] Firebase: ${firebaseRecords.length} records`);
+        
+        // Debug: ตรวจสอบว่า flag ถูกโหลดจาก Firebase หรือไม่
+        const withManualFlag = firebaseRecords.filter(d => d.manualPlanDate || d.manualActualDate);
+        console.log(`[Realtime Sync] Records with manual flags: ${withManualFlag.length}`, withManualFlag.map(d => d.orderNo));
+        
+        setDeliveries(firebaseRecords);
+        syncWeeklyDeliveriesToReturnNeosiam(firebaseRecords, kpiConfigs);
+      } else {
+        console.log('[Realtime Sync] No data in Firebase');
+      }
+      setDeliveriesLoaded(true);
+    }, (error) => {
+      console.warn('[Firebase] realtime listener error:', error);
+      setDeliveriesLoaded(true);
+    });
+    
+    // Cleanup listener on unmount
+    return () => {
+      off(deliveriesRef);
+    };
+  }, [kpiConfigs]);
 
   // Load holidays from Firebase on mount (one-time get)
   useEffect(() => {
@@ -518,7 +531,7 @@ const App: React.FC = () => {
           />
         );
       case 'upload-history':
-        return <UploadHistory importLogs={importLogs} deliveries={deliveries} />;
+        return <UploadHistory importLogs={importLogs} deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'delivery-status':
         return <DeliveryTracker 
           deliveries={deliveries} 
@@ -587,6 +600,7 @@ const App: React.FC = () => {
       case 'document-import':
         return <DocumentImport 
           deliveries={deliveries}
+          kpiConfigs={kpiConfigs}
           onUpdateDeliveries={(updated) => {
             setDeliveries(updated);
             const db = getRealtimeDb();

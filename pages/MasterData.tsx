@@ -373,12 +373,36 @@ const KpiConfigTab: React.FC<{
   onDelete?: (id: string) => void;
 }> = ({ configs, isAdmin, editingItem, onEdit, onAdd, onSave, onCancel, onDelete }) => {
   const [editValues, setEditValues] = useState<KpiConfig | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   React.useEffect(() => {
     setEditValues(editingItem);
   }, [editingItem]);
 
   const draftCount = configs.filter(c => c.isDraft).length;
+
+  // Filter and sort by branch
+  const filteredAndSortedConfigs = useMemo(() => {
+    let result = configs;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = configs.filter(c =>
+        (c.branch || '').toLowerCase().includes(term) ||
+        (c.province || '').toLowerCase().includes(term) ||
+        (c.district || '').toLowerCase().includes(term)
+      );
+    }
+    // Sort by branch (alphabetically), then by province, then by district
+    return [...result].sort((a, b) => {
+      const branchA = (a.branch || '').toLowerCase();
+      const branchB = (b.branch || '').toLowerCase();
+      if (branchA !== branchB) return branchA.localeCompare(branchB, 'th');
+      const provA = (a.province || '').toLowerCase();
+      const provB = (b.province || '').toLowerCase();
+      if (provA !== provB) return provA.localeCompare(provB, 'th');
+      return (a.district || '').localeCompare(b.district || '', 'th');
+    });
+  }, [configs, searchTerm]);
 
   return (
     <div>
@@ -401,6 +425,32 @@ const KpiConfigTab: React.FC<{
         )}
       </div>
 
+      {/* Search Box */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <input
+            type="text"
+            placeholder="ค้นหาสาขา, จังหวัด, อำเภอ..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="ล้างการค้นหา"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          แสดง {filteredAndSortedConfigs.length} จาก {configs.length} รายการ (เรียงตามสาขา)
+        </p>
+      </div>
+
       {draftCount > 0 && (
         <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
           <i className="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
@@ -410,19 +460,19 @@ const KpiConfigTab: React.FC<{
           </div>
         </div>
       )}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-4 py-3 text-left font-bold text-gray-700">สาขา</th>
-              <th className="px-4 py-3 text-left font-bold text-gray-700">จังหวัด</th>
-              <th className="px-4 py-3 text-left font-bold text-gray-700">อำเภอ</th>
-              <th className="px-4 py-3 text-left font-bold text-gray-700">ส่งตรงเวลา (วัน)</th>
-              {isAdmin && <th className="px-4 py-3 text-center font-bold text-gray-700">ดำเนินการ</th>}
+              <th className="px-4 py-3 text-left font-bold text-gray-700 bg-gray-50">สาขา</th>
+              <th className="px-4 py-3 text-left font-bold text-gray-700 bg-gray-50">จังหวัด</th>
+              <th className="px-4 py-3 text-left font-bold text-gray-700 bg-gray-50">อำเภอ</th>
+              <th className="px-4 py-3 text-left font-bold text-gray-700 bg-gray-50">ส่งตรงเวลา (วัน)</th>
+              {isAdmin && <th className="px-4 py-3 text-center font-bold text-gray-700 bg-gray-50">ดำเนินการ</th>}
             </tr>
           </thead>
           <tbody>
-            {configs.map(config => (
+            {filteredAndSortedConfigs.map(config => (
               <tr key={config.id} className={`border-b border-gray-50 hover:bg-gray-50 ${config.isDraft ? 'bg-amber-50/60' : ''}`}>
                 <td className="px-4 py-3 text-gray-600">
                   {editValues?.id === config.id ? (

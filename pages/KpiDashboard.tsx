@@ -43,6 +43,9 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
   const [filterProvince, setFilterProvince] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
+  const [delayedPage, setDelayedPage] = useState(1);
+  const [delayedSearch, setDelayedSearch] = useState('');
+  const delayedPerPage = 50;
 
   const { start, end } = useMemo(() => {
     if (rangeMode === 'custom') return { start: customStart, end: customEnd };
@@ -98,7 +101,23 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
     return [...new Set(src.map(d => d.district).filter(Boolean))].sort();
   }, [deliveries, filterProvince]);
 
-  const topByOrder = useMemo(() => [...filtered].sort((a, b) => b.delayDays - a.delayDays).slice(0, 20), [filtered]);
+  const allDelayed = useMemo(() => {
+    let result = [...filtered].sort((a, b) => b.delayDays - a.delayDays);
+    if (delayedSearch) {
+      const searchLower = delayedSearch.toLowerCase();
+      result = result.filter(d => 
+        d.orderNo.toLowerCase().includes(searchLower) ||
+        (d.sender || '').toLowerCase().includes(searchLower) ||
+        d.storeId.toLowerCase().includes(searchLower)
+      );
+    }
+    return result;
+  }, [filtered, delayedSearch]);
+  const delayedTotalPages = Math.ceil(allDelayed.length / delayedPerPage);
+  const paginatedDelayed = useMemo(() => {
+    const startIdx = (delayedPage - 1) * delayedPerPage;
+    return allDelayed.slice(startIdx, startIdx + delayedPerPage);
+  }, [allDelayed, delayedPage]);
 
   const byDistrict = useMemo(() => {
     const map = new Map<string, { count: number; totalDelay: number }>();
@@ -340,33 +359,43 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
             </div>
           </div>
 
-          {/* Top 20 Table */}
+          {/* Delayed Table with Pagination */}
           <div className="glass-panel rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
-                <i className="fas fa-list-ol text-red-400"></i>
-                รายการล่าช้ามากที่สุด 20 อันดับแรก
-              </h3>
-              <span className="text-xs text-gray-400">ทั้งหมด {filtered.length.toLocaleString()} รายการ</span>
+            <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                  <i className="fas fa-list-ol text-red-400"></i>
+                  รายการล่าช้าทั้งหมด (เรียงจากล่าช้ามากที่สุด)
+                </h3>
+                <span className="text-xs text-gray-400">
+                  แสดง {allDelayed.length > 0 ? ((delayedPage - 1) * delayedPerPage) + 1 : 0}-{Math.min(delayedPage * delayedPerPage, allDelayed.length)} จาก {allDelayed.length.toLocaleString()} รายการ
+                </span>
+              </div>
+              {/* Search */}
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="ค้นหาด้วยเลขที่ใบสั่ง, ผู้ส่ง, หรือร้านค้า..." value={delayedSearch} onChange={e => { setDelayedSearch(e.target.value); setDelayedPage(1); }} className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white" />
+                {delayedSearch && <button onClick={() => { setDelayedSearch(''); setDelayedPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
+              </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50/60 text-xs text-gray-500 uppercase border-b border-gray-100">
+                <thead className="bg-gray-50/60 text-xs text-gray-500 uppercase border-b border-gray-100 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left">#</th>
-                    <th className="px-4 py-3 text-left">เลขที่ใบสั่ง</th>
-                    <th className="px-4 py-3 text-left">ผู้ส่ง</th>
-                    <th className="px-4 py-3 text-left">จังหวัด / อำเภอ</th>
-                    <th className="px-4 py-3 text-center">วันที่เปิดบิล</th>
-                    <th className="px-4 py-3 text-center">กำหนดส่ง</th>
-                    <th className="px-4 py-3 text-center">ส่งจริง</th>
-                    <th className="px-4 py-3 text-center">ล่าช้า</th>
+                    <th className="px-4 py-3 text-left bg-gray-50">#</th>
+                    <th className="px-4 py-3 text-left bg-gray-50">เลขที่ใบสั่ง</th>
+                    <th className="px-4 py-3 text-left bg-gray-50">ผู้ส่ง</th>
+                    <th className="px-4 py-3 text-left bg-gray-50">จังหวัด / อำเภอ</th>
+                    <th className="px-4 py-3 text-center bg-gray-50">วันที่เปิดบิล</th>
+                    <th className="px-4 py-3 text-center bg-gray-50">กำหนดส่ง</th>
+                    <th className="px-4 py-3 text-center bg-gray-50">ส่งจริง</th>
+                    <th className="px-4 py-3 text-center bg-gray-50">ล่าช้า</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topByOrder.map((d, i) => (
+                  {paginatedDelayed.map((d, i) => (
                     <tr key={d.orderNo} className="border-b border-gray-50 hover:bg-red-50/40 transition-colors">
-                      <td className="px-4 py-3 text-gray-300 font-bold text-xs">{i + 1}</td>
+                      <td className="px-4 py-3 text-gray-300 font-bold text-xs">{(delayedPage - 1) * delayedPerPage + i + 1}</td>
                       <td className="px-4 py-3 font-mono font-bold text-gray-800 text-xs">{d.orderNo}</td>
                       <td className="px-4 py-3 text-xs text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-4 py-3 text-xs text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
@@ -385,6 +414,63 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
                 </tbody>
               </table>
             </div>
+            {/* Pagination Controls */}
+            {delayedTotalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <button
+                  onClick={() => setDelayedPage(p => Math.max(1, p - 1))}
+                  disabled={delayedPage === 1}
+                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+                </button>
+                <div className="flex items-center gap-1">
+                  {[...Array(Math.min(5, delayedTotalPages))].map((_, idx) => {
+                    let pageNum: number;
+                    if (delayedTotalPages <= 5) {
+                      pageNum = idx + 1;
+                    } else if (delayedPage <= 3) {
+                      pageNum = idx + 1;
+                    } else if (delayedPage >= delayedTotalPages - 2) {
+                      pageNum = delayedTotalPages - 4 + idx;
+                    } else {
+                      pageNum = delayedPage - 2 + idx;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setDelayedPage(pageNum)}
+                        className={`w-8 h-8 text-sm rounded-lg ${
+                          delayedPage === pageNum
+                            ? 'bg-red-500 text-white font-bold'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  {delayedTotalPages > 5 && delayedPage < delayedTotalPages - 2 && (
+                    <>
+                      <span className="px-1 text-gray-400">...</span>
+                      <button
+                        onClick={() => setDelayedPage(delayedTotalPages)}
+                        className="w-8 h-8 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      >
+                        {delayedTotalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => setDelayedPage(p => Math.min(delayedTotalPages, p + 1))}
+                  disabled={delayedPage === delayedTotalPages}
+                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
