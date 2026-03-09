@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { ImportLog, DeliveryRecord, KpiStatus, KpiConfig } from '../types';
 import { displayDate } from '../utils/kpiEngine';
+import { formatNum } from '../utils/formatters';
 
 interface UploadHistoryProps {
   importLogs: ImportLog[];
@@ -303,7 +304,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
                         </tbody>
                       </table>
                       <div className="px-4 py-2 bg-gray-50/50 text-xs text-gray-400 text-right">
-                        แสดง {fileDeliveries.length.toLocaleString()} รายการ
+                        แสดง {formatNum(fileDeliveries.length)} รายการ
                       </div>
                     </div>
                   )}
@@ -370,7 +371,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
           <div className="glass-panel p-6 rounded-2xl border-2 border-indigo-200 bg-indigo-50/50 mt-8">
             <h3 className="text-base font-bold text-indigo-800 mb-4 flex items-center gap-2">
               <i className="fas fa-table text-indigo-600"></i>
-              📋 รายการ Import ทั้งหมด ({sortedDeliveries.length.toLocaleString()} รายการ)
+              📋 รายการ Import ทั้งหมด ({formatNum(sortedDeliveries.length)} รายการ)
             </h3>
             
             {/* Search and Filter */}
@@ -476,7 +477,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-indigo-200">
                 <span className="text-sm text-gray-600">
-                  แสดง {startIndex + 1}-{endIndex} จาก {sortedDeliveries.length.toLocaleString()} รายการ
+                  แสดง {formatNum(startIndex + 1)}-{formatNum(endIndex)} จาก {formatNum(sortedDeliveries.length)} รายการ
                 </span>
                 <div className="flex items-center gap-2">
                   <button

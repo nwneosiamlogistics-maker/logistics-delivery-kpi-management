@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DeliveryRecord, KpiStatus, KpiConfig } from '../types';
+import { formatNum } from '../utils/formatters';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
@@ -241,21 +242,22 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
             <i className="fas fa-times text-xs"></i> ล้างตัวกรอง
           </button>
         )}
-        <span className="ml-auto text-sm font-semibold text-gray-600">{filtered.length.toLocaleString()} รายการ</span>
+        <span className="ml-auto text-sm font-semibold text-gray-600">{formatNum(filtered.length)} รายการ</span>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { icon: 'fa-times-circle', color: 'text-red-500', bg: 'bg-red-50', label: 'KPI ไม่ผ่านทั้งหมด', value: filtered.length.toLocaleString(), sub: 'Inv.' },
+          { icon: 'fa-times-circle', color: 'text-red-500', bg: 'bg-red-50', label: 'KPI ไม่ผ่านทั้งหมด', value: formatNum(filtered.length), sub: 'Inv.' },
           { icon: 'fa-clock', color: 'text-orange-500', bg: 'bg-orange-50', label: 'ล่าช้าเฉลี่ย', value: avgDelay, sub: 'วัน / Inv.' },
           { icon: 'fa-exclamation-circle', color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'ล่าช้าสูงสุด', value: maxDelay.toString(), sub: 'วัน' },
-          { icon: 'fa-calendar-times', color: 'text-purple-500', bg: 'bg-purple-50', label: 'รวมวันที่ล่าช้า', value: totalDelay.toLocaleString(), sub: 'วัน' },
+          { icon: 'fa-calendar-times', color: 'text-purple-500', bg: 'bg-purple-50', label: 'รวมวันที่ล่าช้า', value: formatNum(totalDelay), sub: 'วัน' },
         ].map((c, i) => (
           <div key={i} className="glass-panel p-4 rounded-2xl flex items-center gap-4">
             <div className={`${c.bg} ${c.color} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
               <i className={`fas ${c.icon} text-xl`}></i>
             </div>
+// ...
             <div>
               <p className="text-xs text-gray-400">{c.label}</p>
               <p className="text-2xl font-bold text-gray-900">{c.value}</p>
@@ -368,7 +370,7 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
                   รายการล่าช้าทั้งหมด (เรียงจากล่าช้ามากที่สุด)
                 </h3>
                 <span className="text-xs text-gray-400">
-                  แสดง {allDelayed.length > 0 ? ((delayedPage - 1) * delayedPerPage) + 1 : 0}-{Math.min(delayedPage * delayedPerPage, allDelayed.length)} จาก {allDelayed.length.toLocaleString()} รายการ
+                  แสดง {allDelayed.length > 0 ? ((delayedPage - 1) * delayedPerPage) + 1 : 0}-{Math.min(delayedPage * delayedPerPage, allDelayed.length)} จาก {formatNum(allDelayed.length)} รายการ
                 </span>
               </div>
               {/* Search */}

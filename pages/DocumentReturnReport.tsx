@@ -1,5 +1,39 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { DeliveryRecord, KpiConfig } from '../types';
+import { formatQty } from '../utils/formatters';
+
+// Export to CSV function
+function exportToCSV(data: DeliveryRecord[], getBranch: (d: DeliveryRecord) => string, filename: string) {
+  const today = new Date();
+  const headers = ['เลขที่เอกสาร', 'ร้านค้า', 'ผู้ส่ง', 'สาขา', 'จังหวัด', 'อำเภอ', 'วันที่ส่งเสร็จ', 'ค้างมา (วัน)'];
+  const rows = data.map(d => {
+    const actualDate = d.actualDate ? new Date(d.actualDate + 'T00:00:00') : null;
+    const daysAgo = actualDate ? Math.floor((today.getTime() - actualDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    return [
+      d.orderNo,
+      d.storeId,
+      d.sender || '-',
+      getBranch(d),
+      d.province || '-',
+      d.district || '-',
+      d.actualDate || '-',
+      daysAgo.toString()
+    ];
+  });
+  
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 interface DocumentReturnReportProps {
   deliveries: DeliveryRecord[];
@@ -87,11 +121,12 @@ export const DocumentReturnReport: React.FC<DocumentReturnReportProps> = ({ deli
   // Stats
   const stats = useMemo(() => {
     const total = weekDeliveries.length;
-    const returned = weekReturnedDocs.length;
+    // นับจาก weekDeliveries ที่มี documentReturned = true (เฉพาะที่ส่งเสร็จแล้ว)
+    const returned = weekDeliveries.filter(d => d.documentReturned).length;
     const pending = total - returned;
     const percentage = total > 0 ? ((returned / total) * 100).toFixed(1) : '0.0';
     return { total, returned, pending, percentage };
-  }, [weekDeliveries, weekReturnedDocs]);
+  }, [weekDeliveries]);
 
   // Pending docs
   const pendingDocs = useMemo(() => {
@@ -294,7 +329,28 @@ export const DocumentReturnReport: React.FC<DocumentReturnReportProps> = ({ deli
               </div>
             </div>
             
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-between items-center mb-2">
+              <button 
+                onClick={() => {
+                  const headers = ['เลขที่เอกสาร', 'ร้านค้า', 'ผู้ส่ง', 'สาขา', 'จังหวัด', 'อำเภอ', 'วันที่ส่งเสร็จ', 'วันคืนเอกสาร', 'แหล่งข้อมูล'];
+                  const rows = filteredDocs.map(d => [
+                    d.orderNo, d.storeId, d.sender || '', getBranch(d), d.province || '', d.district,
+                    d.actualDate || '', d.documentReturnedDate || '', d.documentReturnSource === 'pdf' ? 'PDF' : 'พิมพ์เอง'
+                  ]);
+                  const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+                  const BOM = '\uFEFF';
+                  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `ส่งเอกสารคืนแล้ว_${new Date().toISOString().slice(0, 10)}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
+              >
+                <i className="fas fa-file-csv"></i> Export CSV
+              </button>
               <span className="text-xs text-gray-500">
                 แสดง {filteredDocs.length > 0 ? ((returnedPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(returnedPage * itemsPerPage, filteredDocs.length)} จาก {filteredDocs.length}
               </span>
@@ -314,6 +370,7 @@ export const DocumentReturnReport: React.FC<DocumentReturnReportProps> = ({ deli
                     <th className="px-3 py-2 text-left text-gray-600 bg-white">วันที่ส่งเสร็จ</th>
                     <th className="px-3 py-2 text-left text-gray-600 bg-white">วันคืนบิล</th>
                     <th className="px-3 py-2 text-left text-gray-600 bg-white">วันที่บันทึก</th>
+                    <th className="px-3 py-2 text-center text-gray-600 bg-white" title="แหล่งข้อมูล: 📄 = PDF, ⌨️ = พิมพ์เอง">แหล่ง</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -324,12 +381,15 @@ export const DocumentReturnReport: React.FC<DocumentReturnReportProps> = ({ deli
                     <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{getBranch(doc)}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.actualDate || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.documentReturnBillDate || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.documentReturnedDate || '-'}</td>
+                    <td className="px-3 py-2 text-center" title={doc.documentReturnSource === 'pdf' ? 'Import จาก PDF' : 'พิมพ์เลขที่เอง'}>
+                      {doc.documentReturnSource === 'pdf' ? '📄' : doc.documentReturnSource === 'manual' ? '⌨️' : '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -358,9 +418,17 @@ export const DocumentReturnReport: React.FC<DocumentReturnReportProps> = ({ deli
               <i className="fas fa-exclamation-triangle text-amber-500"></i>
               รายการค้างส่งเอกสาร ({pendingDocs.length} รายการ)
             </h3>
-            <span className="text-xs text-gray-500">
-              แสดง {((pendingPage - 1) * itemsPerPage) + 1}-{Math.min(pendingPage * itemsPerPage, pendingDocs.length)} จาก {pendingDocs.length}
-            </span>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => exportToCSV(pendingDocs, getBranch, 'รายการค้างส่งเอกสาร')}
+                className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
+              >
+                <i className="fas fa-file-csv"></i>Export CSV
+              </button>
+              <span className="text-xs text-gray-500">
+                แสดง {((pendingPage - 1) * itemsPerPage) + 1}-{Math.min(pendingPage * itemsPerPage, pendingDocs.length)} จาก {pendingDocs.length}
+              </span>
+            </div>
           </div>
           <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="w-full text-sm">

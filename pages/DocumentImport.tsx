@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { DeliveryRecord, KpiConfig } from '../types';
+import { formatQty } from '../utils/formatters';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -16,6 +17,19 @@ interface ExtractedDoc {
   selected: boolean;
   sourceFile?: string;
   sourceDate?: string;
+  // New fields for status check
+  isDelivered?: boolean;  // สถานะ "ส่งเสร็จ" หรือยัง
+  actualDate?: string;    // วันที่ส่งจริง
+  calculatedReturnDate?: string;  // วันคืนเอกสาร = actualDate + 1
+  deliveryStatus?: string; // สถานะปัจจุบัน
+  // Additional fields for display
+  storeId?: string;
+  sender?: string;
+  province?: string;
+  district?: string;
+  qty?: number;
+  openDate?: string;
+  planDate?: string;
 }
 
 interface FileInfo {
@@ -99,7 +113,7 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
     
     const allExtracted: ExtractedDoc[] = [];
     const fileInfos: FileInfo[] = [];
-    const deliveryOrderNos = new Set(deliveries.map(d => d.orderNo));
+    const deliveryMap = new Map(deliveries.map(d => [d.orderNo, d]));
     const seenOrderNos = new Set<string>();
     let latestDate: string | null = null;
     
@@ -119,7 +133,7 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
           if (i === 1 && !extractedDate) {
             extractedDate = parsePdfDate(text);
           }
-          const matches = text.match(/B\d{10}/g);
+          const matches = text.match(/\*?B\d{10}(\/\d+)?/g);
           if (matches) orderNos.push(...matches);
         }
         
@@ -142,12 +156,41 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
         for (const orderNo of uniqueFileOrderNos) {
           if (!seenOrderNos.has(orderNo)) {
             seenOrderNos.add(orderNo);
+            const delivery = deliveryMap.get(orderNo);
+            const found = !!delivery;
+            const isDelivered = delivery?.deliveryStatus === 'ส่งเสร็จ';
+            const actualDate = delivery?.actualDate || '';
+            
+            // คำนวณวันคืนเอกสาร = วันที่จาก PDF (ถ้ามี) หรือ actualDate + 1 วัน
+            let calculatedReturnDate = '';
+            if (isDelivered) {
+              // PDF เป็นหลัก - ใช้วันที่จาก PDF ถ้ามี
+              if (extractedDate) {
+                calculatedReturnDate = extractedDate;
+              } else if (actualDate) {
+                const d = new Date(actualDate);
+                d.setDate(d.getDate() + 1);
+                calculatedReturnDate = d.toISOString().slice(0, 10);
+              }
+            }
+            
             allExtracted.push({
               orderNo,
-              found: deliveryOrderNos.has(orderNo),
-              selected: deliveryOrderNos.has(orderNo),
+              found,
+              selected: isDelivered, // เลือกเฉพาะที่ส่งเสร็จแล้ว
               sourceFile: file.name,
-              sourceDate: extractedDate || undefined
+              sourceDate: extractedDate || undefined,
+              isDelivered,
+              actualDate,
+              calculatedReturnDate,
+              deliveryStatus: delivery?.deliveryStatus || 'ไม่พบ',
+              storeId: delivery?.storeId || '-',
+              sender: delivery?.sender || '-',
+              province: delivery?.province || '-',
+              district: delivery?.district || '-',
+              qty: delivery?.qty || 0,
+              openDate: delivery?.openDate || '-',
+              planDate: delivery?.planDate || '-'
             });
           }
         }
@@ -168,22 +211,54 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
 
   const handleManualAdd = useCallback(() => {
     const lines = manualInput.split(/[\n,\s]+/).map(s => s.trim()).filter(s => s);
-    const orderNos = lines.filter(s => /^B\d{10}$/.test(s));
+    // รองรับรูปแบบ: *B0926128689, B0926128689, *B0926128689/1, B0926128689/1
+    const orderNos = lines.filter(s => /^\*?B\d{10}(\/\d+)?$/.test(s));
     if (orderNos.length === 0) {
-      alert('ไม่พบเลขที่เอกสารที่ถูกต้อง (รูปแบบ: B + ตัวเลข 10 หลัก)');
+      alert('ไม่พบเลขที่เอกสารที่ถูกต้อง (รูปแบบ: B หรือ *B + ตัวเลข 10 หลัก)');
       return;
     }
-    const deliveryOrderNos = new Set(deliveries.map(d => d.orderNo));
+    
+    // สร้าง map สำหรับค้นหา delivery
+    const deliveryMap = new Map(deliveries.map(d => [d.orderNo, d]));
+    
     const newDocs: ExtractedDoc[] = orderNos
       .filter(orderNo => !extractedDocs.some(d => d.orderNo === orderNo))
-      .map(orderNo => ({
-        orderNo,
-        found: deliveryOrderNos.has(orderNo),
-        selected: deliveryOrderNos.has(orderNo)
-      }));
+      .map(orderNo => {
+        const delivery = deliveryMap.get(orderNo);
+        const found = !!delivery;
+        const isDelivered = delivery?.deliveryStatus === 'ส่งเสร็จ';
+        const actualDate = delivery?.actualDate || '';
+        
+        // คำนวณวันคืนเอกสาร = actualDate + 1 วัน
+        let calculatedReturnDate = '';
+        if (isDelivered && actualDate) {
+          const d = new Date(actualDate);
+          d.setDate(d.getDate() + 1);
+          calculatedReturnDate = d.toISOString().slice(0, 10);
+        }
+        
+        return {
+          orderNo,
+          found,
+          selected: isDelivered, // เลือกเฉพาะที่ส่งเสร็จแล้ว
+          isDelivered,
+          actualDate,
+          calculatedReturnDate,
+          deliveryStatus: delivery?.deliveryStatus || 'ไม่พบ',
+          // Additional fields for display
+          storeId: delivery?.storeId || '-',
+          sender: delivery?.sender || '-',
+          province: delivery?.province || '-',
+          district: delivery?.district || '-',
+          qty: delivery?.qty || 0,
+          openDate: delivery?.openDate || '-',
+          planDate: delivery?.planDate || '-'
+        };
+      });
+    
     setExtractedDocs(prev => [...prev, ...newDocs]);
     setManualInput('');
-    setShowManualInput(false);
+    // ไม่ปิด panel เพื่อให้เห็นผลลัพธ์
   }, [manualInput, deliveries, extractedDocs]);
 
   const toggleSelection = useCallback((orderNo: string) => {
@@ -193,28 +268,55 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
   }, []);
 
   const handleConfirmImport = useCallback(() => {
-    const selectedOrderNos = extractedDocs.filter(d => d.selected && d.found).map(d => d.orderNo);
-    if (selectedOrderNos.length === 0) {
-      alert('กรุณาเลือกรายการที่ต้องการบันทึก');
+    // กรอง เฉพาะที่เลือก + ส่งเสร็จแล้ว
+    const selectedDocs = extractedDocs.filter(d => d.selected && d.isDelivered);
+    if (selectedDocs.length === 0) {
+      alert('กรุณาเลือกรายการที่ส่งเสร็จแล้วเท่านั้น');
       return;
     }
-    // วันคืนบิล = จาก PDF หรือ manual input
-    const billReturnDate = manualReturnDate || new Date().toISOString().slice(0, 10);
+    
+    // สร้าง map ของ orderNo → { returnDate, source }
+    const returnInfoMap = new Map(selectedDocs.map(d => [d.orderNo, {
+      returnDate: d.calculatedReturnDate || '',
+      source: d.sourceFile ? 'pdf' as const : 'manual' as const  // ถ้ามี sourceFile = มาจาก PDF
+    }]));
+    
     // วันที่บันทึก = วันนี้
     const today = new Date().toISOString().slice(0, 10);
     const updatedDeliveries = deliveries.map(d => {
-      if (selectedOrderNos.includes(d.orderNo)) {
+      const info = returnInfoMap.get(d.orderNo);
+      if (info) {
+        const isPdf = info.source === 'pdf';
+        // ถ้าเป็น PDF → เขียนทับเสมอ
+        // ถ้าเป็น manual และข้อมูลเดิมมาจาก PDF → ไม่เขียนทับ (PDF เป็นหลัก)
+        if (!isPdf && d.documentReturnSource === 'pdf') {
+          // ไม่เขียนทับ - ข้อมูลเดิมมาจาก PDF
+          return d;
+        }
+        
+        // วันคืนบิล = วันที่จาก PDF หรือ actualDate + 1 วัน (หรือ manual override)
+        const billReturnDate = manualReturnDate || info.returnDate || today;
         return { 
           ...d, 
           documentReturned: true, 
           documentReturnedDate: today,
-          documentReturnBillDate: billReturnDate
+          documentReturnBillDate: billReturnDate,
+          documentReturnSource: info.source  // บันทึกแหล่งข้อมูล
         };
       }
       return d;
     });
+    
+    const pdfCount = selectedDocs.filter(d => d.sourceFile).length;
+    const manualCount = selectedDocs.length - pdfCount;
+    const skippedCount = selectedDocs.filter(d => !d.sourceFile && deliveries.find(del => del.orderNo === d.orderNo)?.documentReturnSource === 'pdf').length;
+    
     onUpdateDeliveries(updatedDeliveries);
-    setImportSuccess(`บันทึกสำเร็จ ${selectedOrderNos.length} รายการ (วันคืนบิล: ${billReturnDate})`);
+    let msg = `บันทึกสำเร็จ ${selectedDocs.length - skippedCount} รายการ`;
+    if (pdfCount > 0) msg += ` (📄 PDF: ${pdfCount})`;
+    if (manualCount - skippedCount > 0) msg += ` (⌨️ พิมพ์เอง: ${manualCount - skippedCount})`;
+    if (skippedCount > 0) msg += ` (ข้าม ${skippedCount} รายการที่เคย Import PDF ไปแล้ว)`;
+    setImportSuccess(msg);
     setExtractedDocs([]);
     setPdfReturnDate(null);
     setManualReturnDate('');
@@ -321,7 +423,11 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-700">
                 พบ {extractedDocs.length} รายการ 
-                <span className="text-sm text-gray-500 ml-2">(ในระบบ: {extractedDocs.filter(d => d.found).length}, ไม่พบ: {extractedDocs.filter(d => !d.found).length})</span>
+                <span className="text-sm text-gray-500 ml-2">
+                  (✅ ส่งเสร็จ: {extractedDocs.filter(d => d.isDelivered).length}, 
+                  ⏳ ยังไม่ส่ง: {extractedDocs.filter(d => d.found && !d.isDelivered).length}, 
+                  ❌ ไม่พบ: {extractedDocs.filter(d => !d.found).length})
+                </span>
               </h4>
               <button onClick={() => { setExtractedDocs([]); setPdfReturnDate(null); setManualReturnDate(''); }} className="text-sm text-red-500 hover:text-red-600"><i className="fas fa-times mr-1"></i>ล้างทั้งหมด</button>
             </div>
@@ -329,29 +435,61 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th className="px-3 py-2 text-left w-10">
-                      <input type="checkbox" aria-label="เลือกทั้งหมด" checked={extractedDocs.filter(d => d.found).every(d => d.selected)} onChange={e => setExtractedDocs(prev => prev.map(d => d.found ? { ...d, selected: e.target.checked } : d))} className="rounded border-gray-300 text-teal-500 focus:ring-teal-500" />
+                    <th className="px-2 py-2 text-left w-8">
+                      <input type="checkbox" aria-label="เลือกทั้งหมด" checked={extractedDocs.filter(d => d.isDelivered).every(d => d.selected)} onChange={e => setExtractedDocs(prev => prev.map(d => d.isDelivered ? { ...d, selected: e.target.checked } : d))} className="rounded border-gray-300 text-teal-500 focus:ring-teal-500" />
                     </th>
-                    <th className="px-3 py-2 text-left">เลขที่เอกสาร</th>
-                    <th className="px-3 py-2 text-left">สถานะ</th>
-                    <th className="px-3 py-2 text-center w-10"></th>
+                    <th className="px-2 py-2 text-left text-xs">เลขที่เอกสาร</th>
+                    <th className="px-2 py-2 text-left text-xs">ร้านค้า</th>
+                    <th className="px-2 py-2 text-left text-xs">ผู้ส่ง</th>
+                    <th className="px-2 py-2 text-left text-xs">สาขา</th>
+                    <th className="px-2 py-2 text-left text-xs">จังหวัด/อำเภอ</th>
+                    <th className="px-2 py-2 text-center text-xs">จำนวน</th>
+                    <th className="px-2 py-2 text-left text-xs">วันเปิดบิล</th>
+                    <th className="px-2 py-2 text-left text-xs">กำหนดส่ง</th>
+                    <th className="px-2 py-2 text-left text-xs">ส่งเสร็จ</th>
+                    <th className="px-2 py-2 text-left text-xs">วันคืนเอกสาร</th>
+                    <th className="px-2 py-2 text-left text-xs">สถานะ</th>
+                    <th className="px-2 py-2 text-center w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {extractedDocs.map(doc => (
-                    <tr key={doc.orderNo} className={`border-t ${!doc.found ? 'bg-red-50' : ''}`}>
-                      <td className="px-3 py-2"><input type="checkbox" aria-label={`เลือก ${doc.orderNo}`} checked={doc.selected} onChange={() => toggleSelection(doc.orderNo)} disabled={!doc.found} className="rounded border-gray-300 text-teal-500 focus:ring-teal-500 disabled:opacity-30" /></td>
-                      <td className="px-3 py-2 font-mono">{doc.orderNo}</td>
-                      <td className="px-3 py-2">{doc.found ? <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">✓ พบในระบบ</span> : <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">✗ ไม่พบในระบบ</span>}</td>
-                      <td className="px-3 py-2 text-center"><button onClick={() => removeExtracted(doc.orderNo)} className="text-gray-400 hover:text-red-500" aria-label={`ลบ ${doc.orderNo}`}><i className="fas fa-times"></i></button></td>
+                    <tr key={doc.orderNo} className={`border-t ${!doc.found ? 'bg-red-50' : !doc.isDelivered ? 'bg-amber-50' : ''}`}>
+                      <td className="px-2 py-2"><input type="checkbox" aria-label={`เลือก ${doc.orderNo}`} checked={doc.selected} onChange={() => toggleSelection(doc.orderNo)} disabled={!doc.isDelivered} className="rounded border-gray-300 text-teal-500 focus:ring-teal-500 disabled:opacity-30" /></td>
+                      <td className="px-2 py-2 font-mono text-xs">{doc.orderNo}</td>
+                      <td className="px-2 py-2 text-xs text-gray-600">{doc.storeId || '-'}</td>
+                      <td className="px-2 py-2 text-xs text-gray-600 max-w-[120px] truncate" title={doc.sender}>{doc.sender || '-'}</td>
+                      <td className="px-2 py-2 text-xs text-gray-600">{doc.found ? getBranch({ district: doc.district || '', province: doc.province || '' } as DeliveryRecord) : '-'}</td>
+                      <td className="px-2 py-2 text-xs text-gray-600">{doc.province || '-'} / {doc.district || '-'}</td>
+                      <td className="px-2 py-2 text-xs text-center text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
+                      <td className="px-2 py-2 font-mono text-xs text-gray-500">{doc.openDate || '-'}</td>
+                      <td className="px-2 py-2 font-mono text-xs text-gray-500">{doc.planDate || '-'}</td>
+                      <td className="px-2 py-2 font-mono text-xs text-gray-600">{doc.actualDate || '-'}</td>
+                      <td className="px-2 py-2 font-mono text-xs">
+                        {doc.calculatedReturnDate ? (
+                          <span className="text-teal-700 font-medium">{doc.calculatedReturnDate}</span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        {!doc.found ? (
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">❌</span>
+                        ) : doc.isDelivered ? (
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">✅</span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">⏳</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-center"><button onClick={() => removeExtracted(doc.orderNo)} className="text-gray-400 hover:text-red-500" aria-label={`ลบ ${doc.orderNo}`}><i className="fas fa-times"></i></button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div className="mt-4 flex justify-end">
-              <button onClick={handleConfirmImport} disabled={!extractedDocs.some(d => d.selected && d.found)} className="px-6 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                <i className="fas fa-check"></i>ยืนยัน Import ({extractedDocs.filter(d => d.selected && d.found).length} รายการ)
+              <button onClick={handleConfirmImport} disabled={!extractedDocs.some(d => d.selected && d.isDelivered)} className="px-6 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                <i className="fas fa-check"></i>ยืนยัน Import ({extractedDocs.filter(d => d.selected && d.isDelivered).length} รายการที่ส่งเสร็จ)
               </button>
             </div>
           </div>
@@ -436,7 +574,7 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
                       <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{getBranch(doc)}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.actualDate || '-'}</td>

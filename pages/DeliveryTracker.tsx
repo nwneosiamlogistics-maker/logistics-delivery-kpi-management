@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { DeliveryRecord, KpiConfig, Holiday, StoreClosure, KpiStatus, ReasonStatus } from '../types';
 import { displayDate, calculateKpiStatus, getWeekday } from '../utils/kpiEngine';
+import { formatQty } from '../utils/formatters';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -635,6 +636,27 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
               )}
             </div>
             <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => {
+                  const headers = ['เลขที่ใบส่ง', 'ผู้ส่ง', 'ร้านค้า', 'จังหวัด', 'อำเภอ', 'จำนวน', 'วันเปิดบิล', 'วันนัดส่ง', 'ส่งจริง', 'สถานะ', 'KPI'];
+                  const rows = tabRecords.map(d => [
+                    d.orderNo, d.sender || '', d.storeId, d.province || '', d.district, d.qty, 
+                    d.openDate || '', d.planDate, d.actualDate || '', d.deliveryStatus, d.kpiStatus || ''
+                  ]);
+                  const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+                  const BOM = '\uFEFF';
+                  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `รายการจัดส่ง_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
+              >
+                <i className="fas fa-file-csv"></i> Export CSV
+              </button>
               {branches.length > 0 && (
                 <select
                   value={filterBranch}
@@ -727,7 +749,7 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded font-bold text-xs">
-                            {d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}
+                            {formatQty(d.qty)}
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-gray-400 text-xs">{d.openDate || <span className="text-gray-300">-</span>}</td>

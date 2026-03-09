@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DeliveryRecord, DeliveryStatus, KpiStatus, KpiConfig, StoreMapping } from '../types';
+import { formatQty, formatNum } from '../utils/formatters';
 
 interface WeeklyReportProps {
   deliveries: DeliveryRecord[];
@@ -38,6 +39,25 @@ function parseLocalDate(dateStr: string): Date | null {
 
 function daysBetween(a: Date, b: Date): number {
   return Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Export to CSV function
+function exportToCSV(data: DeliveryRecord[], columns: { key: keyof DeliveryRecord | string; header: string; format?: (d: DeliveryRecord) => string }[], filename: string) {
+  const headers = columns.map(c => c.header);
+  const rows = data.map(d => columns.map(c => {
+    if (c.format) return c.format(d);
+    const val = d[c.key as keyof DeliveryRecord];
+    return val !== undefined && val !== null ? String(val) : '';
+  }));
+  const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export const WeeklyReport: React.FC<WeeklyReportProps> = ({ 
@@ -215,21 +235,30 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     return Array.from(unmapped.entries()).sort((a, b) => b[1].count - a[1].count);
   }, [deliveries, districtBranchMap, start, end]);
 
-  // Get all unique provinces from kpiConfigs
+  // Get all unique provinces from kpiConfigs + deliveries (รวมจังหวัดที่ยังไม่มี KPI Config)
   const allProvinces = useMemo(() => {
-    return kpiConfigs
-      .filter(c => c.province)
-      .map(c => c.province)
-      .filter((p, i, arr) => arr.indexOf(p) === i)
+    const fromKpi = kpiConfigs.filter(c => c.province).map(c => c.province);
+    const fromDeliveries = deliveries.filter(d => d.province).map(d => d.province);
+    return [...fromKpi, ...fromDeliveries]
+      .filter((p, i, arr) => p && arr.indexOf(p) === i)
       .sort();
-  }, [kpiConfigs]);
+  }, [kpiConfigs, deliveries]);
 
-  // Get available districts for a province from kpiConfigs
+  // Get available districts for a province from kpiConfigs + deliveries
   const getDistrictsForProvince = (province: string) => {
-    return kpiConfigs
+    const fromKpi = kpiConfigs
       .filter(c => c.province === province && c.district)
-      .map(c => c.district)
-      .filter((d, i, arr) => arr.indexOf(d) === i);
+      .map(c => c.district);
+    const fromDeliveries = deliveries
+      .filter(d => d.province === province && d.district)
+      .map(d => d.district);
+    const districts = [...fromKpi, ...fromDeliveries]
+      .filter((d, i, arr) => d && arr.indexOf(d) === i);
+    // ถ้าไม่มี district → เพิ่ม "เมือง" เป็น default
+    if (districts.length === 0 && province) {
+      return ['เมือง'];
+    }
+    return districts;
   };
 
   // Handle save district fix
@@ -256,11 +285,13 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     });
     onUpdateDeliveries(updatedDeliveries);
 
-    // If remember store is checked, add store mappings
-    if (rememberStore[displayKey] && onAddStoreMapping && finalDistrict) {
+    // If remember store is checked (default true), add store mappings
+    if (rememberStore[displayKey] !== false && onAddStoreMapping && finalDistrict) {
       data.storeIds.forEach(storeId => {
+        const trimmedStoreId = storeId.trim();
+        if (!trimmedStoreId) return;
         onAddStoreMapping({
-          storeId,
+          storeId: trimmedStoreId,
           district: finalDistrict,
           province: finalProvince,
           createdAt: new Date().toISOString().slice(0, 10)
@@ -317,8 +348,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
             {label}
           </span>
         </td>
-        <td className="px-4 py-3 text-center font-bold text-gray-800">{invCount.toLocaleString()}</td>
-        <td className="px-4 py-3 text-center text-gray-500">{qtySum % 1 === 0 ? qtySum.toLocaleString() : qtySum.toFixed(2)}</td>
+        <td className="px-4 py-3 text-center font-bold text-gray-800">{formatNum(invCount)}</td>
+        <td className="px-4 py-3 text-center text-gray-500">{formatQty(qtySum)}</td>
         <td className="px-4 py-3 text-center">
           <span className="font-bold text-gray-700">{pctVal}%</span>
           <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1 overflow-hidden">
@@ -382,27 +413,56 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCard('fa-file-invoice', 'text-indigo-600', 'bg-indigo-50', 'จำนวน Inv. ทั้งหมด', totalInv.toLocaleString(), `${totalQty % 1 === 0 ? totalQty.toLocaleString() : totalQty.toFixed(2)} ชิ้น/กล่อง`)}
-        {statCard('fa-check-circle', 'text-green-600', 'bg-green-50', 'ส่งเสร็จ (POD)', podDone.toLocaleString(), `${pct(podDone, totalInv)}% ของทั้งหมด`)}
-        {statCard('fa-clock', 'text-orange-600', 'bg-orange-50', 'POD ยังค้าง', podPendingCount.toLocaleString(), `${podPendingPct}% ของทั้งหมด`)}
+        {statCard('fa-file-invoice', 'text-indigo-600', 'bg-indigo-50', 'จำนวน Inv. ทั้งหมด', formatNum(totalInv), `${formatQty(totalQty)} ชิ้น/กล่อง`)}
+        {statCard('fa-check-circle', 'text-green-600', 'bg-green-50', 'ส่งเสร็จ', formatNum(podDone), `${pct(podDone, totalInv)}% ของทั้งหมด`)}
+        {statCard('fa-clock', 'text-orange-600', 'bg-orange-50', 'รอจัดส่ง', formatNum(podPendingCount), `${podPendingPct}% ของทั้งหมด`)}
         {statCard('fa-trophy', 'text-blue-600', 'bg-blue-50', 'KPI ผ่าน', `${pct(kpiPass, kpiTotal)}%`, `ผ่าน ${kpiPass} / ไม่ผ่าน ${kpiFail} (จาก ${kpiTotal} Inv.)`)}
       </div>
 
       {/* Branch Summary Table */}
       {branchSummary.length > 1 && (
         <div className="glass-panel p-6 rounded-2xl">
-          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <i className="fas fa-code-branch text-indigo-500"></i>
-            สรุปแยกตามสาขา
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
+              <i className="fas fa-code-branch text-indigo-500"></i>
+              สรุปแยกตามสาขา
+            </h3>
+            <button 
+              onClick={() => {
+                const csvData = branchSummary.map(([branch, data]) => ({
+                  สาขา: branch,
+                  'Inv ทั้งหมด': data.total,
+                  'ส่งเสร็จ': data.delivered,
+                  'รอจัดส่ง': data.pending,
+                  'KPI ผ่าน': data.kpiPass,
+                  'KPI ไม่ผ่าน': data.kpiTotal - data.kpiPass,
+                  'KPI %': data.kpiTotal > 0 ? ((data.kpiPass / data.kpiTotal) * 100).toFixed(1) : '0'
+                }));
+                const headers = Object.keys(csvData[0] || {});
+                const rows = csvData.map(row => headers.map(h => row[h as keyof typeof row]));
+                const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+                const BOM = '\uFEFF';
+                const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `สรุปรายสาขา_${new Date().toISOString().slice(0, 10)}.csv`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
+            >
+              <i className="fas fa-file-csv"></i> Export CSV
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">สาขา</th>
                   <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Inv. ทั้งหมด</th>
-                  <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">ส่งเสร็จ (POD)</th>
-                  <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">POD ยังค้าง</th>
+                  <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">ส่งเสร็จ</th>
+                  <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">รอจัดส่ง</th>
                   <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">KPI ผ่าน</th>
                 </tr>
               </thead>
@@ -412,13 +472,13 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                   return (
                     <tr key={branch} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-800">{branch}</td>
-                      <td className="px-4 py-3 text-center font-bold text-indigo-600">{data.total.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center font-bold text-indigo-600">{formatNum(data.total)}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-bold text-green-600">{data.delivered.toLocaleString()}</span>
+                        <span className="font-bold text-green-600">{formatNum(data.delivered)}</span>
                         <span className="text-gray-400 text-xs ml-1">({pct(data.delivered, data.total)}%)</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-bold text-orange-600">{data.pending.toLocaleString()}</span>
+                        <span className="font-bold text-orange-600">{formatNum(data.pending)}</span>
                         <span className="text-gray-400 text-xs ml-1">({pct(data.pending, data.total)}%)</span>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -433,9 +493,9 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
               <tfoot>
                 <tr className="border-t-2 border-gray-200 bg-gray-50">
                   <td className="px-4 py-3 font-bold text-gray-700">รวมทั้งหมด</td>
-                  <td className="px-4 py-3 text-center font-bold text-indigo-700">{branchSummary.reduce((s, [_, d]) => s + d.total, 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center font-bold text-green-700">{branchSummary.reduce((s, [_, d]) => s + d.delivered, 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center font-bold text-orange-700">{branchSummary.reduce((s, [_, d]) => s + d.pending, 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center font-bold text-indigo-700">{formatNum(branchSummary.reduce((s, [_, d]) => s + d.total, 0))}</td>
+                  <td className="px-4 py-3 text-center font-bold text-green-700">{formatNum(branchSummary.reduce((s, [_, d]) => s + d.delivered, 0))}</td>
+                  <td className="px-4 py-3 text-center font-bold text-orange-700">{formatNum(branchSummary.reduce((s, [_, d]) => s + d.pending, 0))}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${parseFloat(pct(kpiPass, kpiTotal)) >= 98 ? 'bg-green-100 text-green-700' : parseFloat(pct(kpiPass, kpiTotal)) >= 90 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                       {pct(kpiPass, kpiTotal)}%
@@ -500,8 +560,11 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                               aria-label="เลือกจังหวัด"
                               value={selectedProvinces[displayKey] || ''}
                               onChange={e => {
-                                setSelectedProvinces(prev => ({ ...prev, [displayKey]: e.target.value }));
-                                setSelectedDistricts(prev => ({ ...prev, [displayKey]: '' })); // Reset district when province changes
+                                const newProvince = e.target.value;
+                                setSelectedProvinces(prev => ({ ...prev, [displayKey]: newProvince }));
+                                // Auto-select first district (usually "เมือง") when province changes
+                                const districts = getDistrictsForProvince(newProvince);
+                                setSelectedDistricts(prev => ({ ...prev, [displayKey]: districts[0] || '' }));
                               }}
                               className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 outline-none"
                             >
@@ -534,7 +597,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                             <label className="flex items-center gap-2 mt-2 text-xs text-gray-600 cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={rememberStore[displayKey] || false}
+                                checked={rememberStore[displayKey] !== false}
                                 onChange={e => setRememberStore(prev => ({ ...prev, [displayKey]: e.target.checked }))}
                                 className="rounded border-gray-300 text-amber-500 focus:ring-amber-500"
                               />
@@ -577,9 +640,9 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
             <tfoot>
               <tr className="border-t-2 border-gray-200 bg-gray-50">
                 <td className="px-4 py-3 font-bold text-gray-700 text-xs">รวมทั้งหมด</td>
-                <td className="px-4 py-3 text-center font-bold text-gray-800">{deliveredThisWeek.length.toLocaleString()}</td>
+                <td className="px-4 py-3 text-center font-bold text-gray-800">{formatNum(deliveredThisWeek.length)}</td>
                 <td className="px-4 py-3 text-center font-bold text-gray-800">
-                  {deliveredThisWeek.reduce((s, d) => s + d.qty, 0).toFixed(2)}
+                  {formatQty(deliveredThisWeek.reduce((s, d) => s + d.qty, 0))}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`font-bold ${parseFloat(pct(on1Day.length + on2Days.length, deliveredThisWeek.length)) >= 90 ? 'text-green-600' : 'text-red-600'}`}>
@@ -598,7 +661,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
           <div>
             <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
               <i className="fas fa-file-signature text-orange-500"></i>
-              POD ยังค้าง — ยังไม่ได้รับเอกสารคืน
+              รอจัดส่ง — ยังไม่ได้ส่งสินค้า
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">รายการที่ยังไม่ได้สถานะ ส่งเสร็จ ในสัปดาห์นี้</p>
           </div>
@@ -656,7 +719,23 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                 </div>
               </div>
               
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-between items-center mb-2">
+                <button 
+                  onClick={() => exportToCSV(filteredPod, [
+                    { key: 'orderNo', header: 'เลขที่ใบส่ง' },
+                    { key: 'sender', header: 'ผู้ส่ง' },
+                    { key: 'storeId', header: 'ร้านค้า' },
+                    { key: 'province', header: 'จังหวัด' },
+                    { key: 'district', header: 'อำเภอ' },
+                    { key: 'qty', header: 'จำนวน' },
+                    { key: 'openDate', header: 'วันที่เปิดบิล' },
+                    { key: 'planDate', header: 'กำหนดส่ง' },
+                    { key: 'deliveryStatus', header: 'สถานะ' }
+                  ], 'POD_ยังค้าง')}
+                  className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1"
+                >
+                  <i className="fas fa-file-csv"></i> Export CSV
+                </button>
                 <span className="text-xs text-gray-500">
                   แสดง {filteredPod.length > 0 ? ((podPendingPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(podPendingPage * itemsPerPage, filteredPod.length)} จาก {filteredPod.length}
                 </span>
@@ -680,7 +759,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
                       <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
-                      <td className="px-3 py-2 text-center text-gray-700">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-center text-gray-700">{formatQty(d.qty)}</td>
                       <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
                       <td className="px-3 py-2 text-center">
@@ -742,7 +821,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
               <i className="fas fa-exclamation-triangle text-red-500"></i>
               รายการส่งช้าเกิน 2 วัน ({filteredOver2.length} Inv.)
             </h3>
-            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {filteredOver2.reduce((s, d) => s + d.qty, 0).toFixed(2)} ชิ้น/กล่อง</p>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOver2.reduce((s, d) => s + d.qty, 0))} ชิ้น/กล่อง</p>
             
             {/* Filters */}
             <div className="mb-4 space-y-3">
@@ -792,7 +871,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
                       <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
-                      <td className="px-3 py-2 text-center">{d.qty % 1 === 0 ? d.qty : d.qty.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-center">{formatQty(d.qty)}</td>
                       <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
                       <td className="px-3 py-2 text-center">

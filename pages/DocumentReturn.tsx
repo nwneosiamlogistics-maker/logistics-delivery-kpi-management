@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { DeliveryRecord } from '../types';
+import { formatQty } from '../utils/formatters';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -282,7 +283,7 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
                     <td className="px-3 py-2 text-gray-600">{doc.storeId}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
                     <td className="px-3 py-2 text-gray-600">{doc.actualDate || '-'}</td>
@@ -498,7 +499,7 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
                       <td className="px-3 py-2 text-gray-600">{doc.storeId}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.documentReturnedDate || '-'}</td>

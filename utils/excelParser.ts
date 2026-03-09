@@ -394,7 +394,9 @@ export function processImport(
     // - รายละเอียด → actualDatetime (timestamp ส่งเสร็จ)
     // For KPI: only calculate when ส่งเสร็จ, use actualDate/actualDatetime directly
     // For รอจัด/ขนส่ง: not delivered yet, skip KPI
-    const resolvedActualDate = row.actualDate || row.planDate;
+    // ถ้าสถานะ "ส่งเสร็จ" และมี actualDatetime → ใช้ actualDatetime เป็น actualDate
+    const parsedActualDatetime = row.actualDatetime ? parseDate(row.actualDatetime) : null;
+    const resolvedActualDate = row.actualDate || (isDelivered && parsedActualDatetime) || row.planDate;
 
     if (!resolvedActualDate) {
       result.errors.push({ row: index + 2, error: 'ไม่พบวันที่ส่งจริง', data: row });
@@ -402,8 +404,8 @@ export function processImport(
     }
 
     // For ส่งเสร็จ: use actualDatetime (รายละเอียด) as the KPI delivery date if available
-    const kpiActualDate = (isDelivered && row.actualDatetime)
-      ? (parseDate(row.actualDatetime) || resolvedActualDate)
+    const kpiActualDate = (isDelivered && parsedActualDatetime)
+      ? parsedActualDatetime
       : resolvedActualDate;
 
     // Lookup by orderNo

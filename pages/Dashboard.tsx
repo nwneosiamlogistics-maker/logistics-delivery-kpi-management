@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DeliveryRecord, KpiStatus, KpiConfig } from '../types';
+import { formatNum } from '../utils/formatters';
 
 interface DashboardProps {
   deliveries: DeliveryRecord[];
@@ -104,7 +105,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-xs font-medium text-gray-500">Inv. ทั้งหมด</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalAll.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">{formatNum(totalAll)}</h3>
             </div>
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
               <i className="fas fa-boxes"></i>
@@ -119,7 +120,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-xs font-medium text-gray-500">ใช้คำนวณ KPI</p>
-              <h3 className="text-2xl font-bold text-indigo-600 mt-1">{total.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-indigo-600 mt-1">{formatNum(total)}</h3>
             </div>
             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
               <i className="fas fa-box"></i>
@@ -134,7 +135,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-xs font-medium text-gray-500">รอจัด</p>
-              <h3 className="text-2xl font-bold text-amber-600 mt-1">{waitingCount.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-amber-600 mt-1">{formatNum(waitingCount)}</h3>
             </div>
             <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
               <i className="fas fa-hourglass-half"></i>
@@ -149,7 +150,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-xs font-medium text-gray-500">KPI ผ่าน</p>
-              <h3 className="text-2xl font-bold text-green-600 mt-1">{passCount.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-green-600 mt-1">{formatNum(passCount)}</h3>
             </div>
             <div className="p-2 bg-green-50 text-green-600 rounded-lg">
               <i className="fas fa-check-circle"></i>
@@ -164,7 +165,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-xs font-medium text-gray-500">KPI ไม่ผ่าน</p>
-              <h3 className="text-2xl font-bold text-red-600 mt-1">{failCount.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-red-600 mt-1">{formatNum(failCount)}</h3>
             </div>
             <div className="p-2 bg-red-50 text-red-600 rounded-lg">
               <i className="fas fa-clock"></i>
@@ -262,13 +263,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
               <span className="flex items-center gap-2 text-gray-600">
                 <span className="w-3 h-3 rounded-full bg-green-500"></span> ตรงเวลา
               </span>
-              <span className="font-bold text-gray-900">{passCount.toLocaleString()}</span>
+              <span className="font-bold text-gray-900">{formatNum(passCount)}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="flex items-center gap-2 text-gray-600">
                 <span className="w-3 h-3 rounded-full bg-red-500"></span> ต้องดำเนินการ
               </span>
-              <span className="font-bold text-gray-900">{failCount.toLocaleString()}</span>
+              <span className="font-bold text-gray-900">{formatNum(failCount)}</span>
             </div>
           </div>
         </div>

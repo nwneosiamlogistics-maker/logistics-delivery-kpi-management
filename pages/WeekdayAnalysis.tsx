@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { DeliveryRecord, KpiConfig, Holiday, StoreClosure } from '../types';
 import { getWeekday } from '../utils/kpiEngine';
+import { formatQty, formatNum } from '../utils/formatters';
 
 interface WeekdayAnalysisProps {
   deliveries: DeliveryRecord[];
@@ -365,8 +366,8 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
                       <div className={`w-2 h-2 rounded-full ${day.count > 0 ? 'bg-indigo-400' : 'bg-gray-300'}`}></div>
                       {day.nameThai}
                     </td>
-                    <td className="px-6 py-4 font-medium">{day.count}</td>
-                    <td className="px-6 py-4">{day.qty.toLocaleString()}</td>
+                    <td className="px-6 py-4 font-medium">{formatNum(day.count)}</td>
+                    <td className="px-6 py-4">{formatQty(day.qty)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-24 bg-gray-200 rounded-full h-1.5 overflow-hidden">

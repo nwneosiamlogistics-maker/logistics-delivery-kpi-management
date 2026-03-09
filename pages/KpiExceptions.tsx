@@ -57,6 +57,28 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
     return d.toISOString().slice(0, 10);
   };
 
+  // คำนวณ delayDays แบบ real-time (ใช้วันปัจจุบันสำหรับรายการที่ยังไม่ส่ง)
+  const getRealtimeDelayDays = (order: DeliveryRecord): number => {
+    if (order.actualDate) {
+      // ส่งแล้ว - ใช้ค่าที่บันทึก
+      return order.delayDays || 0;
+    }
+    // ยังไม่ส่ง - คำนวณใหม่จากวันปัจจุบัน
+    const planDate = order.planDate;
+    if (!planDate) return order.delayDays || 0;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const plan = new Date(planDate);
+    plan.setHours(0, 0, 0, 0);
+    
+    if (today <= plan) return 0;
+    
+    const diffTime = today.getTime() - plan.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const branches = useMemo(() => Array.from(new Set(kpiConfigs.filter(c => c.branch).map(c => c.branch!))).sort(), [kpiConfigs]);
   const allProvinces = useMemo(() => Array.from(new Set(deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS && d.province).map(d => d.province!))).sort(), [deliveries]);
   const allDistricts = useMemo(() => Array.from(new Set(deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS).map(d => d.district))).sort(), [deliveries]);
@@ -69,10 +91,23 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
   const [filterProvince, setFilterProvince] = useState('All');
   const [filterDistrict, setFilterDistrict] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [deliveryTab, setDeliveryTab] = useState<'delivered' | 'pending'>('delivered');
+
+  // Inline edit states
+  const [editingCell, setEditingCell] = useState<{ orderNo: string; field: 'planDate' | 'actualDate' } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [pendingEdit, setPendingEdit] = useState<{ orderNo: string; field: 'planDate' | 'actualDate'; value: string } | null>(null);
+
+  // แยกรายการตามสถานะการส่ง
+  const deliveredLate = useMemo(() => deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS && d.actualDate), [deliveries]);
+  const pendingOverdue = useMemo(() => deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS && !d.actualDate), [deliveries]);
 
   const exceptions = useMemo(() => {
-    return deliveries
-      .filter(d => d.kpiStatus === KpiStatus.NOT_PASS)
+    const baseList = deliveryTab === 'delivered' ? deliveredLate : pendingOverdue;
+    return baseList
       .filter(d => filterStatus === 'all' || d.reasonStatus === filterStatus)
       .filter(d => filterBranch === 'All' || kpiMap.get(`${d.province || ''}||${d.district}`) !== undefined
         ? filterBranch === 'All' || (() => {
@@ -91,19 +126,20 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
           d.storeId.toLowerCase().includes(term) ||
           (d.sender || '').toLowerCase().includes(term)
         );
-      });
-  }, [deliveries, filterStatus, filterBranch, filterProvince, filterDistrict, searchTerm, kpiMap, kpiConfigs]);
+      })
+      .sort((a, b) => getRealtimeDelayDays(b) - getRealtimeDelayDays(a)); // เรียงจากล่าช้ามากสุดก่อน
+  }, [deliveryTab, deliveredLate, pendingOverdue, filterStatus, filterBranch, filterProvince, filterDistrict, searchTerm, kpiMap, kpiConfigs]);
 
   const statusCounts = useMemo(() => {
-    const all = deliveries.filter(d => d.kpiStatus === KpiStatus.NOT_PASS);
+    const baseList = deliveryTab === 'delivered' ? deliveredLate : pendingOverdue;
     return {
-      all: all.length,
-      pending: all.filter(d => d.reasonStatus === ReasonStatus.PENDING).length,
-      submitted: all.filter(d => d.reasonStatus === ReasonStatus.SUBMITTED).length,
-      approved: all.filter(d => d.reasonStatus === ReasonStatus.APPROVED).length,
-      rejected: all.filter(d => d.reasonStatus === ReasonStatus.REJECTED).length,
+      all: baseList.length,
+      pending: baseList.filter(d => d.reasonStatus === ReasonStatus.PENDING).length,
+      submitted: baseList.filter(d => d.reasonStatus === ReasonStatus.SUBMITTED).length,
+      approved: baseList.filter(d => d.reasonStatus === ReasonStatus.APPROVED).length,
+      rejected: baseList.filter(d => d.reasonStatus === ReasonStatus.REJECTED).length,
     };
-  }, [deliveries]);
+  }, [deliveryTab, deliveredLate, pendingOverdue]);
 
   const handleSubmitReason = () => {
     if (!selectedOrder || !reason) return;
@@ -138,6 +174,100 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
     onUpdateDelivery(updated, 'rejected');
   };
 
+  // Inline edit handlers
+  const handleCellClick = (orderNo: string, field: 'planDate' | 'actualDate', currentValue: string) => {
+    setEditingCell({ orderNo, field });
+    setEditValue(currentValue || '');
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleEditSubmit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  const handleEditSubmit = () => {
+    if (!editingCell || !editValue) {
+      handleCancelEdit();
+      return;
+    }
+    setPendingEdit({ orderNo: editingCell.orderNo, field: editingCell.field, value: editValue });
+    setShowPasswordModal(true);
+    setEditingCell(null);
+  };
+
+  const handlePasswordConfirm = () => {
+    if (password !== '1234') {
+      setPasswordError('รหัสไม่ถูกต้อง');
+      return;
+    }
+    if (!pendingEdit) return;
+
+    const order = deliveries.find(d => d.orderNo === pendingEdit.orderNo);
+    if (!order) return;
+
+    const updated: DeliveryRecord = { ...order };
+    if (pendingEdit.field === 'planDate') {
+      updated.planDate = pendingEdit.value;
+      updated.manualPlanDate = true;
+    } else {
+      updated.actualDate = pendingEdit.value;
+      updated.manualActualDate = true;
+    }
+
+    // Recalculate KPI after date change
+    const openDate = updated.openDate || updated.planDate;
+    const actualDate = updated.actualDate;
+    const threshold = getThreshold(updated);
+    const today = new Date().toISOString().slice(0, 10);
+    const compareDate = actualDate || today; // ถ้าไม่มี actualDate ใช้วันปัจจุบัน
+    
+    if (openDate && threshold !== undefined) {
+      const open = new Date(openDate);
+      const compare = new Date(compareDate);
+      const daysDiff = Math.floor((compare.getTime() - open.getTime()) / (1000 * 60 * 60 * 24));
+      updated.delayDays = daysDiff - threshold;
+      
+      if (actualDate) {
+        // มี actualDate → คำนวณ KPI ปกติ
+        updated.kpiStatus = updated.delayDays <= 0 ? KpiStatus.PASS : KpiStatus.NOT_PASS;
+        if (updated.kpiStatus === KpiStatus.PASS) {
+          updated.reasonRequired = false;
+          updated.reasonStatus = ReasonStatus.NOT_REQUIRED;
+        }
+      } else {
+        // ไม่มี actualDate → ยังไม่ส่ง ตรวจสอบว่าเลยกำหนดหรือยัง
+        const deadline = new Date(openDate);
+        deadline.setDate(deadline.getDate() + threshold);
+        if (compare > deadline) {
+          updated.kpiStatus = KpiStatus.NOT_PASS;
+          updated.delayDays = Math.floor((compare.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24));
+        } else {
+          updated.kpiStatus = KpiStatus.PASS;
+          updated.delayDays = 0;
+          updated.reasonRequired = false;
+          updated.reasonStatus = ReasonStatus.NOT_REQUIRED;
+        }
+      }
+    }
+
+    updated.updatedAt = new Date().toISOString();
+    onUpdateDelivery(updated);
+
+    // Reset states
+    setShowPasswordModal(false);
+    setPendingEdit(null);
+    setPassword('');
+    setPasswordError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
   const getStatusBadge = (status: ReasonStatus) => {
     const styles: Record<ReasonStatus, string> = {
       [ReasonStatus.NOT_REQUIRED]: 'bg-gray-50 text-gray-700 border-gray-200',
@@ -158,7 +288,40 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
           </h2>
           <p className="text-gray-500 mt-1">จัดการและระบุเหตุผลสำหรับการจัดส่งล่าช้า</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* แท็บแยกประเภท */}
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+          <button
+            onClick={() => { setDeliveryTab('delivered'); setFilterStatus('all'); }}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+              deliveryTab === 'delivered' 
+                ? 'bg-white text-red-600 shadow-md' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <i className="fas fa-truck-loading"></i>
+            ส่งแล้วแต่ล่าช้า
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              deliveryTab === 'delivered' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
+            }`}>{deliveredLate.length}</span>
+          </button>
+          <button
+            onClick={() => { setDeliveryTab('pending'); setFilterStatus('all'); }}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+              deliveryTab === 'pending' 
+                ? 'bg-white text-orange-600 shadow-md' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <i className="fas fa-clock"></i>
+            ยังไม่ส่งแต่เลยกำหนด
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              deliveryTab === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-600'
+            }`}>{pendingOverdue.length}</span>
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap gap-2">
           {[
             { key: 'all', label: 'ทั้งหมด', count: statusCounts.all },
             { key: ReasonStatus.PENDING, label: 'รอระบุ', count: statusCounts.pending },
@@ -181,7 +344,6 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
               </span>
             </button>
           ))}
-        </div>
       </div>
 
       <div className="glass-panel rounded-2xl p-4 space-y-3">
@@ -256,7 +418,29 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                     <td className="px-6 py-4 text-xs">{order.province || <span className="text-gray-300 italic">-</span>}</td>
                     <td className="px-6 py-4">{order.district}</td>
                     <td className="px-6 py-4 font-mono text-xs">{order.storeId}</td>
-                    <td className="px-6 py-4 text-gray-400 font-mono text-xs">{order.planDate || <span className="text-gray-300 italic">-</span>}</td>
+                    <td className="px-6 py-4 font-mono text-xs">
+                      {editingCell?.orderNo === order.orderNo && editingCell?.field === 'planDate' ? (
+                        <input
+                          type="date"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          onBlur={handleEditSubmit}
+                          autoFocus
+                          title="แก้ไขวันนัดส่ง"
+                          className="px-2 py-1 border border-indigo-400 rounded text-xs w-28 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => handleCellClick(order.orderNo, 'planDate', order.planDate || '')}
+                          className="cursor-pointer hover:bg-indigo-100 px-2 py-1 rounded transition-colors text-gray-600 hover:text-indigo-700"
+                          title="คลิกเพื่อแก้ไข"
+                        >
+                          {order.planDate || <span className="text-gray-300 italic">-</span>}
+                          <i className="fas fa-edit text-indigo-400 ml-1 text-xs opacity-0 group-hover:opacity-100"></i>
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 font-mono text-xs">
                       {getDeadline(order)
                         ? <span className="text-indigo-700 font-bold">{getDeadline(order)}</span>
@@ -271,11 +455,32 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
                         <span className="text-gray-300 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-gray-900 font-mono text-xs">{order.actualDate}</td>
+                    <td className="px-6 py-4 font-mono text-xs">
+                      {editingCell?.orderNo === order.orderNo && editingCell?.field === 'actualDate' ? (
+                        <input
+                          type="date"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          onBlur={handleEditSubmit}
+                          autoFocus
+                          title="แก้ไขวันส่งจริง"
+                          className="px-2 py-1 border border-indigo-400 rounded text-xs w-28 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => handleCellClick(order.orderNo, 'actualDate', order.actualDate || '')}
+                          className="cursor-pointer hover:bg-indigo-100 px-2 py-1 rounded transition-colors text-gray-900 hover:text-indigo-700"
+                          title="คลิกเพื่อแก้ไข"
+                        >
+                          {order.actualDate || <span className="text-gray-300 italic">-</span>}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
                         <span className="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200 inline-block w-fit">
-                          +{order.delayDays} วัน
+                          +{getRealtimeDelayDays(order)} วัน
                         </span>
                         {isFutureDate(order.actualDate) && (
                           <span
@@ -350,6 +555,69 @@ export const KpiExceptions: React.FC<KpiExceptionsProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Password Modal for date editing */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="glass-card w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-900">
+                  <i className="fas fa-lock text-indigo-500 mr-2"></i>
+                  ยืนยันการแก้ไข
+                </h3>
+                <button 
+                  aria-label="ปิด"
+                  onClick={() => { setShowPasswordModal(false); setPendingEdit(null); setPassword(''); setPasswordError(''); }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="bg-indigo-50 rounded-xl p-4 mb-4 border border-indigo-100">
+                <p className="text-sm text-indigo-700">
+                  <i className="fas fa-info-circle mr-2"></i>
+                  แก้ไข <strong>{pendingEdit?.field === 'planDate' ? 'วันนัดส่ง' : 'วันส่งจริง'}</strong> เป็น <strong>{pendingEdit?.value}</strong>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">กรุณาใส่รหัสยืนยัน</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && handlePasswordConfirm()}
+                  placeholder="รหัส 4 หลัก"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-center text-lg tracking-widest"
+                  autoFocus
+                />
+                {passwordError && (
+                  <p className="text-red-600 text-sm flex items-center gap-1">
+                    <i className="fas fa-exclamation-circle"></i>{passwordError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 px-6 py-4 flex justify-end gap-3 bg-gray-50/50">
+              <button
+                onClick={() => { setShowPasswordModal(false); setPendingEdit(null); setPassword(''); setPasswordError(''); }}
+                className="px-4 py-2 text-gray-600 font-semibold text-sm hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handlePasswordConfirm}
+                className="px-6 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
+              >
+                <i className="fas fa-check mr-1"></i>ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">

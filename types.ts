@@ -80,6 +80,7 @@ export interface DeliveryRecord {
   documentReturned?: boolean;
   documentReturnedDate?: string;
   documentReturnBillDate?: string;
+  documentReturnSource?: 'pdf' | 'manual';  // แหล่งข้อมูลล่าสุด: pdf = จาก PDF, manual = พิมพ์เอง
   manualPlanDate?: boolean;
   manualActualDate?: boolean;
 }
