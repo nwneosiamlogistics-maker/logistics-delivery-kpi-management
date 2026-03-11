@@ -26,6 +26,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userR
     { id: 'exceptions', label: 'KPI ที่ไม่ผ่าน', icon: 'fa-exclamation-triangle', roles: ['Admin', 'Staff'] },
     { id: 'kpi-dashboard', label: 'KPI Dashboard', icon: 'fa-chart-bar', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'analysis', label: 'วิเคราะห์รายวัน', icon: 'fa-calendar-alt', roles: ['Admin', 'Staff', 'Viewer'] },
+    { id: 'forecast', label: 'Forecast', icon: 'fa-chart-line', roles: ['Admin', 'Staff', 'Viewer'] },
+    { id: 'branch-resources', label: 'ทรัพยากรสาขา', icon: 'fa-building', roles: ['Admin', 'Staff', 'Viewer'] },
     { id: 'settings', label: 'ตั้งค่าระบบ', icon: 'fa-cogs', roles: ['Admin'] },
   ];
 

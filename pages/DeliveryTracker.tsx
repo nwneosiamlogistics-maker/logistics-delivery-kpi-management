@@ -219,7 +219,7 @@ export const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ deliveries, kp
       });
   }, [deliveries, activeTab, search, filterBranch, filterProvince, filterDistrict, districtBranchMap]);
 
-  const currentTab = STATUS_TABS.find(t => t.key === activeTab)!;
+  const currentTab = STATUS_TABS.find(t => t.key === activeTab) || STATUS_TABS[0];
   const isDeliveredTab = activeTab === 'ส่งเสร็จ';
   const urgentCount = isDeliveredTab ? 0 : tabRecords.filter(d => getDaysOverdue(getKpiDeadline(d, kpiConfigs)) > 0).length;
 

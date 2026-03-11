@@ -3,6 +3,72 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { DeliveryRecord, KpiStatus, KpiConfig } from '../types';
 import { formatNum } from '../utils/formatters';
 
+type RangeMode = 'all' | 'day' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+
+// Format date to YYYY-MM-DD using local timezone
+const toLocalDateStr = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateThai = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+};
+
+const getTodayRange = () => {
+  const today = toLocalDateStr(new Date());
+  return { start: today, end: today };
+};
+
+const getWeekRange = (offset: number) => {
+  // ตรรกะเดียวกับ WeeklyReport: อาทิตย์ - เสาร์ (ตัดรอบวันเสาร์)
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun, 6=Sat
+  
+  // หาวันเสาร์ล่าสุด (cutoff day)
+  const diffToSat = (day === 6) ? 0 : day + 1;
+  const sat = new Date(d);
+  sat.setDate(d.getDate() - diffToSat - offset * 7);
+  
+  // หาวันเสาร์ก่อนหน้า แล้ว +1 = วันอาทิตย์ (start)
+  const sun = new Date(sat);
+  sun.setDate(sat.getDate() - 6);
+  
+  const start = toLocalDateStr(sun); // วันอาทิตย์
+  const end = toLocalDateStr(sat);   // วันเสาร์
+  return { start, end };
+};
+
+const getMonthRange = (offset: number) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - offset, 1);
+  const start = toLocalDateStr(d);
+  d.setMonth(d.getMonth() + 1, 0);
+  const end = toLocalDateStr(d);
+  return { start, end };
+};
+
+const getQuarterRange = (offset: number) => {
+  const d = new Date();
+  const currentQuarter = Math.floor(d.getMonth() / 3);
+  const targetQuarter = currentQuarter - offset;
+  const year = d.getFullYear() + Math.floor(targetQuarter / 4);
+  const quarter = ((targetQuarter % 4) + 4) % 4;
+  const startMonth = quarter * 3;
+  const start = toLocalDateStr(new Date(year, startMonth, 1));
+  const end = toLocalDateStr(new Date(year, startMonth + 3, 0));
+  return { start, end };
+};
+
+const getYearRange = (offset: number) => {
+  const year = new Date().getFullYear() - offset;
+  return { start: `${year}-01-01`, end: `${year}-12-31` };
+};
+
 interface DashboardProps {
   deliveries: DeliveryRecord[];
   kpiConfigs?: KpiConfig[];
@@ -12,6 +78,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
   const [branchFilter, setBranchFilter] = useState('All');
   const [provinceFilter, setProvinceFilter] = useState('All');
   const [districtFilter, setDistrictFilter] = useState('All');
+  
+  // Date range filter
+  const [rangeMode, setRangeMode] = useState<RangeMode>('all');
+  const [offset, setOffset] = useState(0);
+  const [customStart, setCustomStart] = useState(() => new Date().toISOString().slice(0, 10));
+  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const { start: dateStart, end: dateEnd } = useMemo(() => {
+    if (rangeMode === 'all') return { start: '', end: '' };
+    if (rangeMode === 'day') {
+      const d = new Date();
+      d.setDate(d.getDate() - offset);
+      const day = d.toISOString().slice(0, 10);
+      return { start: day, end: day };
+    }
+    if (rangeMode === 'week') return getWeekRange(offset);
+    if (rangeMode === 'month') return getMonthRange(offset);
+    if (rangeMode === 'quarter') return getQuarterRange(offset);
+    if (rangeMode === 'year') return getYearRange(offset);
+    return { start: customStart, end: customEnd };
+  }, [rangeMode, offset, customStart, customEnd]);
+
+  const rangeLabel = useMemo(() => {
+    if (rangeMode === 'all') return 'ทั้งหมด';
+    if (rangeMode === 'custom') return `${formatDateThai(customStart)} - ${formatDateThai(customEnd)}`;
+    if (rangeMode === 'day') {
+      const d = new Date();
+      d.setDate(d.getDate() - offset);
+      return d.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    if (rangeMode === 'week') return `สัปดาห์ ${formatDateThai(dateStart)} - ${formatDateThai(dateEnd)}`;
+    if (rangeMode === 'month') {
+      const d = new Date(dateStart);
+      return d.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+    }
+    if (rangeMode === 'quarter') {
+      const d = new Date(dateStart);
+      const q = Math.floor(d.getMonth() / 3) + 1;
+      return `ไตรมาส ${q}/${d.getFullYear() + 543}`;
+    }
+    return `ปี ${new Date(dateStart).getFullYear() + 543}`;
+  }, [rangeMode, offset, dateStart, dateEnd, customStart, customEnd]);
 
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -28,6 +136,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
   }, [deliveries, provinceFilter]);
 
   const filtered = useMemo(() => deliveries.filter(d => {
+    // Date range filter
+    if (dateStart && dateEnd) {
+      const refDate = d.openDate || d.planDate;
+      if (!refDate) return false;
+      if (refDate < dateStart || refDate > dateEnd) return false;
+    }
     if (branchFilter !== 'All') {
       const key = `${d.province || ''}||${d.district}`;
       const keyNoProvince = `||${d.district}`;
@@ -37,7 +151,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
     if (provinceFilter !== 'All' && d.province !== provinceFilter) return false;
     if (districtFilter !== 'All' && d.district !== districtFilter) return false;
     return true;
-  }), [deliveries, branchFilter, provinceFilter, districtFilter, districtBranchMap]);
+  }), [deliveries, branchFilter, provinceFilter, districtFilter, districtBranchMap, dateStart, dateEnd]);
 
   // Exclude 'รอจัด' from KPI calculation (items not yet at branch)
   const activeDeliveries = filtered.filter(d => d.deliveryStatus !== 'รอจัด');
@@ -65,14 +179,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40">
-        <div>
-          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            ภาพรวมประสิทธิภาพ
-          </h2>
-          <p className="text-gray-500">ติดตาม KPI การจัดส่งแบบ Real-time</p>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
+      <div className="flex flex-col gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              ภาพรวมประสิทธิภาพ
+            </h2>
+            <p className="text-gray-500">ติดตาม KPI การจัดส่งแบบ Real-time</p>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
           {branches.length > 0 && (
             <select aria-label="สาขา" value={branchFilter}
               onChange={e => { setBranchFilter(e.target.value); setProvinceFilter('All'); setDistrictFilter('All'); }}
@@ -96,6 +211,72 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           <div className="text-right">
             <p className="text-xs font-semibold text-gray-500">อัปเดตล่าสุด</p>
             <p className="font-mono text-indigo-600 text-sm">{new Date().toLocaleTimeString('th-TH')}</p>
+          </div>
+          </div>
+        </div>
+        
+        {/* Date Range Filter */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200/50">
+          <span className="text-sm text-gray-500 font-medium mr-1">
+            <i className="fas fa-calendar-alt mr-1"></i>ช่วงเวลา:
+          </span>
+          {(['all', 'day', 'week', 'month', 'quarter', 'year', 'custom'] as RangeMode[]).map(m => (
+            <button
+              key={m}
+              onClick={() => { setRangeMode(m); setOffset(0); }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                rangeMode === m
+                  ? 'bg-indigo-500 text-white shadow-sm'
+                  : 'bg-white/70 text-gray-600 hover:bg-gray-100 border border-gray-200'
+              }`}
+            >
+              {m === 'all' ? 'ทั้งหมด' : m === 'day' ? 'วัน' : m === 'week' ? 'สัปดาห์' : m === 'month' ? 'เดือน' : m === 'quarter' ? 'ไตรมาส' : m === 'year' ? 'ปี' : 'กำหนดเอง'}
+            </button>
+          ))}
+          
+          {rangeMode !== 'all' && rangeMode !== 'custom' && (
+            <div className="flex items-center gap-1 ml-2">
+              <button
+                onClick={() => setOffset(o => o + 1)}
+                className="w-8 h-8 rounded-lg bg-white/70 hover:bg-gray-100 border border-gray-200 text-gray-600 flex items-center justify-center"
+                title="ย้อนกลับ"
+              >
+                <i className="fas fa-chevron-left text-xs"></i>
+              </button>
+              <button
+                onClick={() => setOffset(o => Math.max(0, o - 1))}
+                disabled={offset === 0}
+                className="w-8 h-8 rounded-lg bg-white/70 hover:bg-gray-100 border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-40"
+                title="ถัดไป"
+              >
+                <i className="fas fa-chevron-right text-xs"></i>
+              </button>
+            </div>
+          )}
+          
+          {rangeMode === 'custom' && (
+            <div className="flex items-center gap-2 ml-2">
+              <input
+                type="date"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+                className="px-2 py-1.5 rounded-lg border border-gray-200 bg-white/70 text-sm"
+                title="วันที่เริ่มต้น"
+              />
+              <span className="text-gray-400">–</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+                className="px-2 py-1.5 rounded-lg border border-gray-200 bg-white/70 text-sm"
+                title="วันที่สิ้นสุด"
+              />
+            </div>
+          )}
+          
+          <div className="ml-auto text-sm">
+            <span className="text-gray-500">แสดง:</span>
+            <span className="ml-1 font-semibold text-indigo-600">{rangeLabel}</span>
           </div>
         </div>
       </div>

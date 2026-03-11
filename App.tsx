@@ -12,6 +12,8 @@ import { DeliveryTracker } from './pages/DeliveryTracker';
 import { WeeklyReport } from './pages/WeeklyReport';
 import { DocumentImport } from './pages/DocumentImport';
 import { DocumentReturnReport } from './pages/DocumentReturnReport';
+import { Forecast } from './pages/Forecast';
+import { BranchResources } from './pages/BranchResources';
 import {
   HOLIDAYS,
   STORE_CLOSURES,
@@ -30,7 +32,9 @@ import {
   User,
   ReasonStatus,
   KpiStatus,
-  StoreMapping
+  StoreMapping,
+  BranchResource,
+  BranchResourceHistory
 } from './types';
 import { getRealtimeDb } from './services/firebase';
 import { syncWeeklyDeliveriesToReturnNeosiam } from './services/returnNeosiamSync';
@@ -42,6 +46,8 @@ const HOLIDAYS_PATH = 'holidays';
 const STORE_CLOSURES_PATH = 'storeClosures';
 const DELAY_REASONS_PATH = 'delayReasons';
 const STORE_MAPPINGS_PATH = 'storeMappings';
+const BRANCH_RESOURCES_PATH = 'branchResources';
+const BRANCH_RESOURCES_HISTORY_PATH = 'branchResourcesHistory';
 
 // Firebase keys cannot contain . # $ / [ ]
 function sanitizeFirebaseKey(key: string): string {
@@ -72,7 +78,9 @@ const App: React.FC = () => {
   const [kpiConfigs, setKpiConfigs] = useState<KpiConfig[]>(KPI_CONFIGS);
   const [delayReasons, setDelayReasons] = useState<DelayReason[]>(DELAY_REASONS);
   const [storeMappings, setStoreMappings] = useState<StoreMapping[]>([]);
+  const [branchResources, setBranchResources] = useState<BranchResource[]>([]);
   const kpiLoadedFromFirebase = useRef(false);
+  const branchResourcesLoadedFromFirebase = useRef(false);
   const holidaysLoadedFromFirebase = useRef(false);
   const storeClosuresLoadedFromFirebase = useRef(false);
   const delayReasonsLoadedFromFirebase = useRef(false);
@@ -450,6 +458,83 @@ const App: React.FC = () => {
     } catch { /* silent */ }
   }, [kpiConfigs]);
 
+  // Load branchResources from Firebase on mount
+  useEffect(() => {
+    const db = getRealtimeDb();
+    if (!db) { branchResourcesLoadedFromFirebase.current = true; return; }
+    get(ref(db, BRANCH_RESOURCES_PATH))
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          setBranchResources(Object.values(snapshot.val()) as BranchResource[]);
+        }
+        branchResourcesLoadedFromFirebase.current = true;
+      })
+      .catch(() => { branchResourcesLoadedFromFirebase.current = true; });
+  }, []);
+
+  // Save branchResources to Firebase whenever they change
+  useEffect(() => {
+    if (!branchResourcesLoadedFromFirebase.current) return;
+    const db = getRealtimeDb();
+    if (!db) return;
+    try {
+      const obj: Record<string, BranchResource> = {};
+      branchResources.forEach(b => { obj[b.id] = cleanUndefined(b); });
+      set(ref(db, BRANCH_RESOURCES_PATH), obj);
+    } catch { /* silent */ }
+  }, [branchResources]);
+
+  // Handle save branch resource with history
+  const handleSaveBranchResource = useCallback((resource: BranchResource, oldResource?: BranchResource) => {
+    const db = getRealtimeDb();
+    const now = new Date().toISOString();
+    
+    // Update or add resource
+    setBranchResources(prev => {
+      const exists = prev.find(b => b.id === resource.id);
+      if (exists) {
+        return prev.map(b => b.id === resource.id ? resource : b);
+      }
+      return [...prev, resource];
+    });
+
+    // Save history
+    if (db && oldResource) {
+      const changes: Record<string, { from: any; to: any }> = {};
+      const fields: (keyof BranchResource)[] = ['trucks', 'tripsPerDay', 'loaders', 'checkers', 'admin', 'workHoursPerDay', 'loaderWage', 'checkerWage', 'adminWage', 'truckCostPerDay'];
+      fields.forEach(field => {
+        if (oldResource[field] !== resource[field]) {
+          changes[field] = { from: oldResource[field], to: resource[field] };
+        }
+      });
+      
+      if (Object.keys(changes).length > 0) {
+        const historyEntry: BranchResourceHistory = {
+          id: `history-${Date.now()}`,
+          branchId: resource.id,
+          action: 'update',
+          changes,
+          updatedAt: now,
+          updatedBy: resource.updatedBy
+        };
+        set(ref(db, `${BRANCH_RESOURCES_HISTORY_PATH}/${resource.id}/${historyEntry.id}`), cleanUndefined(historyEntry))
+          .catch(e => console.warn('[Firebase] save history error:', e));
+      }
+    } else if (db && !oldResource) {
+      // New resource - save create history
+      const historyEntry: BranchResourceHistory = {
+        id: `history-${Date.now()}`,
+        branchId: resource.id,
+        action: 'create',
+        changes: {},
+        updatedAt: now,
+        updatedBy: resource.updatedBy
+      };
+      set(ref(db, `${BRANCH_RESOURCES_HISTORY_PATH}/${resource.id}/${historyEntry.id}`), cleanUndefined(historyEntry))
+        .catch(e => console.warn('[Firebase] save history error:', e));
+    }
+  }, []);
+
   const handleAddKpiConfig = useCallback((newConfig: Omit<KpiConfig, 'id'>) => {
     const config: KpiConfig = {
       ...newConfig,
@@ -617,6 +702,18 @@ const App: React.FC = () => {
         return <DocumentReturnReport deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'kpi-dashboard':
         return <KpiDashboard deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+      case 'forecast':
+        return <Forecast deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+      case 'branch-resources':
+        return (
+          <BranchResources
+            kpiConfigs={kpiConfigs}
+            deliveries={deliveries}
+            branchResources={branchResources}
+            onSaveBranchResource={handleSaveBranchResource}
+            currentUserEmail={currentUser.email || currentUser.name}
+          />
+        );
       case 'analysis':
         return <WeekdayAnalysis deliveries={deliveries} kpiConfigs={kpiConfigs} holidays={holidays} storeClosures={storeClosures} />;
       case 'settings':

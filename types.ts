@@ -125,6 +125,34 @@ export interface StoreMapping {
   createdAt: string;
 }
 
+export interface BranchResource {
+  id: string;
+  branchName: string;
+  trucks: number;
+  tripsPerDay: number;
+  loaders: number;
+  checkers: number;
+  admin: number;
+  workHoursPerDay: number;
+  loaderWage: number;
+  checkerWage: number;
+  adminWage: number;
+  truckCostPerDay: number;
+  calculatedCapacity?: number; // ความจุเฉลี่ย (กล่อง/เที่ยว) คำนวณอัตโนมัติ
+  calculatedSpeed?: number; // ความเร็วขนถ่าย (กล่อง/ชม./คน) คำนวณอัตโนมัติ
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface BranchResourceHistory {
+  id: string;
+  branchId: string;
+  action: 'create' | 'update';
+  changes: Record<string, { from: any; to: any }>;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export interface AppState {
   deliveries: DeliveryRecord[];
   holidays: Holiday[];
@@ -134,5 +162,6 @@ export interface AppState {
   importLogs: ImportLog[];
   reasonAuditLogs: ReasonAuditLog[];
   storeMappings: StoreMapping[];
+  branchResources: BranchResource[];
   currentUser: User;
 }
