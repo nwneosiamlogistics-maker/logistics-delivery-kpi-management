@@ -53,6 +53,8 @@ function generateSQL() {
   
   let sql = '-- Firebase to MariaDB Import\n';
   sql += '-- Generated: ' + new Date().toISOString() + '\n\n';
+  sql += 'SET NAMES utf8mb4;\n';
+  sql += 'SET CHARACTER SET utf8mb4;\n\n';
   
   const counts = { deliveries: 0, kpiConfigs: 0, holidays: 0, storeClosures: 0, delayReasons: 0, storeMappings: 0, branchResources: 0 };
 
