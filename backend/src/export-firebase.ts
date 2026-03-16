@@ -20,6 +20,7 @@ const firebaseConfig = {
 
 // Firebase paths to export
 const PATHS = [
+  'deliveries',
   'kpiConfigs',
   'holidays',
   'storeClosures',

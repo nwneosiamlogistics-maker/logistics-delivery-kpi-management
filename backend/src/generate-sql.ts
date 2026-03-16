@@ -14,6 +14,39 @@ function escape(s: any): string {
   return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "''") + "'";
 }
 
+// Convert Thai datetime format (e.g., '25/2/2569 11:51:00') to ISO format (e.g., '2026-02-25 11:51:00')
+function parseThaiDatetime(value: string | undefined | null): string | null {
+  if (!value) return null;
+  
+  // If already in ISO format (YYYY-MM-DD), return as-is
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+  
+  // Handle Thai format: DD/M/YYYY HH:MM:SS (year in Buddhist Era)
+  const parts = String(value).split(' ');
+  const datePart = parts[0];
+  const timePart = parts[1] || '00:00:00';
+  
+  const dateComponents = datePart.split('/');
+  if (dateComponents.length !== 3) return value; // Can't parse, return original
+  
+  const day = dateComponents[0].padStart(2, '0');
+  const month = dateComponents[1].padStart(2, '0');
+  let year = parseInt(dateComponents[2], 10);
+  
+  // Convert Buddhist Era (พ.ศ.) to Gregorian (ค.ศ.) if year > 2500
+  if (year > 2500) {
+    year = year - 543;
+  }
+  
+  return `${year}-${month}-${day} ${timePart}`;
+}
+
+function normalizeEmpty(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  return str === '' ? null : str;
+}
+
 function generateSQL() {
   console.log('Reading:', jsonFile);
   const data = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
@@ -21,7 +54,19 @@ function generateSQL() {
   let sql = '-- Firebase to MariaDB Import\n';
   sql += '-- Generated: ' + new Date().toISOString() + '\n\n';
   
-  const counts = { kpiConfigs: 0, holidays: 0, storeClosures: 0, delayReasons: 0, storeMappings: 0, branchResources: 0 };
+  const counts = { deliveries: 0, kpiConfigs: 0, holidays: 0, storeClosures: 0, delayReasons: 0, storeMappings: 0, branchResources: 0 };
+
+  // Deliveries
+  if (data.deliveries) {
+    sql += '-- Deliveries\n';
+    for (const [key, d] of Object.entries(data.deliveries) as any) {
+      const actualDatetimeISO = parseThaiDatetime(d.actualDatetime);
+      const actualDateValue = normalizeEmpty(d.actualDate);
+      sql += `INSERT INTO deliveries (order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province, import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days, reason_required, reason_status, delay_reason, weekday, document_returned, document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date) VALUES (${escape(d.orderNo || key)}, ${escape(d.district)}, ${escape(d.storeId)}, ${escape(d.planDate)}, ${escape(d.openDate)}, ${escape(actualDateValue)}, ${d.qty || 0}, ${escape(d.sender)}, ${escape(d.province)}, ${escape(d.importFileId)}, ${escape(d.deliveryStatus)}, ${escape(actualDatetimeISO)}, ${escape(d.productDetails)}, ${escape(d.kpiStatus)}, ${d.delayDays || 0}, ${d.reasonRequired ? 1 : 0}, ${escape(d.reasonStatus)}, ${escape(d.delayReason)}, ${escape(d.weekday)}, ${d.documentReturned ? 1 : 0}, ${escape(d.documentReturnedDate)}, ${escape(d.documentReturnBillDate)}, ${escape(d.documentReturnSource)}, ${d.manualPlanDate ? 1 : 0}, ${d.manualActualDate ? 1 : 0}) ON DUPLICATE KEY UPDATE district=VALUES(district), store_id=VALUES(store_id), plan_date=VALUES(plan_date), open_date=VALUES(open_date), actual_date=VALUES(actual_date), qty=VALUES(qty), sender=VALUES(sender), province=VALUES(province), kpi_status=VALUES(kpi_status), delay_days=VALUES(delay_days), reason_required=VALUES(reason_required), reason_status=VALUES(reason_status), delay_reason=VALUES(delay_reason);\n`;
+      counts.deliveries++;
+    }
+    sql += '\n';
+  }
 
   // KPI Configs
   if (data.kpiConfigs) {
@@ -87,6 +132,7 @@ function generateSQL() {
 
   console.log('\n✅ SQL file generated:', sqlFile);
   console.log('\nSummary:');
+  console.log('  Deliveries:', counts.deliveries);
   console.log('  KPI Configs:', counts.kpiConfigs);
   console.log('  Holidays:', counts.holidays);
   console.log('  Store Closures:', counts.storeClosures);
