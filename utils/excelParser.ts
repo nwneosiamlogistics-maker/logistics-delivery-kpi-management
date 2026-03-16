@@ -60,7 +60,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     'วันที่ส่งจริง',
     // หมายเหตุ: ไม่ใส่ 'วันที่ส่ง' / 'วันส่ง' / 'วันที่แก้ไข' / 'วันที่จัดส่ง' เพื่อป้องกัน conflict
   ],
-  qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น'],
+  qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น', 'น.น.', 'น.น', 'นน', 'น้ำหนัก'],
   productDetails: ['productDetails', 'สินค้า', 'product', 'Product', 'รายการสินค้า', 'รายละเอียดสินค้า'],
   sender: ['sender', 'Sender', 'ผู้ส่ง', 'ต้นทาง', 'บริษัทผู้ส่ง', 'shipper', 'Shipper'],
   province: ['province', 'Province', 'จังหวัด', 'จว.', 'จว'],
@@ -93,14 +93,31 @@ function parseQtyFromProducts(text: string): number {
   if (segments.length === 0) return 0;
 
   let total = 0;
+  const debugItems: string[] = [];
   for (const seg of segments) {
-    // Find all numbers in this segment
-    const nums = seg.match(/\d+(?:\.\d+)?/g);
-    if (!nums || nums.length === 0) continue;
-    // The LAST number in the segment is the quantity
-    const last = parseFloat(nums[nums.length - 1]);
-    if (!isNaN(last) && last <= 99999) total += last;
+    // Skip segments that don't look like product names (must have Thai/English letters)
+    if (!/[ก-๙a-zA-Z]/.test(seg)) continue;
+    
+    // Skip segments that look like CSV data (dates, commas from other columns)
+    if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(seg)) continue; // Skip date patterns
+    if (seg.includes(',0,') || seg.includes(',"')) continue; // Skip CSV artifacts
+    
+    // Find qty pattern: number with .00/.25/.50/.75/.17 at end of segment
+    // Format: "Product name 100 กรัม (1x16) 1.00" → qty = 1.00
+    const qtyMatch = seg.match(/(\d+(?:\.\d+)?)\s*$/);
+    if (!qtyMatch) continue;
+    
+    const qty = parseFloat(qtyMatch[1]);
+    // Valid qty: has decimal OR is small integer (1-10)
+    const hasDecimal = qtyMatch[1].includes('.');
+    const isSmallInt = !hasDecimal && qty >= 1 && qty <= 10;
+    
+    if (!isNaN(qty) && (hasDecimal || isSmallInt)) {
+      total += qty;
+      debugItems.push(`"${seg.substring(0, 30)}..." → ${qty}`);
+    }
   }
+  console.log(`[parseQtyFromProducts] segments=${segments.length}, total=${Math.round(total * 100) / 100}, ALL items:`, debugItems);
   return Math.round(total * 100) / 100;
 }
 
@@ -121,6 +138,10 @@ function mapHeader(header: string): string | null {
   console.log(`Normalizing header: "${header}" -> "${clean}"`);
   for (const [canonical, aliases] of Object.entries(COLUMN_ALIASES)) {
     if (aliases.some(a => normalize(a) === clean)) return canonical;
+  }
+  // Debug: check if it looks like qty but wasn't matched
+  if (clean.includes('น') || clean.includes('น.')) {
+    console.log(`[DEBUG] Potential qty header not matched: "${header}" -> "${clean}", aliases checked:`, COLUMN_ALIASES.qty.map(a => `${a}→${normalize(a)}`));
   }
   return null;
 }
@@ -267,16 +288,43 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
     throw new Error(`ไม่พบคอลัมน์จำนวนสินค้า (ชิ้น/จำนวน/สินค้า) \n(ตรวจพบ: ${headers.join(', ')})`);
   }
 
-  return rows.map(r => {
+  // หา columns ที่ map เป็น qty เพื่อ debug
+  const qtyColumns = Object.entries(columnMap).filter(([_, can]) => can === 'qty').map(([orig]) => orig);
+  console.log('[ExcelParser] qty columns found:', qtyColumns);
+
+  return rows.map((r, idx) => {
     const m: Record<string, any> = {};
+    
+    // Debug: แสดงค่าของทุก qty column สำหรับ row แรกๆ
+    if (idx < 3) {
+      const qtyVals = qtyColumns.map(col => `"${col}"=${r[col]}`).join(', ');
+      console.log(`[QTY COLUMNS] row ${idx}: ${qtyVals}`);
+    }
+    
     for (const [orig, can] of Object.entries(columnMap)) {
       const val = r[orig];
       // First non-empty value wins — prevents later columns from overwriting earlier ones
       if (m[can] === undefined || m[can] === '') {
         m[can] = val;
       }
+      // Special case for qty: ALWAYS prefer non-zero value
+      // เช่น ถ้า "พาเลท" = 0 หรือ "" แต่ "น.น." = 11.84 → ใช้ 11.84
+      if (can === 'qty') {
+        const currentVal = m[can];
+        const currentQty = parseFloat(String(currentVal));
+        const newQty = parseFloat(String(val));
+        const currentIsEmpty = currentVal === undefined || currentVal === '' || currentVal === null;
+        const currentIsZeroOrNaN = isNaN(currentQty) || currentQty === 0;
+        
+        // ถ้า current ว่าง/0/NaN และ new มีค่า > 0 → ใช้ new
+        if ((currentIsEmpty || currentIsZeroOrNaN) && newQty > 0) {
+          console.log(`[QTY OVERRIDE] Using ${newQty} instead of "${currentVal}" for orderNo=${r[Object.keys(columnMap).find(k => columnMap[k] === 'orderNo') || '']}`);
+          m[can] = val;
+        }
+      }
     }
     const parsedPlanDate = parseDate(m.planDate) || '';
+    console.log(`[DATE DEBUG] orderNo=${m.orderNo}, RAW planDate="${m.planDate}", parsed="${parsedPlanDate}"`);
     return {
       orderNo: String(m.orderNo || '').trim(),
       district: String(m.district || '').trim(),
@@ -285,16 +333,32 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
       openDate: m.openDate ? (parseDate(m.openDate) || undefined) : undefined,
       actualDate: parseDate(m.actualDate) || '',
       qty: (() => {
+        // DEBUG: แสดงข้อมูล raw ทั้งหมดของ row นี้
+        console.log(`[QTY DEBUG] orderNo=${m.orderNo}, RAW m.qty="${m.qty}", RAW m.productDetails="${m.productDetails ? String(m.productDetails).substring(0, 100) : 'N/A'}"`);
+        
+        // Priority 1: ใช้ qty column ก่อน ถ้ามีค่าสมเหตุสมผล (0 < qty <= 500)
         const directQty = parseFloat(String(m.qty));
-        // Sanity check: reject values that look like barcodes/IDs (>99999) or negative
-        const isValidQty = directQty && !isNaN(directQty) && directQty > 0 && directQty <= 99999;
-        if (isValidQty) {
+        if (directQty && !isNaN(directQty) && directQty > 0 && directQty <= 500) {
+          console.log(`[QTY DEBUG] orderNo=${m.orderNo}, using directQty=${directQty}`);
           return directQty;
         }
-        // Fallback: parse qty from productDetails column (สินค้า)
+        
+        // Priority 2: Parse จาก productDetails ถ้า qty column ไม่มีค่าสมเหตุสมผล
         if (m.productDetails) {
-          return parseQtyFromProducts(String(m.productDetails));
+          const parsedQty = parseQtyFromProducts(String(m.productDetails));
+          console.log(`[QTY DEBUG] orderNo=${m.orderNo}, parsedQty from productDetails=${parsedQty}`);
+          if (parsedQty > 0 && parsedQty <= 500) {
+            return parsedQty;
+          }
         }
+        
+        // Fallback: ใช้ directQty แม้จะเกิน 500 (ดีกว่าไม่มี)
+        if (directQty && !isNaN(directQty) && directQty > 0) {
+          console.log(`[QTY DEBUG] orderNo=${m.orderNo}, fallback to directQty=${directQty}`);
+          return directQty;
+        }
+        
+        console.log(`[QTY DEBUG] orderNo=${m.orderNo}, returning 0 (no valid qty found)`);
         return 0;
       })(),
       productDetails: m.productDetails ? String(m.productDetails).trim() : undefined,
@@ -303,9 +367,12 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
       deliveryStatus: m.deliveryStatus ? String(m.deliveryStatus).trim() : undefined,
       // actualDatetime: parse ก่อนเก็บ — แปลง Excel serial เป็น ISO date เช่น "2026-02-11"
       // ไม่งั้น UI จะแสดงเลข "244441.54305..." แทนที่จะเป็นวันที่
-      actualDatetime: m.actualDatetime
-        ? (parseDate(m.actualDatetime) || String(m.actualDatetime).trim() || undefined)
-        : undefined,
+      actualDatetime: (() => {
+        if (!m.actualDatetime) return undefined;
+        const parsed = parseDate(m.actualDatetime);
+        console.log(`[parseExcelFile] actualDatetime mapping: "${m.actualDatetime}" → "${parsed}"`);
+        return parsed || String(m.actualDatetime).trim() || undefined;
+      })(),
       updatedAt: m.updatedAt ? parseDate(m.updatedAt) || undefined : undefined,
       version: m.version ? parseInt(String(m.version), 10) : undefined
     };
@@ -575,6 +642,18 @@ export function processImport(
 
     // ถ้าสถานะไม่ใช่ 'ส่งเสร็จ' → ลบ actualDate ออก (ยังไม่ได้ส่งจริง)
     const finalActualDate = isDelivered ? resolvedActualDate : '';
+    
+    // Debug: ตรวจสอบ actualDate flow
+    if (isDelivered) {
+      console.log(`[processImport] ${row.orderNo} actualDate flow:`, {
+        'row.actualDate': row.actualDate,
+        'row.actualDatetime': row.actualDatetime,
+        'parsedActualDatetime': parsedActualDatetime,
+        'resolvedActualDate': resolvedActualDate,
+        'finalActualDate': finalActualDate,
+        'isDelivered': isDelivered
+      });
+    }
 
     // ป้องกันการ overwrite ข้อมูลที่แก้ไขด้วยมือ
     const hasManualPlanDate = existing?.manualPlanDate === true;

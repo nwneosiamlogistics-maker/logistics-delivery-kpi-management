@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: logistics-kpi-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_HOST=host.docker.internal  # Connect to NAS MariaDB
+      - DB_PORT=3306
+      - DB_USER=logistics_api
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=logistics_kpi
+      - PORT=3001
+      - CORS_ORIGIN=https://logistics-delivery-kpi-management-two.vercel.app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

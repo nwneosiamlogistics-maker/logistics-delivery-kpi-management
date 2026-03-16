@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { DeliveryRecord, KpiStatus, KpiConfig } from '../types';
+import { DeliveryRecord, KpiStatus, KpiConfig, DeliveryStatus } from '../types';
 import { formatNum } from '../utils/formatters';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -46,6 +46,7 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
   const [filterBranch, setFilterBranch] = useState('');
   const [delayedPage, setDelayedPage] = useState(1);
   const [delayedSearch, setDelayedSearch] = useState('');
+  const [delayedTab, setDelayedTab] = useState<'delivered' | 'pending'>('delivered');
   const delayedPerPage = 50;
 
   const { start, end } = useMemo(() => {
@@ -102,8 +103,19 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
     return [...new Set(src.map(d => d.district).filter(Boolean))].sort();
   }, [deliveries, filterProvince]);
 
+  // แยกรายการล่าช้าเป็น 2 กลุ่ม: ส่งเสร็จแล้ว และ ยังไม่ส่ง
+  const { deliveredDelayed, pendingDelayed } = useMemo(() => {
+    const delivered = filtered.filter(d => d.deliveryStatus === DeliveryStatus.DELIVERED);
+    const pending = filtered.filter(d => d.deliveryStatus !== DeliveryStatus.DELIVERED);
+    return {
+      deliveredDelayed: delivered.sort((a, b) => b.delayDays - a.delayDays),
+      pendingDelayed: pending.sort((a, b) => b.delayDays - a.delayDays)
+    };
+  }, [filtered]);
+
   const allDelayed = useMemo(() => {
-    let result = [...filtered].sort((a, b) => b.delayDays - a.delayDays);
+    const source = delayedTab === 'delivered' ? deliveredDelayed : pendingDelayed;
+    let result = [...source];
     if (delayedSearch) {
       const searchLower = delayedSearch.toLowerCase();
       result = result.filter(d => 
@@ -113,7 +125,7 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
       );
     }
     return result;
-  }, [filtered, delayedSearch]);
+  }, [delayedTab, deliveredDelayed, pendingDelayed, delayedSearch]);
   const delayedTotalPages = Math.ceil(allDelayed.length / delayedPerPage);
   const paginatedDelayed = useMemo(() => {
     const startIdx = (delayedPage - 1) * delayedPerPage;
@@ -373,6 +385,31 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
                   แสดง {allDelayed.length > 0 ? ((delayedPage - 1) * delayedPerPage) + 1 : 0}-{Math.min(delayedPage * delayedPerPage, allDelayed.length)} จาก {formatNum(allDelayed.length)} รายการ
                 </span>
               </div>
+              {/* Tab UI */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => { setDelayedTab('delivered'); setDelayedPage(1); }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                    delayedTab === 'delivered'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <i className="fas fa-check-circle"></i>
+                  ส่งเสร็จแล้ว ({formatNum(deliveredDelayed.length)})
+                </button>
+                <button
+                  onClick={() => { setDelayedTab('pending'); setDelayedPage(1); }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                    delayedTab === 'pending'
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <i className="fas fa-clock"></i>
+                  ยังไม่ส่ง ({formatNum(pendingDelayed.length)})
+                </button>
+              </div>
               {/* Search */}
               <div className="relative">
                 <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -380,7 +417,7 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
                 {delayedSearch && <button onClick={() => { setDelayedSearch(''); setDelayedPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
               </div>
             </div>
-            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto" style={{ scrollbarWidth: 'auto', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
               <table className="w-full text-sm">
                 <thead className="bg-gray-50/60 text-xs text-gray-500 uppercase border-b border-gray-100 sticky top-0 z-10">
                   <tr>
@@ -426,43 +463,29 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
                 >
                   <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
                 </button>
-                <div className="flex items-center gap-1">
-                  {[...Array(Math.min(5, delayedTotalPages))].map((_, idx) => {
-                    let pageNum: number;
-                    if (delayedTotalPages <= 5) {
-                      pageNum = idx + 1;
-                    } else if (delayedPage <= 3) {
-                      pageNum = idx + 1;
-                    } else if (delayedPage >= delayedTotalPages - 2) {
-                      pageNum = delayedTotalPages - 4 + idx;
-                    } else {
-                      pageNum = delayedPage - 2 + idx;
-                    }
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setDelayedPage(pageNum)}
-                        className={`w-8 h-8 text-sm rounded-lg ${
-                          delayedPage === pageNum
-                            ? 'bg-red-500 text-white font-bold'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                  {delayedTotalPages > 5 && delayedPage < delayedTotalPages - 2 && (
-                    <>
-                      <span className="px-1 text-gray-400">...</span>
-                      <button
-                        onClick={() => setDelayedPage(delayedTotalPages)}
-                        className="w-8 h-8 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      >
-                        {delayedTotalPages}
-                      </button>
-                    </>
-                  )}
+                <div className="flex items-center gap-3">
+                  {/* ปุ่มไปหน้าแรก */}
+                  <button
+                    onClick={() => setDelayedPage(1)}
+                    disabled={delayedPage === 1}
+                    className="w-8 h-8 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="ไปหน้าแรก"
+                  >
+                    <i className="fas fa-angle-double-left"></i>
+                  </button>
+                  {/* แสดงหน้าปัจจุบัน */}
+                  <span className="text-sm font-medium text-gray-700">
+                    หน้า <span className="text-red-600 font-bold">{delayedPage}</span> / {delayedTotalPages}
+                  </span>
+                  {/* ปุ่มไปหน้าสุดท้าย */}
+                  <button
+                    onClick={() => setDelayedPage(delayedTotalPages)}
+                    disabled={delayedPage === delayedTotalPages}
+                    className="w-8 h-8 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="ไปหน้าสุดท้าย"
+                  >
+                    <i className="fas fa-angle-double-right"></i>
+                  </button>
                 </div>
                 <button
                   onClick={() => setDelayedPage(p => Math.min(delayedTotalPages, p + 1))}

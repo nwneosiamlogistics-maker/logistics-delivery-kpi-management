@@ -2,14 +2,16 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { ImportLog, DeliveryRecord, KpiStatus, KpiConfig } from '../types';
 import { displayDate } from '../utils/kpiEngine';
 import { formatNum } from '../utils/formatters';
+import * as XLSX from 'xlsx';
 
 interface UploadHistoryProps {
   importLogs: ImportLog[];
   deliveries: DeliveryRecord[];
   kpiConfigs?: KpiConfig[];
+  onUpdateDelivery?: (orderNo: string, updates: Partial<DeliveryRecord>) => Promise<void>;
 }
 
-export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, deliveries, kpiConfigs = [] }) => {
+export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, deliveries, kpiConfigs = [], onUpdateDelivery }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fileSearch, setFileSearch] = useState<Record<string, string>>({});
@@ -18,7 +20,14 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
   const [allDeliveriesBranch, setAllDeliveriesBranch] = useState('');
   const [allDeliveriesProvince, setAllDeliveriesProvince] = useState('');
   const [allDeliveriesDistrict, setAllDeliveriesDistrict] = useState('');
+  const [editingQty, setEditingQty] = useState<string | null>(null);
+  const [editQtyValue, setEditQtyValue] = useState('');
+  const [savingQty, setSavingQty] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<string | null>(null);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const itemsPerPage = 50;
+  const EDIT_PASSWORD = 'sansan856';
 
   // Build district → branch map
   const districtBranchMap = useMemo(() => {
@@ -369,10 +378,39 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
         
         return (
           <div className="glass-panel p-6 rounded-2xl border-2 border-indigo-200 bg-indigo-50/50 mt-8">
-            <h3 className="text-base font-bold text-indigo-800 mb-4 flex items-center gap-2">
-              <i className="fas fa-table text-indigo-600"></i>
-              📋 รายการ Import ทั้งหมด ({formatNum(sortedDeliveries.length)} รายการ)
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-indigo-800 flex items-center gap-2">
+                <i className="fas fa-table text-indigo-600"></i>
+                📋 รายการ Import ทั้งหมด ({formatNum(sortedDeliveries.length)} รายการ)
+              </h3>
+              <button
+                onClick={() => {
+                  const exportData = sortedDeliveries.map(d => ({
+                    'เลขที่เอกสาร': d.orderNo,
+                    'ร้านค้า': d.storeId,
+                    'ผู้ส่ง': d.sender || '-',
+                    'สาขา': getBranch(d),
+                    'จังหวัด': d.province || '-',
+                    'อำเภอ': d.district,
+                    'จำนวน': d.qty,
+                    'วันที่เปิดบิล': d.openDate || '-',
+                    'กำหนดส่ง': d.planDate || '-',
+                    'วันที่ส่งเสร็จ': d.actualDate || '-',
+                    'สถานะ': d.deliveryStatus || '-',
+                    'KPI': d.kpiStatus === KpiStatus.PASS ? 'ผ่าน' : d.kpiStatus === KpiStatus.NOT_PASS ? 'ไม่ผ่าน' : 'รอผล',
+                    'ล่าช้า (วัน)': d.delayDays || 0
+                  }));
+                  const ws = XLSX.utils.json_to_sheet(exportData);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'รายการ Import');
+                  XLSX.writeFile(wb, `รายการ_Import_${new Date().toISOString().slice(0,10)}.xlsx`);
+                }}
+                className="px-4 py-2 text-sm font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+              >
+                <i className="fas fa-file-excel"></i>
+                Export Excel
+              </button>
+            </div>
             
             {/* Search and Filter */}
             <div className="mb-4 space-y-3">
@@ -461,7 +499,67 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
                       <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{getBranch(doc)}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty || '-'}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">
+                        {editingQty === doc.orderNo ? (
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="number"
+                              value={editQtyValue}
+                              onChange={e => setEditQtyValue(e.target.value)}
+                              className="w-20 px-2 py-1 text-sm border border-indigo-300 rounded text-right focus:ring-2 focus:ring-indigo-500 outline-none"
+                              step="0.01"
+                              min="0"
+                              autoFocus
+                              placeholder="จำนวน"
+                              title="แก้ไขจำนวนสินค้า"
+                            />
+                            <button
+                              onClick={async () => {
+                                if (!onUpdateDelivery) return;
+                                setSavingQty(true);
+                                try {
+                                  await onUpdateDelivery(doc.orderNo, { qty: parseFloat(editQtyValue) || 0 });
+                                  setEditingQty(null);
+                                } finally {
+                                  setSavingQty(false);
+                                }
+                              }}
+                              disabled={savingQty}
+                              className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                              title="บันทึก"
+                            >
+                              <i className={`fas ${savingQty ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
+                            </button>
+                            <button
+                              onClick={() => setEditingQty(null)}
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                              title="ยกเลิก"
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 justify-end group">
+                            <span className={doc.qty && doc.qty > 10000 ? 'text-red-600 font-bold' : ''}>
+                              {doc.qty || '-'}
+                            </span>
+                            {onUpdateDelivery && (
+                              <button
+                                onClick={() => {
+                                  setShowPasswordModal(doc.orderNo);
+                                  setEditQtyValue(String(doc.qty || 0));
+                                  setPasswordInput('');
+                                  setPasswordError('');
+                                }}
+                                className="p-1 text-gray-300 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="แก้ไขจำนวน"
+                              >
+                                <i className="fas fa-pencil text-xs"></i>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.actualDate || '-'}</td>
@@ -521,6 +619,72 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
           </div>
         );
       })()}
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <i className="fas fa-lock text-indigo-600"></i>
+              ยืนยันรหัสผ่าน
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              กรุณาใส่รหัสผ่านเพื่อแก้ไขจำนวนสินค้า
+            </p>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={e => { setPasswordInput(e.target.value); setPasswordError(''); }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  if (passwordInput === EDIT_PASSWORD) {
+                    setEditingQty(showPasswordModal);
+                    setShowPasswordModal(null);
+                    setPasswordInput('');
+                  } else {
+                    setPasswordError('รหัสผ่านไม่ถูกต้อง');
+                  }
+                }
+              }}
+              placeholder="ใส่รหัสผ่าน..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none mb-2"
+              autoFocus
+            />
+            {passwordError && (
+              <p className="text-sm text-red-500 mb-3">
+                <i className="fas fa-exclamation-circle mr-1"></i>
+                {passwordError}
+              </p>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(null);
+                  setPasswordInput('');
+                  setPasswordError('');
+                }}
+                className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => {
+                  if (passwordInput === EDIT_PASSWORD) {
+                    setEditingQty(showPasswordModal);
+                    setShowPasswordModal(null);
+                    setPasswordInput('');
+                  } else {
+                    setPasswordError('รหัสผ่านไม่ถูกต้อง');
+                  }
+                }}
+                className="flex-1 px-4 py-2 text-white bg-indigo-600 rounded-xl hover:bg-indigo-700"
+              >
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

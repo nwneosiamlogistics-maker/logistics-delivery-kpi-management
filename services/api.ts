@@ -1,0 +1,298 @@
+/**
+ * NAS API Service
+ * Handles all data operations with the backend API on Synology NAS
+ * Replace Firebase with this service for 100% NAS data sync
+ */
+
+import { 
+  DeliveryRecord, 
+  Holiday, 
+  StoreClosure, 
+  KpiConfig, 
+  DelayReason, 
+  StoreMapping, 
+  BranchResource,
+  ImportLog 
+} from '../types';
+
+// API Base URL - Cloudflare Tunnel to NAS
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mat-designed-restoration-talented.trycloudflare.com';
+
+async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    ...options,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// ========== Deliveries ==========
+export async function getDeliveries(): Promise<DeliveryRecord[]> {
+  const data = await fetchAPI<any[]>('/api/deliveries');
+  return data.map(mapDeliveryFromAPI);
+}
+
+export async function saveDelivery(delivery: DeliveryRecord): Promise<void> {
+  await fetchAPI('/api/deliveries', {
+    method: 'POST',
+    body: JSON.stringify(mapDeliveryToAPI(delivery)),
+  });
+}
+
+export async function saveDeliveries(deliveries: DeliveryRecord[]): Promise<void> {
+  await fetchAPI('/api/deliveries/bulk', {
+    method: 'POST',
+    body: JSON.stringify(deliveries.map(mapDeliveryToAPI)),
+  });
+}
+
+// ========== Holidays ==========
+export async function getHolidays(): Promise<Holiday[]> {
+  const data = await fetchAPI<any[]>('/api/holidays');
+  return data.map(h => ({
+    id: h.id,
+    date: h.date,
+    name: h.name,
+    type: h.type,
+  }));
+}
+
+export async function saveHoliday(holiday: Holiday): Promise<void> {
+  await fetchAPI('/api/holidays', {
+    method: 'POST',
+    body: JSON.stringify(holiday),
+  });
+}
+
+// ========== KPI Configs ==========
+export async function getKpiConfigs(): Promise<KpiConfig[]> {
+  const data = await fetchAPI<any[]>('/api/kpi-configs');
+  return data.map(c => ({
+    id: c.id,
+    branch: c.branch,
+    province: c.province,
+    district: c.district,
+    onTimeLimit: c.on_time_limit,
+    isDraft: Boolean(c.is_draft),
+  }));
+}
+
+export async function saveKpiConfig(config: KpiConfig): Promise<void> {
+  await fetchAPI('/api/kpi-configs', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: config.id,
+      branch: config.branch,
+      province: config.province,
+      district: config.district,
+      on_time_limit: config.onTimeLimit,
+      is_draft: config.isDraft ? 1 : 0,
+    }),
+  });
+}
+
+// ========== Store Closures ==========
+export async function getStoreClosures(): Promise<StoreClosure[]> {
+  const data = await fetchAPI<any[]>('/api/store-closures');
+  return data.map(s => ({
+    id: s.id,
+    storeId: s.store_id,
+    date: s.date,
+    closeRule: s.close_rule,
+    reason: s.reason,
+  }));
+}
+
+// ========== Delay Reasons ==========
+export async function getDelayReasons(): Promise<DelayReason[]> {
+  const data = await fetchAPI<any[]>('/api/delay-reasons');
+  return data.map(d => ({
+    code: d.code,
+    label: d.label,
+    category: d.category,
+  }));
+}
+
+// ========== Store Mappings ==========
+export async function getStoreMappings(): Promise<StoreMapping[]> {
+  const data = await fetchAPI<any[]>('/api/store-mappings');
+  return data.map(m => ({
+    storeId: m.store_id,
+    district: m.district,
+    province: m.province,
+    createdAt: m.created_at,
+  }));
+}
+
+export async function saveStoreMapping(mapping: StoreMapping): Promise<void> {
+  await fetchAPI('/api/store-mappings', {
+    method: 'POST',
+    body: JSON.stringify({
+      store_id: mapping.storeId,
+      district: mapping.district,
+      province: mapping.province,
+    }),
+  });
+}
+
+// ========== Branch Resources ==========
+export async function getBranchResources(): Promise<BranchResource[]> {
+  const data = await fetchAPI<any[]>('/api/branch-resources');
+  return data.map(b => ({
+    id: b.id,
+    branchName: b.branch_name,
+    trucks: b.trucks,
+    tripsPerDay: b.trips_per_day,
+    loaders: b.loaders,
+    checkers: b.checkers,
+    admin: b.admin,
+    workHoursPerDay: b.work_hours_per_day,
+    loaderWage: b.loader_wage,
+    checkerWage: b.checker_wage,
+    adminWage: b.admin_wage,
+    truckCostPerDay: b.truck_cost_per_day,
+    calculatedCapacity: b.calculated_capacity,
+    calculatedSpeed: b.calculated_speed,
+    updatedAt: b.updated_at,
+    updatedBy: b.updated_by,
+  }));
+}
+
+export async function saveBranchResource(resource: BranchResource): Promise<void> {
+  await fetchAPI('/api/branch-resources', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: resource.id,
+      branch_name: resource.branchName,
+      trucks: resource.trucks,
+      trips_per_day: resource.tripsPerDay,
+      loaders: resource.loaders,
+      checkers: resource.checkers,
+      admin: resource.admin,
+      work_hours_per_day: resource.workHoursPerDay,
+      loader_wage: resource.loaderWage,
+      checker_wage: resource.checkerWage,
+      admin_wage: resource.adminWage,
+      truck_cost_per_day: resource.truckCostPerDay,
+    }),
+  });
+}
+
+// ========== Import Logs ==========
+export async function getImportLogs(): Promise<ImportLog[]> {
+  const data = await fetchAPI<any[]>('/api/import-logs');
+  return data.map(l => ({
+    id: l.id,
+    timestamp: l.timestamp,
+    fileName: l.file_name,
+    userId: l.user_id,
+    userName: l.user_name,
+    recordsProcessed: l.records_processed,
+    created: l.created,
+    updated: l.updated,
+    skipped: l.skipped,
+    errors: l.errors,
+    errorDetails: l.error_details,
+    skippedDetails: l.skipped_details,
+  }));
+}
+
+export async function saveImportLog(log: ImportLog): Promise<void> {
+  await fetchAPI('/api/import-logs', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: log.id,
+      timestamp: log.timestamp,
+      file_name: log.fileName,
+      user_id: log.userId,
+      user_name: log.userName,
+      records_processed: log.recordsProcessed,
+      created: log.created,
+      updated: log.updated,
+      skipped: log.skipped,
+      errors: log.errors,
+      error_details: log.errorDetails,
+      skipped_details: log.skippedDetails,
+    }),
+  });
+}
+
+// ========== Mapping Helpers ==========
+function mapDeliveryFromAPI(d: any): DeliveryRecord {
+  return {
+    orderNo: d.order_no,
+    district: d.district,
+    storeId: d.store_id,
+    planDate: d.plan_date,
+    openDate: d.open_date,
+    actualDate: d.actual_date,
+    qty: d.qty,
+    sender: d.sender,
+    province: d.province,
+    importFileId: d.import_file_id,
+    deliveryStatus: d.delivery_status,
+    actualDatetime: d.actual_datetime,
+    productDetails: d.product_details,
+    kpiStatus: d.kpi_status,
+    delayDays: d.delay_days,
+    reasonRequired: Boolean(d.reason_required),
+    reasonStatus: d.reason_status,
+    delayReason: d.delay_reason,
+    updatedAt: d.updated_at,
+    weekday: d.weekday,
+    documentReturned: Boolean(d.document_returned),
+    documentReturnedDate: d.document_returned_date,
+    documentReturnBillDate: d.document_return_bill_date,
+    documentReturnSource: d.document_return_source,
+    manualPlanDate: Boolean(d.manual_plan_date),
+    manualActualDate: Boolean(d.manual_actual_date),
+  };
+}
+
+function mapDeliveryToAPI(d: DeliveryRecord): any {
+  return {
+    order_no: d.orderNo,
+    district: d.district,
+    store_id: d.storeId,
+    plan_date: d.planDate,
+    open_date: d.openDate,
+    actual_date: d.actualDate,
+    qty: d.qty,
+    sender: d.sender,
+    province: d.province,
+    import_file_id: d.importFileId,
+    delivery_status: d.deliveryStatus,
+    actual_datetime: d.actualDatetime,
+    product_details: d.productDetails,
+    kpi_status: d.kpiStatus,
+    delay_days: d.delayDays,
+    reason_required: d.reasonRequired ? 1 : 0,
+    reason_status: d.reasonStatus,
+    delay_reason: d.delayReason,
+    updated_at: d.updatedAt,
+    weekday: d.weekday,
+    document_returned: d.documentReturned ? 1 : 0,
+    document_returned_date: d.documentReturnedDate,
+    document_return_bill_date: d.documentReturnBillDate,
+    document_return_source: d.documentReturnSource,
+    manual_plan_date: d.manualPlanDate ? 1 : 0,
+    manual_actual_date: d.manualActualDate ? 1 : 0,
+  };
+}
+
+// ========== Health Check ==========
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const data = await fetchAPI<{ status: string }>('/health');
+    return data.status === 'ok';
+  } catch {
+    return false;
+  }
+}

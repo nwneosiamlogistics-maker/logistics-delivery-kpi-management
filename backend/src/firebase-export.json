@@ -1,0 +1,3755 @@
+{
+  "exportedAt": "2026-03-16T02:49:03.923Z",
+  "source": "https://delivery-kpi-ddc7b-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "kpiConfigs": {
+    "kpi-006": {
+      "branch": "นครสวรรค์",
+      "district": "เมือง",
+      "id": "kpi-006",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "นครสวรรค์"
+    },
+    "kpi-007": {
+      "branch": "นครสวรรค์",
+      "district": "ตาคลี",
+      "id": "kpi-007",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "นครสวรรค์"
+    },
+    "kpi-1772687941585": {
+      "branch": "กำแพงเพชร",
+      "district": "เมือง",
+      "id": "kpi-1772687941585",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ตาก"
+    },
+    "kpi-1772852310406": {
+      "branch": "EKP เชียงราย",
+      "district": "เมือง",
+      "id": "kpi-1772852310406",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พะเยา"
+    },
+    "kpi-1772852425150": {
+      "branch": "EKP ลำปาง",
+      "district": "เมือง",
+      "id": "kpi-1772852425150",
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-1772852686726": {
+      "branch": "EKP ลำปาง",
+      "district": "เมือง",
+      "id": "kpi-1772852686726",
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-1772852703723": {
+      "branch": "EKP ลำปาง",
+      "district": "เมือง",
+      "id": "kpi-1772852703723",
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-1772852781022": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852781022",
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-1772852819638": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852819638",
+      "onTimeLimit": 1,
+      "province": "สมุทรสาคร"
+    },
+    "kpi-1772852854254": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852854254",
+      "onTimeLimit": 3,
+      "province": "ลพบุรี "
+    },
+    "kpi-1772852876806": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852876806",
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-1772852900086": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852900086",
+      "onTimeLimit": 1,
+      "province": "สมุทรปราการ"
+    },
+    "kpi-1772852927822": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852927822",
+      "onTimeLimit": 3,
+      "province": "ราชบุรี"
+    },
+    "kpi-1772852952558": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852952558",
+      "onTimeLimit": 3,
+      "province": "ระยอง"
+    },
+    "kpi-1772852980054": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772852980054",
+      "onTimeLimit": 1,
+      "province": "ปทุมธานี"
+    },
+    "kpi-1772853248582": {
+      "branch": "สาย3",
+      "district": "บ่อวิน",
+      "id": "kpi-1772853248582",
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-1772853307230": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772853307230",
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-1772853821039": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772853821039",
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-1772853861503": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772853861503",
+      "onTimeLimit": 3,
+      "province": "ปราจีนบุรี"
+    },
+    "kpi-1772853918103": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772853918103",
+      "onTimeLimit": 3,
+      "province": "สิงห์บุรี"
+    },
+    "kpi-1772853980535": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772853980535",
+      "onTimeLimit": 3,
+      "province": "นครนายก"
+    },
+    "kpi-1772854045927": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854045927",
+      "onTimeLimit": 1,
+      "province": "สมุทรสงคราม"
+    },
+    "kpi-1772854088007": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854088007",
+      "onTimeLimit": 1,
+      "province": "อ่างทอง"
+    },
+    "kpi-1772854125135": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854125135",
+      "onTimeLimit": 3,
+      "province": "เพชรบุรี"
+    },
+    "kpi-1772854172223": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854172223",
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-1772854201911": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854201911",
+      "onTimeLimit": 3,
+      "province": "ประจวบคีรีขันธ์"
+    },
+    "kpi-1772854262327": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854262327",
+      "onTimeLimit": 3,
+      "province": "ตราด"
+    },
+    "kpi-1772854291975": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854291975",
+      "onTimeLimit": 3,
+      "province": "สระแก้ว"
+    },
+    "kpi-1772854322847": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854322847",
+      "onTimeLimit": 1,
+      "province": "นนทบุรี"
+    },
+    "kpi-1772854351015": {
+      "branch": "สาย3",
+      "district": "บางนา",
+      "id": "kpi-1772854351015",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772854434935": {
+      "branch": "สาย3",
+      "district": "เมือง",
+      "id": "kpi-1772854434935",
+      "onTimeLimit": 1,
+      "province": "ฉะเชิงเทรา"
+    },
+    "kpi-1772854473199": {
+      "branch": "สาย3",
+      "district": "จอมทอง",
+      "id": "kpi-1772854473199",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772875650261": {
+      "branch": "สาย3",
+      "district": "หนองหญ้าไซ",
+      "id": "kpi-1772875650261",
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-1772875714653": {
+      "branch": "EKP เชียงราย",
+      "district": "แม่ใจ",
+      "id": "kpi-1772875714653",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": " พะเยา"
+    },
+    "kpi-1772875754829": {
+      "branch": "สาย3",
+      "district": "ลาดพร้าว",
+      "id": "kpi-1772875754829",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772875778949": {
+      "branch": "สาย3",
+      "district": "บางซื่อ",
+      "id": "kpi-1772875778949",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772875814069": {
+      "branch": "สาย3",
+      "district": "ธนบุรี",
+      "id": "kpi-1772875814069",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772875858533": {
+      "branch": "EKP ลำปาง",
+      "district": "ห้างฉัตร",
+      "id": "kpi-1772875858533",
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-1772875910477": {
+      "branch": "สาย3",
+      "district": "คลองเตย",
+      "id": "kpi-1772875910477",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772875940733": {
+      "branch": "สาย3",
+      "district": "วังจันทร์",
+      "id": "kpi-1772875940733",
+      "onTimeLimit": 3,
+      "province": "ระยอง"
+    },
+    "kpi-1772875971957": {
+      "branch": "สาย3",
+      "district": "คลองใหญ่",
+      "id": "kpi-1772875971957",
+      "onTimeLimit": 3,
+      "province": "ตราด"
+    },
+    "kpi-1772876046165": {
+      "branch": "สาย3",
+      "district": "ท่ายาง",
+      "id": "kpi-1772876046165",
+      "onTimeLimit": 3,
+      "province": "เพชรบุรี"
+    },
+    "kpi-1772876185277": {
+      "branch": "สาย3",
+      "district": "ป่าโมก",
+      "id": "kpi-1772876185277",
+      "onTimeLimit": 1,
+      "province": "อ่างทอง"
+    },
+    "kpi-1772876215213": {
+      "branch": "สาย3",
+      "district": "คันนายาว",
+      "id": "kpi-1772876215213",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772876247645": {
+      "branch": "สาย3",
+      "district": "ภาษีเจริญ",
+      "id": "kpi-1772876247645",
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-1772876414013": {
+      "branch": "EKP ลำปาง",
+      "district": "สบปราบ",
+      "id": "kpi-1772876414013",
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-1773364864298": {
+      "branch": "EKP เชียงราย",
+      "district": "เมือง",
+      "id": "kpi-1773364864298",
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-1773365510224": {
+      "branch": "EKP ลำปาง",
+      "district": "วังเหนือ",
+      "id": "kpi-1773365510224",
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-draft-1772437142497-30ete": {
+      "branch": "นครสวรรค์",
+      "district": "ชุมแสง",
+      "id": "kpi-draft-1772437142497-30ete",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-cx4pl": {
+      "branch": "นครสวรรค์",
+      "district": "บรรพตพิสัย",
+      "id": "kpi-draft-1772437142497-cx4pl",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-gzg4j": {
+      "branch": "นครสวรรค์",
+      "district": "ตากฟ้า",
+      "id": "kpi-draft-1772437142497-gzg4j",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-iqfap": {
+      "branch": "นครสวรรค์",
+      "district": "ชุมตาบง",
+      "id": "kpi-draft-1772437142497-iqfap",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-n45dp": {
+      "branch": "นครสวรรค์",
+      "district": "พยุหะคีรี",
+      "id": "kpi-draft-1772437142497-n45dp",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-o47q8": {
+      "branch": "นครสวรรค์",
+      "district": "ลาดยาว",
+      "id": "kpi-draft-1772437142497-o47q8",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-oalu2": {
+      "branch": "นครสวรรค์",
+      "district": "หนองบัว",
+      "id": "kpi-draft-1772437142497-oalu2",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-y65gf": {
+      "branch": "นครสวรรค์",
+      "district": "เก้าเลี้ยว",
+      "id": "kpi-draft-1772437142497-y65gf",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772437142497-ymk7a": {
+      "branch": "นครสวรรค์",
+      "district": "ไพศาลี",
+      "id": "kpi-draft-1772437142497-ymk7a",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772444304225-3k5mm": {
+      "branch": "เชียงใหม่",
+      "district": "สันทราย",
+      "id": "kpi-draft-1772444304225-3k5mm",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-4cg5a": {
+      "branch": "เชียงใหม่",
+      "district": "สันป่าตอง",
+      "id": "kpi-draft-1772444304225-4cg5a",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-7l99j": {
+      "branch": "เชียงใหม่",
+      "district": "ดอยสะเก็ด",
+      "id": "kpi-draft-1772444304225-7l99j",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-9bilq": {
+      "branch": "เชียงใหม่",
+      "district": "จอมทอง",
+      "id": "kpi-draft-1772444304225-9bilq",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-bug64": {
+      "branch": "เชียงใหม่",
+      "district": "แม่ริม",
+      "id": "kpi-draft-1772444304225-bug64",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-ch1cp": {
+      "branch": "เชียงใหม่",
+      "district": "แม่วาง",
+      "id": "kpi-draft-1772444304225-ch1cp",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-eb1uu": {
+      "branch": "เชียงใหม่",
+      "district": "เมือง",
+      "id": "kpi-draft-1772444304225-eb1uu",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-ek86x": {
+      "branch": "เชียงใหม่",
+      "district": "เชียงดาว",
+      "id": "kpi-draft-1772444304225-ek86x",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-gy8rv": {
+      "branch": "เชียงใหม่",
+      "district": "อมก๋อย",
+      "id": "kpi-draft-1772444304225-gy8rv",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-jxrr8": {
+      "branch": "เชียงใหม่",
+      "district": "สารภี",
+      "id": "kpi-draft-1772444304225-jxrr8",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-lt195": {
+      "branch": "เชียงใหม่",
+      "district": "สันกำแพง",
+      "id": "kpi-draft-1772444304225-lt195",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-o0zkc": {
+      "branch": "เชียงใหม่",
+      "district": "แม่อาย",
+      "id": "kpi-draft-1772444304225-o0zkc",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-sayzj": {
+      "branch": "เชียงใหม่",
+      "district": "ฮอด",
+      "id": "kpi-draft-1772444304225-sayzj",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-uktfp": {
+      "branch": "เชียงใหม่",
+      "district": "หางดง",
+      "id": "kpi-draft-1772444304225-uktfp",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-vfjlc": {
+      "branch": "เชียงใหม่",
+      "district": "ฝาง",
+      "id": "kpi-draft-1772444304225-vfjlc",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-xkelo": {
+      "branch": "เชียงใหม่",
+      "district": "ไชยปราการ",
+      "id": "kpi-draft-1772444304225-xkelo",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-xww5n": {
+      "branch": "เชียงใหม่",
+      "district": "แม่แตง",
+      "id": "kpi-draft-1772444304225-xww5n",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444304225-zheif": {
+      "branch": "เชียงใหม่",
+      "district": "แม่แจ่ม",
+      "id": "kpi-draft-1772444304225-zheif",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772444641028-1ppg6": {
+      "branch": "พิษณุโลก",
+      "district": "ชาติตระการ",
+      "id": "kpi-draft-1772444641028-1ppg6",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-a3kn7": {
+      "branch": "พิษณุโลก",
+      "district": "บางระกำ",
+      "id": "kpi-draft-1772444641028-a3kn7",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-abaxi": {
+      "branch": "พิษณุโลก",
+      "district": "นครไทย",
+      "id": "kpi-draft-1772444641028-abaxi",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-bvrj0": {
+      "branch": "พิษณุโลก",
+      "district": "บางกระทุ่ม",
+      "id": "kpi-draft-1772444641028-bvrj0",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-p9pqe": {
+      "branch": "พิษณุโลก",
+      "district": "วังทอง",
+      "id": "kpi-draft-1772444641028-p9pqe",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-w119y": {
+      "branch": "พิษณุโลก",
+      "district": "พรหมพิราม",
+      "id": "kpi-draft-1772444641028-w119y",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-yozq5": {
+      "branch": "พิษณุโลก",
+      "district": "เมือง",
+      "id": "kpi-draft-1772444641028-yozq5",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444641028-zl852": {
+      "branch": "พิษณุโลก",
+      "district": "เนินมะปราง",
+      "id": "kpi-draft-1772444641028-zl852",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิษณุโลก"
+    },
+    "kpi-draft-1772444704063-0pgiy": {
+      "branch": "พิษณุโลก",
+      "district": "พิชัย",
+      "id": "kpi-draft-1772444704063-0pgiy",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444704063-0x9m5": {
+      "branch": "พิษณุโลก",
+      "district": "เมือง",
+      "id": "kpi-draft-1772444704063-0x9m5",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444704063-4f43a": {
+      "branch": "พิษณุโลก",
+      "district": "ลับแล",
+      "id": "kpi-draft-1772444704063-4f43a",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444704063-j0v36": {
+      "branch": "พิษณุโลก",
+      "district": "ตรอน",
+      "id": "kpi-draft-1772444704063-j0v36",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444704063-ncqoz": {
+      "branch": "พิษณุโลก",
+      "district": "น้ำปาด",
+      "id": "kpi-draft-1772444704063-ncqoz",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444704063-p248c": {
+      "branch": "พิษณุโลก",
+      "district": "ท่าปลา",
+      "id": "kpi-draft-1772444704063-p248c",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444704063-vi4ov": {
+      "branch": "พิษณุโลก",
+      "district": "บ้านโคก",
+      "id": "kpi-draft-1772444704063-vi4ov",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772444712111-06js0": {
+      "branch": "พิษณุโลก",
+      "district": "ศรีสัชนาลัย",
+      "id": "kpi-draft-1772444712111-06js0",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-1uvhj": {
+      "branch": "พิษณุโลก",
+      "district": "ศรีสำโรง",
+      "id": "kpi-draft-1772444712111-1uvhj",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-aq1pp": {
+      "branch": "พิษณุโลก",
+      "district": "ศรีนคร",
+      "id": "kpi-draft-1772444712111-aq1pp",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-bdq96": {
+      "branch": "พิษณุโลก",
+      "district": "กงไกรลาศ",
+      "id": "kpi-draft-1772444712111-bdq96",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-jjnip": {
+      "branch": "พิษณุโลก",
+      "district": "สวรรคโลก",
+      "id": "kpi-draft-1772444712111-jjnip",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-k22sz": {
+      "branch": "พิษณุโลก",
+      "district": "ทุ่งเสลี่ยม",
+      "id": "kpi-draft-1772444712111-k22sz",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-oaqud": {
+      "branch": "พิษณุโลก",
+      "district": "เมือง",
+      "id": "kpi-draft-1772444712111-oaqud",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772444712111-vysth": {
+      "branch": "พิษณุโลก",
+      "district": "ด่านลานหอย",
+      "id": "kpi-draft-1772444712111-vysth",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772445118773-1dk2y": {
+      "branch": "กำแพงเพชร",
+      "district": "ปางศิลาทอง",
+      "id": "kpi-draft-1772445118773-1dk2y",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-27oja": {
+      "branch": "กำแพงเพชร",
+      "district": "ไทรงาม",
+      "id": "kpi-draft-1772445118773-27oja",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-40p32": {
+      "branch": "กำแพงเพชร",
+      "district": "คลองลาน",
+      "id": "kpi-draft-1772445118773-40p32",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-45iu1": {
+      "branch": "กำแพงเพชร",
+      "district": "ลานกระบือ",
+      "id": "kpi-draft-1772445118773-45iu1",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-e4ryz": {
+      "branch": "กำแพงเพชร",
+      "district": "บึงสามัคคี",
+      "id": "kpi-draft-1772445118773-e4ryz",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-if96v": {
+      "branch": "กำแพงเพชร",
+      "district": "พรานกระต่าย",
+      "id": "kpi-draft-1772445118773-if96v",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-kx1tx": {
+      "branch": "กำแพงเพชร",
+      "district": "สลกบาตร",
+      "id": "kpi-draft-1772445118773-kx1tx",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-otziu": {
+      "branch": "กำแพงเพชร",
+      "district": "คลองขลุง",
+      "id": "kpi-draft-1772445118773-otziu",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-qck1v": {
+      "branch": "กำแพงเพชร",
+      "district": "ขาณุวรลักษบุรี",
+      "id": "kpi-draft-1772445118773-qck1v",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-u5sxf": {
+      "branch": "กำแพงเพชร",
+      "district": "เมือง",
+      "id": "kpi-draft-1772445118773-u5sxf",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772445118773-v02qm": {
+      "branch": "กำแพงเพชร",
+      "district": "ทรายทองวัฒนา",
+      "id": "kpi-draft-1772445118773-v02qm",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772446568520-2zsa5": {
+      "branch": "นครสวรรค์",
+      "district": "สากเหล็ก",
+      "id": "kpi-draft-1772446568520-2zsa5",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-550zs": {
+      "branch": "นครสวรรค์",
+      "district": "วชิรบารมี",
+      "id": "kpi-draft-1772446568520-550zs",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-7zvwy": {
+      "branch": "นครสวรรค์",
+      "district": "โพทะเล",
+      "id": "kpi-draft-1772446568520-7zvwy",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-8ojo7": {
+      "branch": "นครสวรรค์",
+      "district": "บึงนาราง",
+      "id": "kpi-draft-1772446568520-8ojo7",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-alwkb": {
+      "branch": "นครสวรรค์",
+      "district": "เมือง",
+      "id": "kpi-draft-1772446568520-alwkb",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-pa068": {
+      "branch": "นครสวรรค์",
+      "district": "ทับคล้อ",
+      "id": "kpi-draft-1772446568520-pa068",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-tjv0q": {
+      "branch": "นครสวรรค์",
+      "district": "บางมูลนาก",
+      "id": "kpi-draft-1772446568520-tjv0q",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446568520-za307": {
+      "branch": "นครสวรรค์",
+      "district": "ตะพานหิน",
+      "id": "kpi-draft-1772446568520-za307",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772446783831-0bdib": {
+      "branch": "นครสวรรค์",
+      "district": "หันคา",
+      "id": "kpi-draft-1772446783831-0bdib",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ชัยนาท"
+    },
+    "kpi-draft-1772446783831-4j36s": {
+      "branch": "นครสวรรค์",
+      "district": "สรรพยา",
+      "id": "kpi-draft-1772446783831-4j36s",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ชัยนาท"
+    },
+    "kpi-draft-1772446783831-fni4s": {
+      "branch": "นครสวรรค์",
+      "district": "เมือง",
+      "id": "kpi-draft-1772446783831-fni4s",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ชัยนาท"
+    },
+    "kpi-draft-1772446791744-2t49w": {
+      "branch": "พิษณุโลก",
+      "district": "หล่มเก่า",
+      "id": "kpi-draft-1772446791744-2t49w",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-4p7jg": {
+      "branch": "พิษณุโลก",
+      "district": "หล่มสัก",
+      "id": "kpi-draft-1772446791744-4p7jg",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-8vo62": {
+      "branch": "นครสวรรค์",
+      "district": "หนองไผ่",
+      "id": "kpi-draft-1772446791744-8vo62",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-h8s40": {
+      "branch": "นครสวรรค์",
+      "district": "เมือง",
+      "id": "kpi-draft-1772446791744-h8s40",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-j9s9q": {
+      "branch": "นครสวรรค์",
+      "district": "ศรีเทพ",
+      "id": "kpi-draft-1772446791744-j9s9q",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-krxox": {
+      "branch": "นครสวรรค์",
+      "district": "วังโป่ง",
+      "id": "kpi-draft-1772446791744-krxox",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-r7wfe": {
+      "branch": "นครสวรรค์",
+      "district": "ชนแดน",
+      "id": "kpi-draft-1772446791744-r7wfe",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-tjm6f": {
+      "branch": "นครสวรรค์",
+      "district": "วิเชียรบุรี",
+      "id": "kpi-draft-1772446791744-tjm6f",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-vrjdz": {
+      "branch": "นครสวรรค์",
+      "district": "บึงสามพัน",
+      "id": "kpi-draft-1772446791744-vrjdz",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446791744-yneqt": {
+      "branch": "พิษณุโลก",
+      "district": "น้ำหนาว",
+      "id": "kpi-draft-1772446791744-yneqt",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เพชรบูรณ์"
+    },
+    "kpi-draft-1772446797995-1g0mz": {
+      "branch": "นครสวรรค์",
+      "district": "เมือง",
+      "id": "kpi-draft-1772446797995-1g0mz",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772446797995-lx2yv": {
+      "branch": "นครสวรรค์",
+      "district": "ห้วยคต",
+      "id": "kpi-draft-1772446797995-lx2yv",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772446797995-ygh4c": {
+      "branch": "นครสวรรค์",
+      "district": "หนองฉาง",
+      "id": "kpi-draft-1772446797995-ygh4c",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772500616519-eci3h": {
+      "branch": "เชียงใหม่",
+      "district": "เมือง",
+      "id": "kpi-draft-1772500616519-eci3h",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ลำพูน"
+    },
+    "kpi-draft-1772500616519-yd9gh": {
+      "branch": "เชียงใหม่",
+      "district": "บ้านโฮ่ง",
+      "id": "kpi-draft-1772500616519-yd9gh",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ลำพูน"
+    },
+    "kpi-draft-1772500616520-0xu25": {
+      "branch": "เชียงใหม่",
+      "district": "ป่าซาง",
+      "id": "kpi-draft-1772500616520-0xu25",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ลำพูน"
+    },
+    "kpi-draft-1772500818757-262rk": {
+      "branch": "เชียงใหม่",
+      "district": "ปาย",
+      "id": "kpi-draft-1772500818757-262rk",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แม่ฮ่องสอน"
+    },
+    "kpi-draft-1772500818757-8iivq": {
+      "branch": "เชียงใหม่",
+      "district": "แม่สะเรียง",
+      "id": "kpi-draft-1772500818757-8iivq",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แม่ฮ่องสอน"
+    },
+    "kpi-draft-1772500818757-lof6i": {
+      "branch": "เชียงใหม่",
+      "district": "เมือง",
+      "id": "kpi-draft-1772500818757-lof6i",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แม่ฮ่องสอน"
+    },
+    "kpi-draft-1772500818757-nbr4w": {
+      "branch": "เชียงใหม่",
+      "district": "แม่ลาน้อย",
+      "id": "kpi-draft-1772500818757-nbr4w",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แม่ฮ่องสอน"
+    },
+    "kpi-draft-1772500818757-tqeyq": {
+      "branch": "เชียงใหม่",
+      "district": "ขุนยวม",
+      "id": "kpi-draft-1772500818757-tqeyq",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แม่ฮ่องสอน"
+    },
+    "kpi-draft-1772523818153-37l5w": {
+      "branch": "นครสวรรค์",
+      "district": "สว่างอารมณ์",
+      "id": "kpi-draft-1772523818153-37l5w",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772523818153-531ma": {
+      "branch": "นครสวรรค์",
+      "district": "บ้านไร่",
+      "id": "kpi-draft-1772523818153-531ma",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772523818153-a0f01": {
+      "branch": "นครสวรรค์",
+      "district": "ลานสัก",
+      "id": "kpi-draft-1772523818153-a0f01",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772523818153-njibn": {
+      "branch": "นครสวรรค์",
+      "district": "ทัพทัน",
+      "id": "kpi-draft-1772523818153-njibn",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อุทัยธานี"
+    },
+    "kpi-draft-1772526491030-fcjhk": {
+      "branch": "นครสวรรค์",
+      "district": "โพธิ์ประทับช้าง",
+      "id": "kpi-draft-1772526491030-fcjhk",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772526491030-y45ti": {
+      "branch": "นครสวรรค์",
+      "district": "ดงเจริญ",
+      "id": "kpi-draft-1772526491030-y45ti",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772526491030-z7sre": {
+      "branch": "นครสวรรค์",
+      "district": "วังทรายพูน",
+      "id": "kpi-draft-1772526491030-z7sre",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "พิจิตร"
+    },
+    "kpi-draft-1772526809552-jbkf9": {
+      "branch": "นครสวรรค์",
+      "district": "มโนรมย์",
+      "id": "kpi-draft-1772526809552-jbkf9",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ชัยนาท"
+    },
+    "kpi-draft-1772526809552-t2nog": {
+      "branch": "นครสวรรค์",
+      "district": "สรรคบุรี",
+      "id": "kpi-draft-1772526809552-t2nog",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ชัยนาท"
+    },
+    "kpi-draft-1772532033366-5mvg2": {
+      "branch": "นครสวรรค์",
+      "district": "โกรกพระ",
+      "id": "kpi-draft-1772532033366-5mvg2",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772532033366-6w71h": {
+      "branch": "นครสวรรค์",
+      "district": "แม่เปิน",
+      "id": "kpi-draft-1772532033366-6w71h",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772532033367-xwjlp": {
+      "branch": "นครสวรรค์",
+      "district": "ท่าตะโก",
+      "id": "kpi-draft-1772532033367-xwjlp",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "นครสวรรค์"
+    },
+    "kpi-draft-1772591332597-lyqv3": {
+      "branch": "เชียงใหม่",
+      "district": "สบเมย",
+      "id": "kpi-draft-1772591332597-lyqv3",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แม่ฮ่องสอน"
+    },
+    "kpi-draft-1772591427991-t3tqp": {
+      "branch": "เชียงใหม่",
+      "district": "เวียงหนองล่อง",
+      "id": "kpi-draft-1772591427991-t3tqp",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำพูน"
+    },
+    "kpi-draft-1772614809867-8uaqh": {
+      "branch": "กำแพงเพชร",
+      "district": "สามเงา",
+      "id": "kpi-draft-1772614809867-8uaqh",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614809867-dn8ve": {
+      "branch": "แม่สอด",
+      "district": "แม่ระมาด",
+      "id": "kpi-draft-1772614809867-dn8ve",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614809867-kxydg": {
+      "branch": "แม่สอด",
+      "district": "แม่สอด",
+      "id": "kpi-draft-1772614809867-kxydg",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614809867-pt26s": {
+      "branch": "แม่สอด",
+      "district": "ท่าสองยาง",
+      "id": "kpi-draft-1772614809867-pt26s",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614809867-w8raz": {
+      "branch": "แม่สอด",
+      "district": "พบพระ",
+      "id": "kpi-draft-1772614809867-w8raz",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614809867-xam9u": {
+      "branch": "กำแพงเพชร",
+      "district": "บ้านตาก",
+      "id": "kpi-draft-1772614809867-xam9u",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614809867-yx4hn": {
+      "branch": "กำแพงเพชร",
+      "district": "วังเจ้า",
+      "id": "kpi-draft-1772614809867-yx4hn",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ตาก"
+    },
+    "kpi-draft-1772614814057-9i38y": {
+      "branch": "กำแพงเพชร",
+      "district": "โกสัมพีนคร",
+      "id": "kpi-draft-1772614814057-9i38y",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "กำแพงเพชร"
+    },
+    "kpi-draft-1772615688408-xa2zx": {
+      "branch": "พิษณุโลก",
+      "district": "คีรีมาศ",
+      "id": "kpi-draft-1772615688408-xa2zx",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "สุโขทัย"
+    },
+    "kpi-draft-1772615692578-1obkw": {
+      "branch": "พิษณุโลก",
+      "district": "ทองแสนขัน",
+      "id": "kpi-draft-1772615692578-1obkw",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772615692578-os8qw": {
+      "branch": "พิษณุโลก",
+      "district": "ฟากท่า",
+      "id": "kpi-draft-1772615692578-os8qw",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "อุตรดิตถ์"
+    },
+    "kpi-draft-1772617081675-4s3s4": {
+      "branch": "เชียงใหม่",
+      "district": "ดอยเต่า",
+      "id": "kpi-draft-1772617081675-4s3s4",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772617081676-i0gd9": {
+      "branch": "เชียงใหม่",
+      "district": "ดอยหล่อ",
+      "id": "kpi-draft-1772617081676-i0gd9",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงใหม่"
+    },
+    "kpi-draft-1772617086311-d81jz": {
+      "branch": "เชียงใหม่",
+      "district": "ลี้",
+      "id": "kpi-draft-1772617086311-d81jz",
+      "isDraft": false,
+      "onTimeLimit": 5,
+      "province": "ลำพูน"
+    },
+    "kpi-draft-1772617086311-xwnc1": {
+      "branch": "เชียงใหม่",
+      "district": "บ้านธิ",
+      "id": "kpi-draft-1772617086311-xwnc1",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำพูน"
+    },
+    "kpi-draft-1772790070767-k47o4": {
+      "branch": "สาย3",
+      "district": "บางขุนเทียน",
+      "id": "kpi-draft-1772790070767-k47o4",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772791403224-e85k5": {
+      "branch": "EKP ลำปาง",
+      "district": "ปัว",
+      "id": "kpi-draft-1772791403224-e85k5",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772791403224-g6qxq": {
+      "branch": "EKP ลำปาง",
+      "district": "แม่สาย",
+      "id": "kpi-draft-1772791403224-g6qxq",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772791403224-grlll": {
+      "branch": "EKP ลำปาง",
+      "district": "เวียงสา",
+      "id": "kpi-draft-1772791403224-grlll",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772849480734-5sv9s": {
+      "branch": "สาย3",
+      "district": "ลาดกระบัง",
+      "id": "kpi-draft-1772849480734-5sv9s",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480734-c1edf": {
+      "branch": "สาย3",
+      "district": "ยานนาวา",
+      "id": "kpi-draft-1772849480734-c1edf",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480734-d36wq": {
+      "branch": "สาย3",
+      "district": "ห้วยขวาง",
+      "id": "kpi-draft-1772849480734-d36wq",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-1dq58": {
+      "branch": "สาย3",
+      "district": "วัฒนา",
+      "id": "kpi-draft-1772849480736-1dq58",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-1ma6e": {
+      "branch": "สาย3",
+      "district": "วัฒนานคร",
+      "id": "kpi-draft-1772849480736-1ma6e",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สระแก้ว"
+    },
+    "kpi-draft-1772849480736-28gtm": {
+      "branch": "สาย3",
+      "district": "บ้านหมอ",
+      "id": "kpi-draft-1772849480736-28gtm",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772849480736-2agq6": {
+      "branch": "สาย3",
+      "district": "อรัญประเทศ",
+      "id": "kpi-draft-1772849480736-2agq6",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สระแก้ว"
+    },
+    "kpi-draft-1772849480736-4n352": {
+      "branch": "EKP ลำปาง",
+      "district": "พญาเม็งราย",
+      "id": "kpi-draft-1772849480736-4n352",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-4xvla": {
+      "branch": "EKP เชียงราย",
+      "district": "เชียงคำ",
+      "id": "kpi-draft-1772849480736-4xvla",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พะเยา"
+    },
+    "kpi-draft-1772849480736-5my6c": {
+      "branch": "สาย3",
+      "district": "บางบัวทอง",
+      "id": "kpi-draft-1772849480736-5my6c",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นนทบุรี"
+    },
+    "kpi-draft-1772849480736-5xypz": {
+      "branch": "EKP ลำปาง",
+      "district": "เถิน",
+      "id": "kpi-draft-1772849480736-5xypz",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-draft-1772849480736-6bwov": {
+      "branch": "สาย3",
+      "district": "ชะอำ",
+      "id": "kpi-draft-1772849480736-6bwov",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เพชรบุรี"
+    },
+    "kpi-draft-1772849480736-79j4v": {
+      "branch": "สาย3",
+      "district": "อ่อนนุช",
+      "id": "kpi-draft-1772849480736-79j4v",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-7l63p": {
+      "branch": "สาย3",
+      "district": "ท่ามะกา",
+      "id": "kpi-draft-1772849480736-7l63p",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "กาญจนบุรี"
+    },
+    "kpi-draft-1772849480736-7lryw": {
+      "branch": "สาย3",
+      "district": "ดอนเจดีย์",
+      "id": "kpi-draft-1772849480736-7lryw",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772849480736-7udkv": {
+      "branch": "สาย3",
+      "district": "สามพราน",
+      "id": "kpi-draft-1772849480736-7udkv",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-draft-1772849480736-8uvq0": {
+      "branch": "สาย3",
+      "district": "ปลวกแดง",
+      "id": "kpi-draft-1772849480736-8uvq0",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ระยอง"
+    },
+    "kpi-draft-1772849480736-9tzor": {
+      "branch": "สาย3",
+      "district": "ศรีราชา",
+      "id": "kpi-draft-1772849480736-9tzor",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849480736-ar85t": {
+      "branch": "สาย3",
+      "district": "นาดี",
+      "id": "kpi-draft-1772849480736-ar85t",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ปราจีนบุรี"
+    },
+    "kpi-draft-1772849480736-axgim": {
+      "branch": "สาย3",
+      "district": "บางละมุง",
+      "id": "kpi-draft-1772849480736-axgim",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849480736-bbv4x": {
+      "branch": "สาย3",
+      "district": "โพธาราม",
+      "id": "kpi-draft-1772849480736-bbv4x",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ราชบุรี"
+    },
+    "kpi-draft-1772849480736-ckiuh": {
+      "branch": "EKP ลำปาง",
+      "district": "เชียงแสน",
+      "id": "kpi-draft-1772849480736-ckiuh",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-evhds": {
+      "branch": "สาย3",
+      "district": "บางใหญ่",
+      "id": "kpi-draft-1772849480736-evhds",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นนทบุรี"
+    },
+    "kpi-draft-1772849480736-ezioz": {
+      "branch": "สาย3",
+      "district": "ชัยบาดาล",
+      "id": "kpi-draft-1772849480736-ezioz",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ลพบุรี"
+    },
+    "kpi-draft-1772849480736-f95yb": {
+      "branch": "สาย3",
+      "district": "วิหารแดง",
+      "id": "kpi-draft-1772849480736-f95yb",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772849480736-fkufb": {
+      "branch": "สาย3",
+      "district": "ธัญบุรี",
+      "id": "kpi-draft-1772849480736-fkufb",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ปทุมธานี"
+    },
+    "kpi-draft-1772849480736-g1zl5": {
+      "branch": "EKP ลำปาง",
+      "district": "พาน",
+      "id": "kpi-draft-1772849480736-g1zl5",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-gbps8": {
+      "branch": "EKP ลำปาง",
+      "district": "เวียงป่าเป้า",
+      "id": "kpi-draft-1772849480736-gbps8",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-gggtf": {
+      "branch": "สาย3",
+      "district": "บ้านลาด",
+      "id": "kpi-draft-1772849480736-gggtf",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เพชรบุรี"
+    },
+    "kpi-draft-1772849480736-gxo7x": {
+      "branch": "สาย3",
+      "district": "ด่านช้าง",
+      "id": "kpi-draft-1772849480736-gxo7x",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772849480736-gyltq": {
+      "branch": "EKP ลำปาง",
+      "district": "งาว",
+      "id": "kpi-draft-1772849480736-gyltq",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-draft-1772849480736-hqri3": {
+      "branch": "สาย3",
+      "district": "กบินทร์บุรี",
+      "id": "kpi-draft-1772849480736-hqri3",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ปราจีนบุรี"
+    },
+    "kpi-draft-1772849480736-i2at9": {
+      "branch": "สาย3",
+      "district": "มีนบุรี",
+      "id": "kpi-draft-1772849480736-i2at9",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-ifw2q": {
+      "branch": "EKP ลำปาง",
+      "district": "แม่สรวย",
+      "id": "kpi-draft-1772849480736-ifw2q",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-ih0k4": {
+      "branch": "สาย3",
+      "district": "ไทรน้อย",
+      "id": "kpi-draft-1772849480736-ih0k4",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นนทบุรี"
+    },
+    "kpi-draft-1772849480736-itn5h": {
+      "branch": "สาย3",
+      "district": "ดอนตูม",
+      "id": "kpi-draft-1772849480736-itn5h",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-draft-1772849480736-iwakf": {
+      "branch": "สาย3",
+      "district": "สัตหีบ",
+      "id": "kpi-draft-1772849480736-iwakf",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849480736-ji3a4": {
+      "branch": "EKP เชียงราย",
+      "district": "ภูซาง",
+      "id": "kpi-draft-1772849480736-ji3a4",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พะเยา"
+    },
+    "kpi-draft-1772849480736-kpuy5": {
+      "branch": "สาย3",
+      "district": "กำแพงแสน",
+      "id": "kpi-draft-1772849480736-kpuy5",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-draft-1772849480736-lzygz": {
+      "branch": "สาย3",
+      "district": "บ้านโป่ง",
+      "id": "kpi-draft-1772849480736-lzygz",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ราชบุรี"
+    },
+    "kpi-draft-1772849480736-mhdsy": {
+      "branch": "สาย3",
+      "district": "แกลง",
+      "id": "kpi-draft-1772849480736-mhdsy",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ระยอง"
+    },
+    "kpi-draft-1772849480736-n9xs7": {
+      "branch": "สาย3",
+      "district": "หนองแขม",
+      "id": "kpi-draft-1772849480736-n9xs7",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-naub1": {
+      "branch": "สาย3",
+      "district": "ทุ่งครุ",
+      "id": "kpi-draft-1772849480736-naub1",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-nkyqm": {
+      "branch": "สาย3",
+      "district": "พานทอง",
+      "id": "kpi-draft-1772849480736-nkyqm",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849480736-nw5ki": {
+      "branch": "EKP ลำปาง",
+      "district": "เชียงของ",
+      "id": "kpi-draft-1772849480736-nw5ki",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-od3px": {
+      "branch": "EKP เชียงราย",
+      "district": "ขุนตาล",
+      "id": "kpi-draft-1772849480736-od3px",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-pitd6": {
+      "branch": "EKP ลำปาง",
+      "district": "เกาะคา",
+      "id": "kpi-draft-1772849480736-pitd6",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-draft-1772849480736-ptabw": {
+      "branch": "สาย3",
+      "district": "พุทธมณฑล",
+      "id": "kpi-draft-1772849480736-ptabw",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-draft-1772849480736-pvahs": {
+      "branch": "สาย3",
+      "district": "พระประแดง",
+      "id": "kpi-draft-1772849480736-pvahs",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรปราการ"
+    },
+    "kpi-draft-1772849480736-pyfdo": {
+      "branch": "EKP ลำปาง",
+      "district": "เทิง",
+      "id": "kpi-draft-1772849480736-pyfdo",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-q268d": {
+      "branch": "สาย3",
+      "district": "บ้านนา",
+      "id": "kpi-draft-1772849480736-q268d",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "นครนายก"
+    },
+    "kpi-draft-1772849480736-qbmyh": {
+      "branch": "สาย3",
+      "district": "มะขาม",
+      "id": "kpi-draft-1772849480736-qbmyh",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "จันทบุรี"
+    },
+    "kpi-draft-1772849480736-qu6f3": {
+      "branch": "สาย3",
+      "district": "ดอนเมือง",
+      "id": "kpi-draft-1772849480736-qu6f3",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-qu8x9": {
+      "branch": "สาย3",
+      "district": "คลองหาด",
+      "id": "kpi-draft-1772849480736-qu8x9",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สระแก้ว"
+    },
+    "kpi-draft-1772849480736-reknf": {
+      "branch": "สาย3",
+      "district": "ทวีวัฒนา",
+      "id": "kpi-draft-1772849480736-reknf",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-s0vbn": {
+      "branch": "สาย3",
+      "district": "ประจันตคาม",
+      "id": "kpi-draft-1772849480736-s0vbn",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ปราจีนบุรี"
+    },
+    "kpi-draft-1772849480736-s36kv": {
+      "branch": "สาย3",
+      "district": "พระสมุทรเจดีย์",
+      "id": "kpi-draft-1772849480736-s36kv",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรปราการ"
+    },
+    "kpi-draft-1772849480736-s91sk": {
+      "branch": "สาย3",
+      "district": "ตลิ่งชัน",
+      "id": "kpi-draft-1772849480736-s91sk",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-tunyd": {
+      "branch": "สาย3",
+      "district": "แก่งคอย",
+      "id": "kpi-draft-1772849480736-tunyd",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772849480736-up5hw": {
+      "branch": "EKP ลำปาง",
+      "district": "แม่จัน",
+      "id": "kpi-draft-1772849480736-up5hw",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849480736-v2edf": {
+      "branch": "EKP ลำปาง",
+      "district": "สอง",
+      "id": "kpi-draft-1772849480736-v2edf",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-draft-1772849480736-v6feg": {
+      "branch": "สาย3",
+      "district": "บางบอน",
+      "id": "kpi-draft-1772849480736-v6feg",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-v7uju": {
+      "branch": "สาย3",
+      "district": "พนมสารคาม",
+      "id": "kpi-draft-1772849480736-v7uju",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ฉะเชิงเทรา"
+    },
+    "kpi-draft-1772849480736-vbzua": {
+      "branch": "สาย3",
+      "district": "กระทุ่มแบน",
+      "id": "kpi-draft-1772849480736-vbzua",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรสาคร"
+    },
+    "kpi-draft-1772849480736-vggu1": {
+      "branch": "EKP ลำปาง",
+      "district": "แม่เมาะ",
+      "id": "kpi-draft-1772849480736-vggu1",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-draft-1772849480736-wghas": {
+      "branch": "สาย3",
+      "district": "บางแค",
+      "id": "kpi-draft-1772849480736-wghas",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-x4b48": {
+      "branch": "สาย3",
+      "district": "คลองสามวา",
+      "id": "kpi-draft-1772849480736-x4b48",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849480736-xf2xc": {
+      "branch": "สาย3",
+      "district": "บางเลน",
+      "id": "kpi-draft-1772849480736-xf2xc",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-draft-1772849480736-xmkd4": {
+      "branch": "สาย3",
+      "district": "หัวหิน",
+      "id": "kpi-draft-1772849480736-xmkd4",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ประจวบคีรีขันธ์"
+    },
+    "kpi-draft-1772849480736-zvcgw": {
+      "branch": "สาย3",
+      "district": "เมืองจันทบุรี",
+      "id": "kpi-draft-1772849480736-zvcgw",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "จันทบุรี"
+    },
+    "kpi-draft-1772849480737-07r78": {
+      "branch": "สาย3",
+      "district": "บางบาล",
+      "id": "kpi-draft-1772849480737-07r78",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849480737-3kwrm": {
+      "branch": "สาย3",
+      "district": "พระนครศรีอยุธยา",
+      "id": "kpi-draft-1772849480737-3kwrm",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849480737-92sei": {
+      "branch": "สาย3",
+      "district": "ท่าเรือ",
+      "id": "kpi-draft-1772849480737-92sei",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849480737-hzqk3": {
+      "branch": "สาย3",
+      "district": "บางปะหัน",
+      "id": "kpi-draft-1772849480737-hzqk3",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849480737-jtn7a": {
+      "branch": "สาย3",
+      "district": "วังน้อย",
+      "id": "kpi-draft-1772849480737-jtn7a",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849480737-q1psr": {
+      "branch": "สาย3",
+      "district": "อุทัย",
+      "id": "kpi-draft-1772849480737-q1psr",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849480737-zsbxj": {
+      "branch": "สาย3",
+      "district": "อู่ทอง",
+      "id": "kpi-draft-1772849480737-zsbxj",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772849510848-mci6g": {
+      "branch": "สาย3",
+      "district": "บางกะปิ",
+      "id": "kpi-draft-1772849510848-mci6g",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849510849-0xwsl": {
+      "branch": "EKP ลำปาง",
+      "district": "สูงเม่น",
+      "id": "kpi-draft-1772849510849-0xwsl",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-draft-1772849510849-0zjpb": {
+      "branch": "EKP ลำปาง",
+      "district": "ท่าวังผา",
+      "id": "kpi-draft-1772849510849-0zjpb",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772849510849-1l0xc": {
+      "branch": "สาย3",
+      "district": "สองพี่น้อง",
+      "id": "kpi-draft-1772849510849-1l0xc",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772849510849-2ll57": {
+      "branch": "สาย3",
+      "district": "คลองหลวง",
+      "id": "kpi-draft-1772849510849-2ll57",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ปทุมธานี"
+    },
+    "kpi-draft-1772849510849-58gwa": {
+      "branch": "สาย3",
+      "district": "เมืองกาญจนบุรี",
+      "id": "kpi-draft-1772849510849-58gwa",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "กาญจนบุรี"
+    },
+    "kpi-draft-1772849510849-6dzju": {
+      "branch": "สาย3",
+      "district": "พญาไท",
+      "id": "kpi-draft-1772849510849-6dzju",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849510849-6mand": {
+      "branch": "สาย3",
+      "district": "โพธิ์ทอง",
+      "id": "kpi-draft-1772849510849-6mand",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อ่างทอง"
+    },
+    "kpi-draft-1772849510849-86d9n": {
+      "branch": "สาย3",
+      "district": "หนองจอก",
+      "id": "kpi-draft-1772849510849-86d9n",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849510849-8n0z8": {
+      "branch": "สาย3",
+      "district": "บางปะอิน",
+      "id": "kpi-draft-1772849510849-8n0z8",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849510849-9vwsx": {
+      "branch": "สาย3",
+      "district": "ปทุมวัน",
+      "id": "kpi-draft-1772849510849-9vwsx",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849510849-9zwuo": {
+      "branch": "EKP ลำปาง",
+      "district": "หนองม่วงไข่",
+      "id": "kpi-draft-1772849510849-9zwuo",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-draft-1772849510849-ah4km": {
+      "branch": "สาย3",
+      "district": "ศรีมหาโพธิ",
+      "id": "kpi-draft-1772849510849-ah4km",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ปราจีนบุรี"
+    },
+    "kpi-draft-1772849510849-bu5fa": {
+      "branch": "สาย3",
+      "district": "นครหลวง",
+      "id": "kpi-draft-1772849510849-bu5fa",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849510849-do1pj": {
+      "branch": "สาย3",
+      "district": "ท่าม่วง",
+      "id": "kpi-draft-1772849510849-do1pj",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กาญจนบุรี"
+    },
+    "kpi-draft-1772849510849-hktrb": {
+      "branch": "สาย3",
+      "district": "ไชโย",
+      "id": "kpi-draft-1772849510849-hktrb",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อ่างทอง"
+    },
+    "kpi-draft-1772849510849-j5162": {
+      "branch": "สาย3",
+      "district": "บ่อทอง",
+      "id": "kpi-draft-1772849510849-j5162",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849510849-jcngr": {
+      "branch": "สาย3",
+      "district": "โคกสำโรง",
+      "id": "kpi-draft-1772849510849-jcngr",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ลพบุรี"
+    },
+    "kpi-draft-1772849510849-jw5s7": {
+      "branch": "สาย3",
+      "district": "บางนา",
+      "id": "kpi-draft-1772849510849-jw5s7",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรปราการ"
+    },
+    "kpi-draft-1772849510849-jwyef": {
+      "branch": "EKP ลำปาง",
+      "district": "เวียงแก่น",
+      "id": "kpi-draft-1772849510849-jwyef",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849510849-o4i7g": {
+      "branch": "EKP เชียงราย",
+      "district": "ดอกคำใต้",
+      "id": "kpi-draft-1772849510849-o4i7g",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พะเยา"
+    },
+    "kpi-draft-1772849510849-pv8qz": {
+      "branch": "สาย3",
+      "district": "หนองแค",
+      "id": "kpi-draft-1772849510849-pv8qz",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772849510849-rcnvd": {
+      "branch": "สาย3",
+      "district": "เกาะช้าง",
+      "id": "kpi-draft-1772849510849-rcnvd",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ตราด"
+    },
+    "kpi-draft-1772849510849-su2w2": {
+      "branch": "สาย3",
+      "district": "บางพลี",
+      "id": "kpi-draft-1772849510849-su2w2",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรปราการ"
+    },
+    "kpi-draft-1772849510849-tdw7n": {
+      "branch": "สาย3",
+      "district": "นครชัยศรี",
+      "id": "kpi-draft-1772849510849-tdw7n",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นครปฐม"
+    },
+    "kpi-draft-1772849510849-teks1": {
+      "branch": "EKP เชียงราย",
+      "district": "จุน",
+      "id": "kpi-draft-1772849510849-teks1",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พะเยา"
+    },
+    "kpi-draft-1772849510849-v8vxc": {
+      "branch": "สาย3",
+      "district": "บ้านหมี่",
+      "id": "kpi-draft-1772849510849-v8vxc",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ลพบุรี"
+    },
+    "kpi-draft-1772849510849-wbkut": {
+      "branch": "สาย3",
+      "district": "เดิมบางนางบวช",
+      "id": "kpi-draft-1772849510849-wbkut",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772849510849-wel7v": {
+      "branch": "EKP ลำปาง",
+      "district": "เวียงชัย",
+      "id": "kpi-draft-1772849510849-wel7v",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849510849-wganf": {
+      "branch": "สาย3",
+      "district": "ปากเกร็ด",
+      "id": "kpi-draft-1772849510849-wganf",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นนทบุรี"
+    },
+    "kpi-draft-1772849510849-xvvp3": {
+      "branch": "สาย3",
+      "district": "เมืองสมุทรสาคร",
+      "id": "kpi-draft-1772849510849-xvvp3",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรสาคร"
+    },
+    "kpi-draft-1772849511850-0p1rv": {
+      "branch": "สาย3",
+      "district": "บึงกุ่ม",
+      "id": "kpi-draft-1772849511850-0p1rv",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849511850-2v6oh": {
+      "branch": "สาย3",
+      "district": "ดินแดง",
+      "id": "kpi-draft-1772849511850-2v6oh",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849511850-2xkod": {
+      "branch": "สาย3",
+      "district": "บางน้ำเปรี้ยว",
+      "id": "kpi-draft-1772849511850-2xkod",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ฉะเชิงเทรา"
+    },
+    "kpi-draft-1772849511850-38wbg": {
+      "branch": "สาย3",
+      "district": "สะพานสูง",
+      "id": "kpi-draft-1772849511850-38wbg",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849511850-8vo7z": {
+      "branch": "สาย3",
+      "district": "บางปะกง",
+      "id": "kpi-draft-1772849511850-8vo7z",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ฉะเชิงเทรา"
+    },
+    "kpi-draft-1772849511850-9jn17": {
+      "branch": "สาย3",
+      "district": "หนองใหญ่",
+      "id": "kpi-draft-1772849511850-9jn17",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849511850-d0njz": {
+      "branch": "สาย3",
+      "district": "เขาคิชฌกูฎ",
+      "id": "kpi-draft-1772849511850-d0njz",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "จันทบุรี"
+    },
+    "kpi-draft-1772849511850-dtwcy": {
+      "branch": "สาย3",
+      "district": "บ้านบึง",
+      "id": "kpi-draft-1772849511850-dtwcy",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ชลบุรี"
+    },
+    "kpi-draft-1772849511850-tgk1v": {
+      "branch": "สาย3",
+      "district": "บ่อพลอย",
+      "id": "kpi-draft-1772849511850-tgk1v",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "กาญจนบุรี"
+    },
+    "kpi-draft-1772849511851-3oe6b": {
+      "branch": "สาย3",
+      "district": "วิเศษชัยชาญ",
+      "id": "kpi-draft-1772849511851-3oe6b",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อ่างทอง"
+    },
+    "kpi-draft-1772849511851-3uy10": {
+      "branch": "สาย3",
+      "district": "ลาดหลุมแก้ว",
+      "id": "kpi-draft-1772849511851-3uy10",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ปทุมธานี"
+    },
+    "kpi-draft-1772849511851-6ljak": {
+      "branch": "สาย3",
+      "district": "ศรีประจันต์",
+      "id": "kpi-draft-1772849511851-6ljak",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772849511851-7bn8f": {
+      "branch": "สาย3",
+      "district": "ปราณบุรี",
+      "id": "kpi-draft-1772849511851-7bn8f",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ประจวบคีรีขันธ์"
+    },
+    "kpi-draft-1772849511851-b7bq7": {
+      "branch": "EKP ลำปาง",
+      "district": "ภูเพียง",
+      "id": "kpi-draft-1772849511851-b7bq7",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772849511851-g9htd": {
+      "branch": "EKP ลำปาง",
+      "district": "เด่นชัย",
+      "id": "kpi-draft-1772849511851-g9htd",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-draft-1772849511851-gm9x1": {
+      "branch": "สาย3",
+      "district": "บ้านสร้าง",
+      "id": "kpi-draft-1772849511851-gm9x1",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ปราจีนบุรี"
+    },
+    "kpi-draft-1772849511851-iiuy2": {
+      "branch": "สาย3",
+      "district": "ดำเนินสะดวก",
+      "id": "kpi-draft-1772849511851-iiuy2",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ราชบุรี"
+    },
+    "kpi-draft-1772849511851-jric4": {
+      "branch": "สาย3",
+      "district": "วังสมบูรณ์",
+      "id": "kpi-draft-1772849511851-jric4",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สระแก้ว"
+    },
+    "kpi-draft-1772849511851-kmm3l": {
+      "branch": "สาย3",
+      "district": "บางสะพาน",
+      "id": "kpi-draft-1772849511851-kmm3l",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ประจวบคีรีขันธ์"
+    },
+    "kpi-draft-1772849511851-kt4ak": {
+      "branch": "สาย3",
+      "district": "เสนา",
+      "id": "kpi-draft-1772849511851-kt4ak",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849511851-nd5jx": {
+      "branch": "สาย3",
+      "district": "ผักไห่",
+      "id": "kpi-draft-1772849511851-nd5jx",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849511851-xiw67": {
+      "branch": "สาย3",
+      "district": "ลาดบัวหลวง",
+      "id": "kpi-draft-1772849511851-xiw67",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "อยุธยา"
+    },
+    "kpi-draft-1772849511851-yrau8": {
+      "branch": "EKP ลำปาง",
+      "district": "ป่าแดด",
+      "id": "kpi-draft-1772849511851-yrau8",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849511851-zvm3q": {
+      "branch": "สาย3",
+      "district": "สามโคก",
+      "id": "kpi-draft-1772849511851-zvm3q",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ปทุมธานี"
+    },
+    "kpi-draft-1772849513056-2diun": {
+      "branch": "EKP ลำปาง",
+      "district": "เชียงกลาง",
+      "id": "kpi-draft-1772849513056-2diun",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772849513056-2jsn7": {
+      "branch": "EKP ลำปาง",
+      "district": "นาน้อย",
+      "id": "kpi-draft-1772849513056-2jsn7",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772849513056-4uy2q": {
+      "branch": "สาย3",
+      "district": "พระโขนง",
+      "id": "kpi-draft-1772849513056-4uy2q",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849513056-53em8": {
+      "branch": "EKP ลำปาง",
+      "district": "ลอง",
+      "id": "kpi-draft-1772849513056-53em8",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-draft-1772849513056-9vvm7": {
+      "branch": "สาย3",
+      "district": "ท่าตะเกียบ",
+      "id": "kpi-draft-1772849513056-9vvm7",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ฉะเชิงเทรา"
+    },
+    "kpi-draft-1772849513056-bps66": {
+      "branch": "สาย3",
+      "district": "จตุจักร",
+      "id": "kpi-draft-1772849513056-bps66",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849513056-csjon": {
+      "branch": "สาย3",
+      "district": "ลำลูกกา",
+      "id": "kpi-draft-1772849513056-csjon",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ปทุมธานี"
+    },
+    "kpi-draft-1772849513056-fs6n1": {
+      "branch": "สาย3",
+      "district": "บางกอกน้อย",
+      "id": "kpi-draft-1772849513056-fs6n1",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849513056-jwdx4": {
+      "branch": "สาย3",
+      "district": "บ้านแพ้ว",
+      "id": "kpi-draft-1772849513056-jwdx4",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรสาคร"
+    },
+    "kpi-draft-1772849513056-lq6iy": {
+      "branch": "สาย3",
+      "district": "มวกเหล็ก",
+      "id": "kpi-draft-1772849513056-lq6iy",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772849513056-trs3r": {
+      "branch": "สาย3",
+      "district": "บางกรวย",
+      "id": "kpi-draft-1772849513056-trs3r",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "นนทบุรี"
+    },
+    "kpi-draft-1772849513056-uy75j": {
+      "branch": "สาย3",
+      "district": "หนองม่วง",
+      "id": "kpi-draft-1772849513056-uy75j",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ลพบุรี"
+    },
+    "kpi-draft-1772849514172-7zs4z": {
+      "branch": "สาย3",
+      "district": "สายไหม",
+      "id": "kpi-draft-1772849514172-7zs4z",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849514172-jjyrh": {
+      "branch": "สาย3",
+      "district": "คลองสาน",
+      "id": "kpi-draft-1772849514172-jjyrh",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849514172-q8w5g": {
+      "branch": "สาย3",
+      "district": "อัมพวา",
+      "id": "kpi-draft-1772849514172-q8w5g",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรสงคราม"
+    },
+    "kpi-draft-1772849514172-r447q": {
+      "branch": "สาย3",
+      "district": "บ้านฉาง",
+      "id": "kpi-draft-1772849514172-r447q",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ระยอง"
+    },
+    "kpi-draft-1772849514172-t2gn0": {
+      "branch": "EKP เชียงราย",
+      "district": "ปง",
+      "id": "kpi-draft-1772849514172-t2gn0",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "พะเยา"
+    },
+    "kpi-draft-1772849514172-vrjxn": {
+      "branch": "สาย3",
+      "district": "วังน้ำเย็น",
+      "id": "kpi-draft-1772849514172-vrjxn",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "สระแก้ว"
+    },
+    "kpi-draft-1772849515293-6q663": {
+      "branch": "สาย3",
+      "district": "แม่กลอง",
+      "id": "kpi-draft-1772849515293-6q663",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรสงคราม"
+    },
+    "kpi-draft-1772849515293-gepvc": {
+      "branch": "สาย3",
+      "district": "พัฒนานิคม",
+      "id": "kpi-draft-1772849515293-gepvc",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "ลพบุรี"
+    },
+    "kpi-draft-1772849515293-hgusr": {
+      "branch": "EKP ลำปาง",
+      "district": "ร้องกวาง",
+      "id": "kpi-draft-1772849515293-hgusr",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "แพร่"
+    },
+    "kpi-draft-1772849515293-y7dkr": {
+      "branch": "สาย3",
+      "district": "บางกอกใหญ่",
+      "id": "kpi-draft-1772849515293-y7dkr",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849515294-4iuse": {
+      "branch": "สาย3",
+      "district": "ประเวศ",
+      "id": "kpi-draft-1772849515294-4iuse",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772849515294-5rgfq": {
+      "branch": "EKP ลำปาง",
+      "district": "แม่ฟ้าหลวง",
+      "id": "kpi-draft-1772849515294-5rgfq",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772849515294-6l20b": {
+      "branch": "สาย3",
+      "district": "พระพุทธบาท",
+      "id": "kpi-draft-1772849515294-6l20b",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772849515294-lorvu": {
+      "branch": "EKP ลำปาง",
+      "district": "นาหมื่น",
+      "id": "kpi-draft-1772849515294-lorvu",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "น่าน"
+    },
+    "kpi-draft-1772874213791-2jjnl": {
+      "branch": "สาย3",
+      "district": "สอยดาว",
+      "id": "kpi-draft-1772874213791-2jjnl",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "จันทบุรี"
+    },
+    "kpi-draft-1772874213791-499hi": {
+      "branch": "สาย3",
+      "district": "ดุสิต",
+      "id": "kpi-draft-1772874213791-499hi",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772874213791-cpfqz": {
+      "branch": "สาย3",
+      "district": "บางคนที",
+      "id": "kpi-draft-1772874213791-cpfqz",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สมุทรสงคราม"
+    },
+    "kpi-draft-1772874213791-jbaeo": {
+      "branch": "EKP ลำปาง",
+      "district": "แม่ลาว",
+      "id": "kpi-draft-1772874213791-jbaeo",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "เชียงราย"
+    },
+    "kpi-draft-1772874213792-3v5mp": {
+      "branch": "สาย3",
+      "district": "พระนคร",
+      "id": "kpi-draft-1772874213792-3v5mp",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772874213792-d58l5": {
+      "branch": "สาย3",
+      "district": "ราษฎร์บูรณะ",
+      "id": "kpi-draft-1772874213792-d58l5",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1772874213792-hqckv": {
+      "branch": "สาย3",
+      "district": "ปากท่อ",
+      "id": "kpi-draft-1772874213792-hqckv",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "ราชบุรี"
+    },
+    "kpi-draft-1772874215112-4812i": {
+      "branch": "สาย3",
+      "district": "สังขละบุรี",
+      "id": "kpi-draft-1772874215112-4812i",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "กาญจนบุรี"
+    },
+    "kpi-draft-1772874215112-8ngw2": {
+      "branch": "สาย3",
+      "district": "ขลุง",
+      "id": "kpi-draft-1772874215112-8ngw2",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "จันทบุรี"
+    },
+    "kpi-draft-1772874215112-cqdfj": {
+      "branch": "สาย3",
+      "district": "หนองโดน",
+      "id": "kpi-draft-1772874215112-cqdfj",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สระบุรี"
+    },
+    "kpi-draft-1772874215112-g63fr": {
+      "branch": "สาย3",
+      "district": "สามชุก",
+      "id": "kpi-draft-1772874215112-g63fr",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สุพรรณบุรี"
+    },
+    "kpi-draft-1772874216641-ug61k": {
+      "branch": "EKP ลำปาง",
+      "district": "แจ้ห่ม",
+      "id": "kpi-draft-1772874216641-ug61k",
+      "isDraft": false,
+      "onTimeLimit": 7,
+      "province": "ลำปาง"
+    },
+    "kpi-draft-1772874218048-hq3zd": {
+      "branch": "สาย3",
+      "district": "อินทร์บุรี",
+      "id": "kpi-draft-1772874218048-hq3zd",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "สิงห์บุรี"
+    },
+    "kpi-draft-1772876718119-6utbe": {
+      "branch": "สาย3",
+      "district": "เขต บางขุนเทียน",
+      "id": "kpi-draft-1772876718119-6utbe",
+      "isDraft": false,
+      "onTimeLimit": 1,
+      "province": "กรุงเทพมหานคร"
+    },
+    "kpi-draft-1773304377596-rql2e": {
+      "branch": "สาย3",
+      "district": "บ้านแหลม",
+      "id": "kpi-draft-1773304377596-rql2e",
+      "isDraft": false,
+      "onTimeLimit": 3,
+      "province": "เพชรบุรี"
+    }
+  },
+  "holidays": {
+    "h-001": {
+      "date": "2024-01-01",
+      "id": "h-001",
+      "name": "วันขึ้นปีใหม่",
+      "type": "public"
+    },
+    "h-002": {
+      "date": "2024-02-24",
+      "id": "h-002",
+      "name": "วันมาฆบูชา",
+      "type": "public"
+    },
+    "h-003": {
+      "date": "2024-04-06",
+      "id": "h-003",
+      "name": "วันจักรี",
+      "type": "public"
+    },
+    "h-004": {
+      "date": "2024-04-13",
+      "id": "h-004",
+      "name": "วันสงกรานต์",
+      "type": "public"
+    },
+    "h-005": {
+      "date": "2024-04-14",
+      "id": "h-005",
+      "name": "วันสงกรานต์",
+      "type": "public"
+    },
+    "h-006": {
+      "date": "2024-04-15",
+      "id": "h-006",
+      "name": "วันสงกรานต์",
+      "type": "public"
+    },
+    "h-007": {
+      "date": "2024-05-01",
+      "id": "h-007",
+      "name": "วันแรงงานแห่งชาติ",
+      "type": "public"
+    },
+    "h-008": {
+      "date": "2024-05-22",
+      "id": "h-008",
+      "name": "วันวิสาขบูชา",
+      "type": "public"
+    },
+    "h-009": {
+      "date": "2024-06-03",
+      "id": "h-009",
+      "name": "วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี",
+      "type": "public"
+    },
+    "h-010": {
+      "date": "2024-07-28",
+      "id": "h-010",
+      "name": "วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว",
+      "type": "public"
+    },
+    "h-011": {
+      "date": "2024-08-12",
+      "id": "h-011",
+      "name": "วันแม่แห่งชาติ",
+      "type": "public"
+    },
+    "h-012": {
+      "date": "2024-10-13",
+      "id": "h-012",
+      "name": "วันคล้ายวันสวรรคต รัชกาลที่ 9",
+      "type": "public"
+    },
+    "h-013": {
+      "date": "2024-10-23",
+      "id": "h-013",
+      "name": "วันปิยมหาราช",
+      "type": "public"
+    },
+    "h-014": {
+      "date": "2024-12-05",
+      "id": "h-014",
+      "name": "วันพ่อแห่งชาติ",
+      "type": "public"
+    },
+    "h-015": {
+      "date": "2024-12-10",
+      "id": "h-015",
+      "name": "วันรัฐธรรมนูญ",
+      "type": "public"
+    },
+    "h-016": {
+      "date": "2024-12-31",
+      "id": "h-016",
+      "name": "วันขึ้นปีใหม่ (วันสิ้นปี)",
+      "type": "public"
+    },
+    "h-017": {
+      "date": "2024-07-01",
+      "id": "h-017",
+      "name": "วันก่อตั้งบริษัท",
+      "type": "company"
+    },
+    "h-018": {
+      "date": "2024-12-30",
+      "id": "h-018",
+      "name": "วันหยุดพิเศษบริษัท",
+      "type": "company"
+    },
+    "h-1773285897111": {
+      "date": "2026-04-13",
+      "id": "h-1773285897111",
+      "name": "วันสงกรานต์",
+      "type": "public"
+    },
+    "h-1773285907999": {
+      "date": "2026-04-14",
+      "id": "h-1773285907999",
+      "name": "วันสงกรานต์",
+      "type": "public"
+    },
+    "h-1773285920230": {
+      "date": "2026-04-15",
+      "id": "h-1773285920230",
+      "name": "วันสงกรานต์",
+      "type": "public"
+    },
+    "h-1773285952798": {
+      "date": "2026-05-01",
+      "id": "h-1773285952798",
+      "name": "วันแรงงานแห่งชาติ",
+      "type": "public"
+    },
+    "h-1773286067806": {
+      "date": "2025-12-31",
+      "id": "h-1773286067806",
+      "name": "วันขึ้นปีใหม่ (วันสิ้นปี)",
+      "type": "public"
+    },
+    "h-1773286173550": {
+      "date": "2026-01-02",
+      "id": "h-1773286173550",
+      "name": "หยุดแทน (3 มีนาคม 2569 วันมาฆบูชา)",
+      "type": "public"
+    },
+    "h-1773286240062": {
+      "date": "2026-06-01",
+      "id": "h-1773286240062",
+      "name": "ชดเชยวันวิสาขบูชา (วันอาทิตย์ ที่ 31 พฤษภาคม 2569)",
+      "type": "public"
+    },
+    "h-1773286471685": {
+      "date": "2026-07-28",
+      "id": "h-1773286471685",
+      "name": "วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว รัชกาลที่ 10",
+      "type": "public"
+    },
+    "h-1773286528005": {
+      "date": "2026-07-29",
+      "id": "h-1773286528005",
+      "name": "วันอาพหบูชา",
+      "type": "public"
+    },
+    "h-1773286556877": {
+      "date": "2026-08-12",
+      "id": "h-1773286556877",
+      "name": "วันแม่แห่งชาติ",
+      "type": "public"
+    },
+    "h-1773286709317": {
+      "date": "2026-10-13",
+      "id": "h-1773286709317",
+      "name": "วันคล้ายวันสวรรคต รัชกาลที่ 9",
+      "type": "public"
+    },
+    "h-1773286819084": {
+      "date": "2025-10-23",
+      "id": "h-1773286819084",
+      "name": "วันปิยมหาราช",
+      "type": "public"
+    },
+    "h-1773286882076": {
+      "date": "2026-12-05",
+      "id": "h-1773286882076",
+      "name": "วันพ่อแห่งชาติ",
+      "type": "public"
+    }
+  },
+  "storeClosures": {
+    "sc-1772701618446": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701618446",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "บอสซุปเปอร์ถูก (ทุ่งสนุ่น)"
+    },
+    "sc-1772701646781": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701646781",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "บอสซุปเปอร์ถูก (ท่ามะเขือ)"
+    },
+    "sc-1772701665502": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701665502",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "บอสซุปเปอร์ถูก (บ่อถ้ำ)"
+    },
+    "sc-1772701684927": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701684927",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "บอสซุปเปอร์ถูก (ปางมะค่า)"
+    },
+    "sc-1772701703559": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701703559",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "บอสซุปเปอร์ถูก(สนญ)(คลองลาน)"
+    },
+    "sc-1772701761710": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701761710",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "พี.เอส.มินิมาร์ท (กำแพงเพชร)"
+    },
+    "sc-1772701777174": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701777174",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "พี.เอส.มินิมาร์ท สำนักงานใหญ่"
+    },
+    "sc-1772701798925": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701798925",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "งามนิดมินิมาร์ท สำนักงานใหญ่"
+    },
+    "sc-1772701811757": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701811757",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "งามนิดมินิมาร์ท"
+    },
+    "sc-1772701826455": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772701826455",
+      "reason": "หยุดรับสินค้าทุกวันที่ 1-5 ของทุกเดือน ติดบัตรประชารัฐ",
+      "storeId": "แคท มินิมาร์ท"
+    },
+    "sc-1772701887649": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772701887649",
+      "reason": "นัดร้านก่อนส่งทุกครั้ง",
+      "storeId": "รัตนภัณฑ์"
+    },
+    "sc-1772701930816": {
+      "closeRule": "every_saturday",
+      "id": "sc-1772701930816",
+      "reason": "โทรนัดร้านก่อนเข้าส่งสินค้าทุกครั้ง",
+      "storeId": "ห้างหุ้นส่วนจำกัด สมศักดิ์โชว์ห่วย"
+    },
+    "sc-1772702016537": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772702016537",
+      "reason": "รับสินค้าทุกวันพุธ วันพฤหัสบดี และ วันศุกร์",
+      "storeId": "สหกรณ์โรงพยาบาล"
+    },
+    "sc-1772702042808": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702042808",
+      "reason": "โทรนัดร้านก่อนทุกครั้ง",
+      "storeId": "ก้าวแหวน 3659"
+    },
+    "sc-1772702111472": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702111472",
+      "reason": "โทรนัดร้านก่อนจัดส่งสินค้าทุกครั้ง",
+      "storeId": "บริษัท มุกดา มาร์เก็ต จำกัด (สำนักงานใหญ่)"
+    },
+    "sc-1772702134710": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702134710",
+      "reason": "โทรนัดร้านก่อนจัดส่งสินค้าทุกครั้ง",
+      "storeId": "หจก. ฮงล้งมินิมาร์ท"
+    },
+    "sc-1772702181058": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702181058",
+      "reason": "โทรนัดร้านก่อนเข้าส่งสินค้าทุกครั้ง",
+      "storeId": "โชติช่วงซัพพลายส์เทรดดิ้ง"
+    },
+    "sc-1772702210242": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702210242",
+      "reason": "โทรนัดร้านก่อนจัดส่งสินค้าทุกครั้ง",
+      "storeId": "แสงสว่าง"
+    },
+    "sc-1772702279840": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702279840",
+      "reason": "โทรนัดร้านก่อนจัดส่งสินค้าทุกครั้ง",
+      "storeId": "สร.นำโชคดี 411"
+    },
+    "sc-1772702319916": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702319916",
+      "reason": "โทรนัดส่งสินค้าก่อนจัดส่งเท่านั้น",
+      "storeId": "เอสดับเบิลยู ซัพพลาย 999"
+    },
+    "sc-1772702353379": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702353379",
+      "reason": "โทรนัดร้านก่อนจัดส่งทุกครั้ง",
+      "storeId": "ชัยพร เอี้ยวฮวด 1992 สำนักงานใหญ่"
+    },
+    "sc-1772702376208": {
+      "closeRule": "every_sunday",
+      "id": "sc-1772702376208",
+      "reason": "โทรนัดร้านก่อนจัดส่งทุกครั้ง",
+      "storeId": "ร้านสหกรณ์ผู้ปฏิบัติงานการไฟฟ้าฝ่ายผลิต"
+    },
+    "sc-1772760306354": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772760306354",
+      "reason": "หยุดรับของ",
+      "storeId": "ท็อปแลนด์อาเขต จำกัด"
+    },
+    "sc-1772760319010": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772760319010",
+      "reason": "หยุดรับของ",
+      "storeId": "ท็อปแลนด์อาเขต จำกัด."
+    },
+    "sc-1772760329186": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772760329186",
+      "reason": "หยุดรับของ",
+      "storeId": "ท๊อปแลนด์อาเขต"
+    },
+    "sc-1772760338482": {
+      "closeRule": "every_weekend",
+      "id": "sc-1772760338482",
+      "reason": "หยุดรับของ",
+      "storeId": "บจ.ท็อปแลนด์อาเขต"
+    }
+  },
+  "delayReasons": {
+    "R01": {
+      "category": "internal",
+      "code": "R01",
+      "label": "รถเสีย/ขัดข้อง"
+    },
+    "R02": {
+      "category": "external",
+      "code": "R02",
+      "label": "การจราจรติดขัด"
+    },
+    "R03": {
+      "category": "external",
+      "code": "R03",
+      "label": "ร้านปิด (ไม่ได้รับแจ้ง)"
+    },
+    "R04": {
+      "category": "external",
+      "code": "R04",
+      "label": "สภาพอากาศ/ฝนตก"
+    },
+    "R05": {
+      "category": "internal",
+      "code": "R05",
+      "label": "พนักงานไม่พอ"
+    },
+    "R06": {
+      "category": "external",
+      "code": "R06",
+      "label": "ที่อยู่ไม่ชัดเจน"
+    },
+    "R07": {
+      "category": "external",
+      "code": "R07",
+      "label": "ลูกค้าไม่อยู่/ติดต่อไม่ได้"
+    },
+    "R08": {
+      "category": "internal",
+      "code": "R08",
+      "label": "การจัดเตรียมสินค้าล่าช้า"
+    },
+    "R09": {
+      "category": "internal",
+      "code": "R09",
+      "label": "ปัญหาการวางแผนเส้นทาง"
+    },
+    "R10": {
+      "category": "external",
+      "code": "R10",
+      "label": "อุบัติเหตุระหว่างทาง"
+    },
+    "R11": {
+      "category": "external",
+      "code": "R11",
+      "label": "ร้านค้า/ลูกค้า นัดรับ"
+    }
+  },
+  "storeMappings": {
+    "*** โปรดระบุ ***": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "*** โปรดระบุ ***"
+    },
+    "CP AXTRA CHIENGRAI": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "CP AXTRA CHIENGRAI"
+    },
+    "CP AXTRA LUMPANG": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลำปาง",
+      "storeId": "CP AXTRA LUMPANG"
+    },
+    "PD นายอำนวย  รัตนไพบูลย์เจริญ": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "PD นายอำนวย  รัตนไพบูลย์เจริญ"
+    },
+    "_ใส่รายละเอียด_BC Chiangmai เปลี่ยนเป็น PGI 22": {
+      "createdAt": "2026-03-06",
+      "district": "เมือง",
+      "province": "เชียงใหม่",
+      "storeId": "[ใส่รายละเอียด]BC Chiangmai เปลี่ยนเป็น PGI 22"
+    },
+    "กนกวรรณเภสัช": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "กนกวรรณเภสัช"
+    },
+    "กิมกี่ เบเกอรี่": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "กิมกี่ เบเกอรี่"
+    },
+    "คงการค้า": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "คงการค้า"
+    },
+    "คลังยาวังเหนือ": {
+      "createdAt": "2026-03-13",
+      "district": "วังเหนือ",
+      "province": "ลำปาง",
+      "storeId": "คลังยาวังเหนือ"
+    },
+    "คิว คอร์ปอเรชั่น กรุ๊ป จำกัด (บราวนี่ เพ็ท เวิลด์)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "คิว คอร์ปอเรชั่น กรุ๊ป จำกัด (บราวนี่ เพ็ท เวิลด์)"
+    },
+    "ซินเนอร์จี้-เซ็นทร์ลเชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ซินเนอร์จี้-เซ็นทร์ลเชียงราย"
+    },
+    "ซีพี แอ็กซ์ตร้า จำกัด (มหาชน)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ซีพี แอ็กซ์ตร้า จำกัด (มหาชน)"
+    },
+    "ซีพี แอ็กซ์ตร้า จำกัด (มหาชน) MK สาขาเชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ซีพี แอ็กซ์ตร้า จำกัด (มหาชน) MK สาขาเชียงราย"
+    },
+    "ซีพี แอ็กซ์ตร้า สาขาเชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ซีพี แอ็กซ์ตร้า สาขาเชียงราย"
+    },
+    "ซีโน เชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ซีโน เชียงราย"
+    },
+    "ญี่ปุ่น (เชียงราย)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ญี่ปุ่น (เชียงราย)"
+    },
+    "ตึกเหลือง": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ตึกเหลือง"
+    },
+    "ทรัพย์สมปอง 888": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ทรัพย์สมปอง 888"
+    },
+    "ธนพิริยะ จำกัด (มหาชน)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ธนพิริยะ จำกัด (มหาชน)"
+    },
+    "นาย สมชาย วานิชกูล": {
+      "createdAt": "2026-03-07",
+      "district": "อินทร์บุรี",
+      "province": "สิงห์บุรี",
+      "storeId": "นาย สมชาย วานิชกูล"
+    },
+    "นิกร การค้า": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "นิกร การค้า"
+    },
+    "บจ_ เบเกอรี่คอร์เนอร์": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "บจ. เบเกอรี่คอร์เนอร์"
+    },
+    "บจ_เอส_ซี_พาเลซ": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "บจ.เอส.ซี.พาเลซ"
+    },
+    "บริษัท ซีพี แอ็กซ์ตร้า จำกัด (มหาชน) สาขากำแพงเพชร": {
+      "createdAt": "2026-03-05",
+      "district": "เมือง",
+      "province": "กำแพงเพชร",
+      "storeId": "บริษัท ซีพี แอ็กซ์ตร้า จำกัด (มหาชน) สาขากำแพงเพชร"
+    },
+    "บริษัท ซีพี แอ็กซ์ตร้า จำกัด (มหาชน) สาขาเชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "บริษัท ซีพี แอ็กซ์ตร้า จำกัด (มหาชน) สาขาเชียงราย"
+    },
+    "บริษัท ธนพิริยะ จำกัด (มหาชน)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "บริษัท ธนพิริยะ จำกัด (มหาชน)"
+    },
+    "บริษัท เซ็นทรัล ฟู้ด รีเทล จำกัด สาขาเชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "บริษัท เซ็นทรัล ฟู้ด รีเทล จำกัด สาขาเชียงราย"
+    },
+    "บริหารการขาย และบริการ จำกัด": {
+      "createdAt": "2026-03-10",
+      "district": "เมือง",
+      "province": "นครสวรรค์",
+      "storeId": "บริหารการขาย และบริการ จำกัด"
+    },
+    "บุษดี สุขดี": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "บุษดี สุขดี"
+    },
+    "บ่อวิน": {
+      "createdAt": "2026-03-07",
+      "district": "บ่อวิน",
+      "province": "ชลบุรี",
+      "storeId": "บ่อวิน"
+    },
+    "ฝน -เล้งฮง": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "ฝน -เล้งฮง"
+    },
+    "พร (โชคชัยศรี)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "พร (โชคชัยศรี)"
+    },
+    "พี ลิตเติ้ล เชฟ จำกัด": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "พี ลิตเติ้ล เชฟ จำกัด"
+    },
+    "พีพอร์ค โปรดักส์(หยุดอาทิตย์)": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ราชบุรี",
+      "storeId": "พีพอร์ค โปรดักส์(หยุดอาทิตย์)"
+    },
+    "พูนทรัพย์": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "พูนทรัพย์"
+    },
+    "ฟูฟู โปรดัก": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "ฟูฟู โปรดัก"
+    },
+    "มอสมินิมาร์ท": {
+      "createdAt": "2026-03-13",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "มอสมินิมาร์ท"
+    },
+    "ยงเกียรติ กิจยรรยง": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ยงเกียรติ กิจยรรยง"
+    },
+    "รักษ์บุญ ตั้งกาญจนศรี": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "รักษ์บุญ ตั้งกาญจนศรี"
+    },
+    "ร้าน กิมกี่ เบเกอรี่": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ร้าน กิมกี่ เบเกอรี่"
+    },
+    "ร้าน กิมกี่พานิช": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ร้าน กิมกี่พานิช"
+    },
+    "ร้าน ซานตาเฟ่ สเต็ก สาขาบิ๊กซี ลพบุรี _St_8034": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ร้าน ซานตาเฟ่ สเต็ก สาขาบิ๊กซี ลพบุรี /St.8034"
+    },
+    "ร้าน อีเชียงฮวด": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ร้าน อีเชียงฮวด"
+    },
+    "ร้านริชชี่ เบเกอร์พลัส": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ร้านริชชี่ เบเกอร์พลัส"
+    },
+    "ร้านลพบุรีบรรจุภัณฑ์": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ร้านลพบุรีบรรจุภัณฑ์"
+    },
+    "ลักษณ์สริล": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ลักษณ์สริล"
+    },
+    "วันทูทูว์ Over book (คุณมินตรา)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "วันทูทูว์ Over book (คุณมินตรา)"
+    },
+    "วันทูทูส์ จำกัด Farmland (สาขาฟาร์มแลนด์ เชียงราย)": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "วันทูทูส์ จำกัด Farmland (สาขาฟาร์มแลนด์ เชียงราย)"
+    },
+    "สมประสงค์ 60 สำนักงานใหญ่": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "สมประสงค์ 60 สำนักงานใหญ่"
+    },
+    "สมพรปาท่องโก๋": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "สมพรปาท่องโก๋"
+    },
+    "สยามยูเนียล": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "สยามยูเนียล"
+    },
+    "สร_นฤชล  พันธ์กมล": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "สร.นฤชล  พันธ์กมล"
+    },
+    "สหกิจ": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "สหกิจ"
+    },
+    "ห้างหุ้นส่วนจำกัด คงการค้า": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ห้างหุ้นส่วนจำกัด คงการค้า"
+    },
+    "อดิศร เชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "อดิศร เชียงราย"
+    },
+    "อายิโฟรเซ่น ลพบุรี": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "อายิโฟรเซ่น ลพบุรี"
+    },
+    "อาหารเบทเทอร์ ลพบุรี": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "อาหารเบทเทอร์ ลพบุรี"
+    },
+    "อ้อมน้อย": {
+      "createdAt": "2026-03-07",
+      "district": "กระทุ่มแบน",
+      "province": "สมุทรสาคร",
+      "storeId": "อ้อมน้อย"
+    },
+    "เกษมราษฎร์ ศรีบุรินทร์": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "เกษมราษฎร์ ศรีบุรินทร์"
+    },
+    "เคเจ มาร์เก็ตติ้ว": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "เคเจ มาร์เก็ตติ้ว"
+    },
+    "เจริญเบเกอรี่": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ราชบุรี",
+      "storeId": "เจริญเบเกอรี่"
+    },
+    "เชสเตอร์ สาขาบิ๊กซี ลพบุรี": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "เชสเตอร์ สาขาบิ๊กซี ลพบุรี"
+    },
+    "เซเว่นซุปเปอร์ (ลพบุรี)": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "เซเว่นซุปเปอร์ (ลพบุรี)"
+    },
+    "เซ็นทรัล เชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "เซ็นทรัล เชียงราย"
+    },
+    "เดลี่ฟู้ดส์ จำกัด": {
+      "createdAt": "2026-03-07",
+      "district": "กำแพงแสน",
+      "province": "นครปฐม",
+      "storeId": "เดลี่ฟู้ดส์ จำกัด"
+    },
+    "เพ็ทสเตชัน จำกัด": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "เพ็ทสเตชัน จำกัด"
+    },
+    "เพ็ทสเตชั่น จำกัด": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "เพ็ทสเตชั่น จำกัด"
+    },
+    "เลิฟมินิมาร์ท": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "เลิฟมินิมาร์ท"
+    },
+    "เล้งฮ้ง": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "เล้งฮ้ง"
+    },
+    "เอกณรงค์ซุปเปอร์": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ราชบุรี",
+      "storeId": "เอกณรงค์ซุปเปอร์"
+    },
+    "เอกสินชัยพลาสติก": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "เอกสินชัยพลาสติก"
+    },
+    "เอส แอนด์ พี ซินดิเคท เซ็นทรัล เชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "เอส แอนด์ พี ซินดิเคท เซ็นทรัล เชียงราย"
+    },
+    "เอส_ที_เชียงราย จำกัด": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "เอส.ที.เชียงราย จำกัด"
+    },
+    "เอสเคเอฟ คิวซีน จำกัด (ซานตาเฟ่บิ๊กซีลพบุรี)": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "เอสเคเอฟ คิวซีน จำกัด (ซานตาเฟ่บิ๊กซีลพบุรี)"
+    },
+    "แก้ไข________________": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "แก้ไข................"
+    },
+    "โกลเด้น": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โกลเด้น"
+    },
+    "โกลโบ ฟู๊ด (สาขาสุพรรบุรี)": {
+      "createdAt": "2026-03-07",
+      "district": "สามชุก",
+      "province": "สุพรรณบุรี",
+      "storeId": "โกลโบ ฟู๊ด (สาขาสุพรรบุรี)"
+    },
+    "โค้วฮกหลี": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "โค้วฮกหลี"
+    },
+    "โตด้า ท่าข้าม": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า ท่าข้าม"
+    },
+    "โตด้า บางขุนเทียน": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า บางขุนเทียน"
+    },
+    "โตด้า พระราม 2": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า พระราม 2"
+    },
+    "โตด้า รามอินทรา": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า รามอินทรา"
+    },
+    "โตด้า สะแกงาม": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า สะแกงาม"
+    },
+    "โตด้า อยุธยา": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "อยุธยา",
+      "storeId": "โตด้า อยุธยา"
+    },
+    "โตด้า อ้อมน้อย": {
+      "createdAt": "2026-03-07",
+      "district": "กระทุ่มแบน",
+      "province": "สมุทรสาคร",
+      "storeId": "โตด้า อ้อมน้อย"
+    },
+    "โตด้า เทียนทะเล": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า เทียนทะเล"
+    },
+    "โตด้า แสมดำ": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โตด้า แสมดำ"
+    },
+    "โรงงานแม่รวย": {
+      "createdAt": "2026-03-07",
+      "district": "บางขุนเทียน",
+      "province": "กรุงเทพมหานคร",
+      "storeId": "โรงงานแม่รวย"
+    },
+    "ไทยลอตเต้ สาขาเชียงราย": {
+      "createdAt": "2026-03-13",
+      "district": "เมือง",
+      "province": "เชียงราย",
+      "storeId": "ไทยลอตเต้ สาขาเชียงราย"
+    },
+    "ไทยเจริญ 2": {
+      "createdAt": "2026-03-07",
+      "district": "เมือง",
+      "province": "ลพบุรี ",
+      "storeId": "ไทยเจริญ 2"
+    }
+  },
+  "branchResources": {
+    "branch-1773197285835": {
+      "admin": 4,
+      "adminWage": 400,
+      "branchName": "นครสวรรค์",
+      "calculatedCapacity": 230,
+      "calculatedSpeed": 60,
+      "checkerWage": 400,
+      "checkers": 10,
+      "id": "branch-1773197285835",
+      "loaderWage": 350,
+      "loaders": 10,
+      "tripsPerDay": 1.5,
+      "truckCostPerDay": 2500,
+      "trucks": 14,
+      "updatedAt": "2026-03-11T04:58:24.026Z",
+      "updatedBy": "neosiam admin",
+      "workHoursPerDay": 8
+    },
+    "branch-1773372699547": {
+      "admin": 5,
+      "adminWage": 450,
+      "branchName": "เชียงใหม่",
+      "calculatedCapacity": 303,
+      "calculatedSpeed": 57,
+      "checkerWage": 400,
+      "checkers": 6,
+      "id": "branch-1773372699547",
+      "loaderWage": 380,
+      "loaders": 16,
+      "tripsPerDay": 1.5,
+      "truckCostPerDay": 3000,
+      "trucks": 16,
+      "updatedAt": "2026-03-13T03:31:39.547Z",
+      "updatedBy": "neosiam admin",
+      "workHoursPerDay": 8
+    }
+  },
+  "branchResourcesHistory": {
+    "branch-1773197285835": {
+      "history-1773197285838": {
+        "action": "create",
+        "branchId": "branch-1773197285835",
+        "id": "history-1773197285838",
+        "updatedAt": "2026-03-11T02:48:05.838Z",
+        "updatedBy": "somsak@company.com"
+      },
+      "history-1773205104026": {
+        "action": "update",
+        "branchId": "branch-1773197285835",
+        "changes": {
+          "tripsPerDay": {
+            "from": 2,
+            "to": 1.5
+          }
+        },
+        "id": "history-1773205104026",
+        "updatedAt": "2026-03-11T04:58:24.026Z",
+        "updatedBy": "neosiam admin"
+      }
+    },
+    "branch-1773372699547": {
+      "history-1773372699549": {
+        "action": "create",
+        "branchId": "branch-1773372699547",
+        "id": "history-1773372699549",
+        "updatedAt": "2026-03-13T03:31:39.548Z",
+        "updatedBy": "neosiam admin"
+      }
+    }
+  }
+}

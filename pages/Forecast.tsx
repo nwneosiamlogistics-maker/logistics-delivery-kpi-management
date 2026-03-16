@@ -394,6 +394,10 @@ const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs }) => {
           <div className="text-xs text-gray-400">
             {formatQty(forecast.qtyPerDay)} กล่อง/วัน
           </div>
+          <div className="text-xs text-blue-500 mt-1">
+            <i className="fas fa-info-circle mr-1"></i>
+            จาก {formatNum(baseData.invoices)} ใบสั่ง (เฉลี่ย {baseData.invoices > 0 ? formatQty(Math.round(baseData.qty / baseData.invoices)) : 0} กล่อง/ใบ)
+          </div>
         </div>
         
         <div className="glass-card p-5 rounded-2xl">

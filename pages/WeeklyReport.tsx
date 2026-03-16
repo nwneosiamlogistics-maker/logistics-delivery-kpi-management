@@ -74,12 +74,22 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const [rememberStore, setRememberStore] = useState<Record<string, boolean>>({});
   const [podPendingPage, setPodPendingPage] = useState(1);
   const [over2DaysPage, setOver2DaysPage] = useState(1);
+  const [on1DayPage, setOn1DayPage] = useState(1);
+  const [on2DaysPage, setOn2DaysPage] = useState(1);
   const [podSearch, setPodSearch] = useState('');
   const [podProvince, setPodProvince] = useState('');
   const [podDistrict, setPodDistrict] = useState('');
   const [over2Search, setOver2Search] = useState('');
   const [over2Province, setOver2Province] = useState('');
   const [over2District, setOver2District] = useState('');
+  const [on1DaySearch, setOn1DaySearch] = useState('');
+  const [on1DayProvince, setOn1DayProvince] = useState('');
+  const [on1DayDistrict, setOn1DayDistrict] = useState('');
+  const [on2DaysSearch, setOn2DaysSearch] = useState('');
+  const [on2DaysProvince, setOn2DaysProvince] = useState('');
+  const [on2DaysDistrict, setOn2DaysDistrict] = useState('');
+  const [showOn1DayDetail, setShowOn1DayDetail] = useState(false);
+  const [showOn2DaysDetail, setShowOn2DaysDetail] = useState(false);
   const itemsPerPage = 50;
 
   // Build district → branch map from kpiConfigs
@@ -126,10 +136,22 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     d.deliveryStatus === DeliveryStatus.DELIVERED
   );
 
-  // Delay buckets based on delayDays (for delivered records only)
-  const on1Day = deliveredThisWeek.filter(d => d.delayDays <= 1);
-  const on2Days = deliveredThisWeek.filter(d => d.delayDays === 2);
-  const over2Days = deliveredThisWeek.filter(d => d.delayDays > 2);
+  // Helper: คำนวณจำนวนวันจาก openDate → actualDate (ไม่ใช่ planDate)
+  const calcDeliveryDays = (d: DeliveryRecord): number => {
+    if (!d.openDate || !d.actualDate) return d.delayDays; // fallback ถ้าไม่มีข้อมูล
+    const open = new Date(d.openDate);
+    const actual = new Date(d.actualDate);
+    open.setHours(0, 0, 0, 0);
+    actual.setHours(0, 0, 0, 0);
+    const diffMs = actual.getTime() - open.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return diffDays < 0 ? 0 : diffDays;
+  };
+
+  // Delay buckets based on delivery days from openDate (for delivered records only)
+  const on1Day = deliveredThisWeek.filter(d => calcDeliveryDays(d) <= 1);
+  const on2Days = deliveredThisWeek.filter(d => calcDeliveryDays(d) === 2);
+  const over2Days = deliveredThisWeek.filter(d => calcDeliveryDays(d) > 2);
 
   const totalInv = weekDeliveries.length;
   const totalQty = weekDeliveries.reduce((s, d) => s + d.qty, 0);
@@ -266,8 +288,14 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     const selectedDistrict = selectedDistricts[displayKey];
     const selectedProvince = selectedProvinces[displayKey];
     
+    console.log('[WeeklyReport] handleSaveDistrictFix called:', { displayKey, selectedDistrict, selectedProvince, data });
+    console.log('[WeeklyReport] onUpdateDeliveries:', onUpdateDeliveries ? 'available' : 'undefined');
+    
     // Need at least district OR province to proceed
-    if ((!selectedDistrict && !selectedProvince) || !onUpdateDeliveries) return;
+    if ((!selectedDistrict && !selectedProvince) || !onUpdateDeliveries) {
+      console.log('[WeeklyReport] Cannot save: missing district/province or onUpdateDeliveries');
+      return;
+    }
 
     // Update deliveries with the selected district and/or province
     const finalProvince = selectedProvince || data.province;
@@ -283,7 +311,10 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       }
       return d;
     });
+    
+    console.log('[WeeklyReport] Updating deliveries:', { orderNos: data.orderNos, finalProvince, finalDistrict });
     onUpdateDeliveries(updatedDeliveries);
+    console.log('[WeeklyReport] Deliveries updated successfully');
 
     // If remember store is checked (default true), add store mappings
     if (rememberStore[displayKey] !== false && onAddStoreMapping && finalDistrict) {
@@ -653,7 +684,231 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
             </tfoot>
           </table>
         </div>
+        
+        {/* Toggle buttons for detail views */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            onClick={() => setShowOn1DayDetail(!showOn1DayDetail)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${showOn1DayDetail ? 'bg-green-500 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+          >
+            <i className={`fas ${showOn1DayDetail ? 'fa-chevron-up' : 'fa-chevron-down'} mr-2`}></i>
+            ดูรายละเอียด ภายใน 1 วัน ({on1Day.length} Inv.)
+          </button>
+          <button
+            onClick={() => setShowOn2DaysDetail(!showOn2DaysDetail)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${showOn2DaysDetail ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+          >
+            <i className={`fas ${showOn2DaysDetail ? 'fa-chevron-up' : 'fa-chevron-down'} mr-2`}></i>
+            ดูรายละเอียด ภายใน 2 วัน ({on2Days.length} Inv.)
+          </button>
+        </div>
       </div>
+
+      {/* Detail: ภายใน 1 วัน */}
+      {showOn1DayDetail && on1Day.length > 0 && (() => {
+        const on1Provinces = Array.from(new Set(on1Day.map(d => d.province).filter(Boolean))).sort() as string[];
+        const filteredByOn1Prov = on1DayProvince ? on1Day.filter(d => d.province === on1DayProvince) : on1Day;
+        const on1Districts = Array.from(new Set(filteredByOn1Prov.map(d => d.district).filter(Boolean))).sort() as string[];
+        
+        const searchLower = on1DaySearch.toLowerCase();
+        let filteredOn1 = on1Day;
+        if (on1DayProvince) filteredOn1 = filteredOn1.filter(d => d.province === on1DayProvince);
+        if (on1DayDistrict) filteredOn1 = filteredOn1.filter(d => d.district === on1DayDistrict);
+        if (on1DaySearch) filteredOn1 = filteredOn1.filter(d => 
+          d.orderNo.toLowerCase().includes(searchLower) || 
+          (d.sender || '').toLowerCase().includes(searchLower) ||
+          d.storeId.toLowerCase().includes(searchLower)
+        );
+        
+        const sortedOn1 = [...filteredOn1].sort((a, b) => (a.actualDate || '').localeCompare(b.actualDate || ''));
+        const totalOn1Pages = Math.ceil(sortedOn1.length / itemsPerPage);
+        const paginatedOn1 = sortedOn1.slice((on1DayPage - 1) * itemsPerPage, on1DayPage * itemsPerPage);
+        
+        return (
+          <div className="glass-panel p-6 rounded-2xl border-l-4 border-green-400">
+            <h3 className="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <i className="fas fa-check-circle text-green-500"></i>
+              รายการส่งภายใน 1 วัน ({filteredOn1.length} Inv.)
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOn1.reduce((s, d) => s + d.qty, 0))} ชิ้น/กล่อง</p>
+            
+            <div className="mb-4 space-y-3">
+              <div className="flex flex-wrap gap-3">
+                <select value={on1DayProvince} onChange={e => { setOn1DayProvince(e.target.value); setOn1DayDistrict(''); setOn1DayPage(1); }} title="เลือกจังหวัด" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกจังหวัด</option>
+                  {on1Provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <select value={on1DayDistrict} onChange={e => { setOn1DayDistrict(e.target.value); setOn1DayPage(1); }} title="เลือกอำเภอ" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกอำเภอ</option>
+                  {on1Districts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {(on1DaySearch || on1DayProvince || on1DayDistrict) && (
+                  <button onClick={() => { setOn1DaySearch(''); setOn1DayProvince(''); setOn1DayDistrict(''); setOn1DayPage(1); }} className="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                    <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="ค้นหาด้วยเลขที่ใบสั่ง, ผู้ส่ง, หรือร้านค้า..." value={on1DaySearch} onChange={e => { setOn1DaySearch(e.target.value); setOn1DayPage(1); }} className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white" />
+                {on1DaySearch && <button onClick={() => { setOn1DaySearch(''); setOn1DayPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
+              </div>
+            </div>
+            
+            <div className="flex justify-end mb-2">
+              <span className="text-xs text-gray-500">
+                แสดง {sortedOn1.length > 0 ? ((on1DayPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(on1DayPage * itemsPerPage, sortedOn1.length)} จาก {sortedOn1.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-white">
+                  <tr className="border-b border-gray-100">
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">เลขที่ใบส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">ร้านค้า</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">ผู้ส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">จังหวัด / อำเภอ</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">จำนวน</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">วันเปิดบิล</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">วันส่ง</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">ใช้เวลา</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedOn1.map((d, i) => (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-green-50 transition-colors">
+                      <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.storeId}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
+                      <td className="px-3 py-2 text-center">{formatQty(d.qty)}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.actualDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-bold">{calcDeliveryDays(d) <= 0 ? 'ทันเวลา' : `${calcDeliveryDays(d)} วัน`}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalOn1Pages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <button onClick={() => setOn1DayPage(p => Math.max(1, p - 1))} disabled={on1DayPage === 1} className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+                </button>
+                <span className="text-sm text-green-700">หน้า {on1DayPage} / {totalOn1Pages}</span>
+                <button onClick={() => setOn1DayPage(p => Math.min(totalOn1Pages, p + 1))} disabled={on1DayPage === totalOn1Pages} className="px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Detail: ภายใน 2 วัน */}
+      {showOn2DaysDetail && on2Days.length > 0 && (() => {
+        const on2Provinces = Array.from(new Set(on2Days.map(d => d.province).filter(Boolean))).sort() as string[];
+        const filteredByOn2Prov = on2DaysProvince ? on2Days.filter(d => d.province === on2DaysProvince) : on2Days;
+        const on2Districts = Array.from(new Set(filteredByOn2Prov.map(d => d.district).filter(Boolean))).sort() as string[];
+        
+        const searchLower = on2DaysSearch.toLowerCase();
+        let filteredOn2 = on2Days;
+        if (on2DaysProvince) filteredOn2 = filteredOn2.filter(d => d.province === on2DaysProvince);
+        if (on2DaysDistrict) filteredOn2 = filteredOn2.filter(d => d.district === on2DaysDistrict);
+        if (on2DaysSearch) filteredOn2 = filteredOn2.filter(d => 
+          d.orderNo.toLowerCase().includes(searchLower) || 
+          (d.sender || '').toLowerCase().includes(searchLower) ||
+          d.storeId.toLowerCase().includes(searchLower)
+        );
+        
+        const sortedOn2 = [...filteredOn2].sort((a, b) => (a.actualDate || '').localeCompare(b.actualDate || ''));
+        const totalOn2Pages = Math.ceil(sortedOn2.length / itemsPerPage);
+        const paginatedOn2 = sortedOn2.slice((on2DaysPage - 1) * itemsPerPage, on2DaysPage * itemsPerPage);
+        
+        return (
+          <div className="glass-panel p-6 rounded-2xl border-l-4 border-blue-400">
+            <h3 className="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <i className="fas fa-clock text-blue-500"></i>
+              รายการส่งภายใน 2 วัน ({filteredOn2.length} Inv.)
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOn2.reduce((s, d) => s + d.qty, 0))} ชิ้น/กล่อง</p>
+            
+            <div className="mb-4 space-y-3">
+              <div className="flex flex-wrap gap-3">
+                <select value={on2DaysProvince} onChange={e => { setOn2DaysProvince(e.target.value); setOn2DaysDistrict(''); setOn2DaysPage(1); }} title="เลือกจังหวัด" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกจังหวัด</option>
+                  {on2Provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <select value={on2DaysDistrict} onChange={e => { setOn2DaysDistrict(e.target.value); setOn2DaysPage(1); }} title="เลือกอำเภอ" className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white min-w-[160px]">
+                  <option value="">ทุกอำเภอ</option>
+                  {on2Districts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {(on2DaysSearch || on2DaysProvince || on2DaysDistrict) && (
+                  <button onClick={() => { setOn2DaysSearch(''); setOn2DaysProvince(''); setOn2DaysDistrict(''); setOn2DaysPage(1); }} className="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                    <i className="fas fa-times mr-1"></i>ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="ค้นหาด้วยเลขที่ใบสั่ง, ผู้ส่ง, หรือร้านค้า..." value={on2DaysSearch} onChange={e => { setOn2DaysSearch(e.target.value); setOn2DaysPage(1); }} className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
+                {on2DaysSearch && <button onClick={() => { setOn2DaysSearch(''); setOn2DaysPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="ล้างการค้นหา"><i className="fas fa-times"></i></button>}
+              </div>
+            </div>
+            
+            <div className="flex justify-end mb-2">
+              <span className="text-xs text-gray-500">
+                แสดง {sortedOn2.length > 0 ? ((on2DaysPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(on2DaysPage * itemsPerPage, sortedOn2.length)} จาก {sortedOn2.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-white">
+                  <tr className="border-b border-gray-100">
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">เลขที่ใบส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">ร้านค้า</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">ผู้ส่ง</th>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold uppercase bg-white">จังหวัด / อำเภอ</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">จำนวน</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">วันเปิดบิล</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">วันส่ง</th>
+                    <th className="px-3 py-2 text-center text-gray-500 font-semibold uppercase bg-white">ใช้เวลา</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedOn2.map((d, i) => (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-blue-50 transition-colors">
+                      <td className="px-3 py-2 font-mono font-bold text-gray-700">{d.orderNo}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.storeId}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
+                      <td className="px-3 py-2 text-center">{formatQty(d.qty)}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.actualDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">{calcDeliveryDays(d)} วัน</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalOn2Pages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <button onClick={() => setOn2DaysPage(p => Math.max(1, p - 1))} disabled={on2DaysPage === 1} className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i className="fas fa-chevron-left mr-1"></i>ก่อนหน้า
+                </button>
+                <span className="text-sm text-blue-700">หน้า {on2DaysPage} / {totalOn2Pages}</span>
+                <button onClick={() => setOn2DaysPage(p => Math.min(totalOn2Pages, p + 1))} disabled={on2DaysPage === totalOn2Pages} className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                  ถัดไป<i className="fas fa-chevron-right ml-1"></i>
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* POD Pending Detail */}
       <div className="glass-panel p-6 rounded-2xl">
@@ -811,7 +1066,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
           d.storeId.toLowerCase().includes(searchLower)
         );
         
-        const sortedOver2Days = [...filteredOver2].sort((a, b) => b.delayDays - a.delayDays);
+        const sortedOver2Days = [...filteredOver2].sort((a, b) => calcDeliveryDays(b) - calcDeliveryDays(a));
         const totalOver2DaysPages = Math.ceil(sortedOver2Days.length / itemsPerPage);
         const paginatedOver2 = sortedOver2Days.slice((over2DaysPage - 1) * itemsPerPage, over2DaysPage * itemsPerPage);
         
@@ -875,7 +1130,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold">+{d.delayDays} วัน</span>
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold">+{calcDeliveryDays(d)} วัน</span>
                       </td>
                     </tr>
                   ))}

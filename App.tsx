@@ -36,38 +36,11 @@ import {
   BranchResource,
   BranchResourceHistory
 } from './types';
-import { getRealtimeDb } from './services/firebase';
 import { syncWeeklyDeliveriesToReturnNeosiam } from './services/returnNeosiamSync';
-import { ref, set, get, onValue, off } from 'firebase/database';
+import * as api from './services/api';
 import { calculateKpiStatus, calculatePendingKpiStatus } from './utils/kpiEngine';
 
-const KPI_CONFIGS_PATH = 'kpiConfigs';
-const HOLIDAYS_PATH = 'holidays';
-const STORE_CLOSURES_PATH = 'storeClosures';
-const DELAY_REASONS_PATH = 'delayReasons';
-const STORE_MAPPINGS_PATH = 'storeMappings';
-const BRANCH_RESOURCES_PATH = 'branchResources';
-const BRANCH_RESOURCES_HISTORY_PATH = 'branchResourcesHistory';
-
-// Firebase keys cannot contain . # $ / [ ]
-function sanitizeFirebaseKey(key: string): string {
-  return key.replace(/[.#$\[\]/]/g, '_');
-}
-
-// Replace undefined with null recursively to satisfy Firebase and avoid runtime errors
-function cleanUndefined<T>(val: T): T {
-  if (val === undefined) return null as any;
-  if (Array.isArray(val)) return val.map(cleanUndefined) as any;
-  if (val && typeof val === 'object') {
-    const out: Record<string, any> = {};
-    Object.entries(val as Record<string, any>).forEach(([k, v]) => {
-      const cleaned = cleanUndefined(v);
-      if (cleaned !== undefined) out[k] = cleaned;
-    });
-    return out as any;
-  }
-  return val;
-}
+// Using NAS API for all data operations (100% NAS sync)
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -79,12 +52,7 @@ const App: React.FC = () => {
   const [delayReasons, setDelayReasons] = useState<DelayReason[]>(DELAY_REASONS);
   const [storeMappings, setStoreMappings] = useState<StoreMapping[]>([]);
   const [branchResources, setBranchResources] = useState<BranchResource[]>([]);
-  const kpiLoadedFromFirebase = useRef(false);
-  const branchResourcesLoadedFromFirebase = useRef(false);
-  const holidaysLoadedFromFirebase = useRef(false);
-  const storeClosuresLoadedFromFirebase = useRef(false);
-  const delayReasonsLoadedFromFirebase = useRef(false);
-  const storeMappingsLoadedFromFirebase = useRef(false);
+  const dataLoadedFromNAS = useRef(false);
   const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
@@ -100,29 +68,24 @@ const App: React.FC = () => {
         if (existing && (existing.reasonStatus === ReasonStatus.SUBMITTED || existing.reasonStatus === ReasonStatus.APPROVED)) {
           existingMap.set(record.orderNo, {
             ...record,
+            // Force overwrite qty ถ้า record ใหม่มีค่า > 0
+            qty: record.qty > 0 ? record.qty : existing.qty,
             reasonStatus: existing.reasonStatus,
             delayReason: existing.delayReason,
             updatedAt: existing.updatedAt,
           });
+        } else if (existing) {
+          // Force overwrite: ใช้ record ใหม่ทั้งหมด ไม่เก็บค่าเก่าที่อาจผิดพลาด
+          existingMap.set(record.orderNo, record);
         } else {
           existingMap.set(record.orderNo, record);
         }
       });
       const merged = Array.from(existingMap.values());
 
-      // Sync merged deliveries to Firebase (strip productDetails to save bandwidth)
-      const db = getRealtimeDb();
-      const stripped = merged.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
-      if (db) {
-        const obj: Record<string, any> = {};
-        stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
-        set(ref(db, 'deliveries'), obj).catch(e =>
-          console.warn('[Firebase] sync deliveries error:', e)
-        );
-      }
-      syncWeeklyDeliveriesToReturnNeosiam(stripped, kpiConfigs);
-
-      // No localStorage cache - use Firebase only
+      // Save to NAS API
+      api.saveDeliveries(merged).catch(err => console.warn('[NAS API] save deliveries error:', err));
+      syncWeeklyDeliveriesToReturnNeosiam(merged, kpiConfigs);
 
       return merged;
     });
@@ -250,246 +213,68 @@ const App: React.FC = () => {
         };
       });
 
-      // Sync to Firebase
-      const db = getRealtimeDb();
-      const stripped = recalculated.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
-      if (db) {
-        const obj: Record<string, any> = {};
-        stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
-        set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] recalculate sync error:', e));
-      }
-
-      // No localStorage cache - use Firebase only
+      // Save to NAS API
+      api.saveDeliveries(recalculated).catch(err => console.warn('[NAS API] recalculate sync error:', err));
 
       console.log(`[Recalculate KPI] Completed. Total FAIL: ${failCount}, Reset actualDate: ${resetCount}, Total records: ${recalculated.length}`);
       return recalculated;
     });
   }, [kpiConfigs, holidays, storeClosures]);
 
-  // Load deliveries from Firebase with realtime listener for cross-device sync
+  // Load all data from NAS API on mount
   useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) {
-      setDeliveriesLoaded(true);
-      return;
-    }
-    
-    const deliveriesRef = ref(db, 'deliveries');
-    
-    // Use onValue for realtime sync across devices
-    const unsubscribe = onValue(deliveriesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const firebaseRecords: DeliveryRecord[] = Object.values(snapshot.val());
-        console.log(`[Realtime Sync] Firebase: ${firebaseRecords.length} records`);
+    const loadDataFromNAS = async () => {
+      try {
+        console.log('[NAS API] Loading data from NAS...');
         
-        // Debug: ตรวจสอบว่า flag ถูกโหลดจาก Firebase หรือไม่
-        const withManualFlag = firebaseRecords.filter(d => d.manualPlanDate || d.manualActualDate);
-        console.log(`[Realtime Sync] Records with manual flags: ${withManualFlag.length}`, withManualFlag.map(d => d.orderNo));
+        // Load all data in parallel
+        const [
+          deliveriesData,
+          holidaysData,
+          kpiConfigsData,
+          delayReasonsData,
+          storeMappingsData,
+          branchResourcesData
+        ] = await Promise.all([
+          api.getDeliveries().catch(() => []),
+          api.getHolidays().catch(() => HOLIDAYS),
+          api.getKpiConfigs().catch(() => KPI_CONFIGS),
+          api.getDelayReasons().catch(() => DELAY_REASONS),
+          api.getStoreMappings().catch(() => []),
+          api.getBranchResources().catch(() => [])
+        ]);
+
+        console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
         
-        setDeliveries(firebaseRecords);
-        syncWeeklyDeliveriesToReturnNeosiam(firebaseRecords, kpiConfigs);
-      } else {
-        console.log('[Realtime Sync] No data in Firebase');
+        setDeliveries(deliveriesData);
+        setHolidays(holidaysData.length > 0 ? holidaysData : HOLIDAYS);
+        setKpiConfigs(kpiConfigsData.length > 0 ? kpiConfigsData : KPI_CONFIGS);
+        setDelayReasons(delayReasonsData.length > 0 ? delayReasonsData : DELAY_REASONS);
+        setStoreMappings(storeMappingsData);
+        setBranchResources(branchResourcesData);
+        
+        if (deliveriesData.length > 0) {
+          syncWeeklyDeliveriesToReturnNeosiam(deliveriesData, kpiConfigsData);
+        }
+        
+        dataLoadedFromNAS.current = true;
+        setDeliveriesLoaded(true);
+      } catch (error) {
+        console.error('[NAS API] Error loading data:', error);
+        setDeliveriesLoaded(true);
       }
-      setDeliveriesLoaded(true);
-    }, (error) => {
-      console.warn('[Firebase] realtime listener error:', error);
-      setDeliveriesLoaded(true);
-    });
-    
-    // Cleanup listener on unmount
-    return () => {
-      off(deliveriesRef);
     };
-  }, [kpiConfigs]);
-
-  // Load holidays from Firebase on mount (one-time get)
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) { holidaysLoadedFromFirebase.current = true; return; }
-    get(ref(db, HOLIDAYS_PATH))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          setHolidays(Object.values(snapshot.val()) as Holiday[]);
-        } else {
-          const obj: Record<string, Holiday> = {};
-          HOLIDAYS.forEach(h => { obj[h.id] = h; });
-          set(ref(db, HOLIDAYS_PATH), obj);
-        }
-        holidaysLoadedFromFirebase.current = true;
-      })
-      .catch(() => { holidaysLoadedFromFirebase.current = true; });
+    
+    loadDataFromNAS();
   }, []);
 
-  // Save holidays to Firebase whenever they change
-  useEffect(() => {
-    if (!holidaysLoadedFromFirebase.current) return;
-    const db = getRealtimeDb();
-    if (!db) return;
-    try {
-      const obj: Record<string, Holiday> = {};
-      holidays.forEach(h => { obj[h.id] = cleanUndefined(h); });
-      set(ref(db, HOLIDAYS_PATH), obj);
-    } catch { /* silent */ }
-  }, [holidays]);
-
-  // Load storeClosures from Firebase on mount (one-time get)
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) { storeClosuresLoadedFromFirebase.current = true; return; }
-    get(ref(db, STORE_CLOSURES_PATH))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          setStoreClosures(Object.values(snapshot.val()) as StoreClosure[]);
-        } else {
-          const obj: Record<string, StoreClosure> = {};
-          STORE_CLOSURES.forEach(c => { obj[c.id] = c; });
-          set(ref(db, STORE_CLOSURES_PATH), obj);
-        }
-        storeClosuresLoadedFromFirebase.current = true;
-      })
-      .catch(() => { storeClosuresLoadedFromFirebase.current = true; });
-  }, []);
-
-  // Save storeClosures to Firebase whenever they change
-  useEffect(() => {
-    if (!storeClosuresLoadedFromFirebase.current) return;
-    const db = getRealtimeDb();
-    if (!db) return;
-    try {
-      const obj: Record<string, StoreClosure> = {};
-      storeClosures.forEach(c => { obj[c.id] = cleanUndefined(c); });
-      set(ref(db, STORE_CLOSURES_PATH), obj);
-    } catch { /* silent */ }
-  }, [storeClosures]);
-
-  // Load delayReasons from Firebase on mount (one-time get)
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) { delayReasonsLoadedFromFirebase.current = true; return; }
-    get(ref(db, DELAY_REASONS_PATH))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          setDelayReasons(Object.values(snapshot.val()) as DelayReason[]);
-        } else {
-          const obj: Record<string, DelayReason> = {};
-          DELAY_REASONS.forEach(r => { obj[r.code] = r; });
-          set(ref(db, DELAY_REASONS_PATH), obj);
-        }
-        delayReasonsLoadedFromFirebase.current = true;
-      })
-      .catch(() => { delayReasonsLoadedFromFirebase.current = true; });
-  }, []);
-
-  // Save delayReasons to Firebase whenever they change
-  useEffect(() => {
-    if (!delayReasonsLoadedFromFirebase.current) return;
-    const db = getRealtimeDb();
-    if (!db) return;
-    try {
-      const obj: Record<string, DelayReason> = {};
-      delayReasons.forEach(r => { obj[r.code] = cleanUndefined(r); });
-      set(ref(db, DELAY_REASONS_PATH), obj);
-    } catch { /* silent */ }
-  }, [delayReasons]);
-
-  // Load storeMappings from Firebase on mount
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) { storeMappingsLoadedFromFirebase.current = true; return; }
-    get(ref(db, STORE_MAPPINGS_PATH))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          setStoreMappings(Object.values(snapshot.val()) as StoreMapping[]);
-        }
-        storeMappingsLoadedFromFirebase.current = true;
-      })
-      .catch(() => { storeMappingsLoadedFromFirebase.current = true; });
-  }, []);
-
-  // Save storeMappings to Firebase whenever they change
-  useEffect(() => {
-    if (!storeMappingsLoadedFromFirebase.current) return;
-    const db = getRealtimeDb();
-    if (!db) return;
-    try {
-      const obj: Record<string, StoreMapping> = {};
-      storeMappings.forEach(m => { obj[sanitizeFirebaseKey(m.storeId)] = cleanUndefined(m); });
-      set(ref(db, STORE_MAPPINGS_PATH), obj);
-    } catch { /* silent */ }
-  }, [storeMappings]);
-
-  // Load kpiConfigs from Firebase on mount (one-time get)
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) { kpiLoadedFromFirebase.current = true; return; }
-    get(ref(db, KPI_CONFIGS_PATH))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          const configs: KpiConfig[] = Object.values(snapshot.val());
-          setKpiConfigs(configs);
-        } else {
-          const obj: Record<string, KpiConfig> = {};
-          KPI_CONFIGS.forEach(c => { obj[c.id] = c; });
-          set(ref(db, KPI_CONFIGS_PATH), obj);
-        }
-        kpiLoadedFromFirebase.current = true;
-      })
-      .catch(() => { kpiLoadedFromFirebase.current = true; });
-  }, []);
-
-  // Re-sync weekly deliveries to ReturnNeosiam when kpiConfigs is loaded from Firebase
-  // (deliveries load first, kpiConfigs loads async — need to re-sync with correct branch mapping)
-  useEffect(() => {
-    if (!kpiLoadedFromFirebase.current) return;
-    if (deliveries.length === 0) return;
-    syncWeeklyDeliveriesToReturnNeosiam(deliveries, kpiConfigs);
-  }, [kpiConfigs]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Save kpiConfigs to Firebase whenever they change (after initial load)
-  useEffect(() => {
-    if (!kpiLoadedFromFirebase.current) return;
-    const db = getRealtimeDb();
-    if (!db) return;
-    try {
-      const obj: Record<string, KpiConfig> = {};
-      kpiConfigs.forEach(c => { obj[c.id] = c; });
-      set(ref(db, KPI_CONFIGS_PATH), obj);
-    } catch { /* silent */ }
-  }, [kpiConfigs]);
-
-  // Load branchResources from Firebase on mount
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) { branchResourcesLoadedFromFirebase.current = true; return; }
-    get(ref(db, BRANCH_RESOURCES_PATH))
-      .then(snapshot => {
-        if (snapshot.exists()) {
-          setBranchResources(Object.values(snapshot.val()) as BranchResource[]);
-        }
-        branchResourcesLoadedFromFirebase.current = true;
-      })
-      .catch(() => { branchResourcesLoadedFromFirebase.current = true; });
-  }, []);
-
-  // Save branchResources to Firebase whenever they change
-  useEffect(() => {
-    if (!branchResourcesLoadedFromFirebase.current) return;
-    const db = getRealtimeDb();
-    if (!db) return;
-    try {
-      const obj: Record<string, BranchResource> = {};
-      branchResources.forEach(b => { obj[b.id] = cleanUndefined(b); });
-      set(ref(db, BRANCH_RESOURCES_PATH), obj);
-    } catch { /* silent */ }
-  }, [branchResources]);
+  // All data is now loaded from NAS API in the useEffect above
 
   // Handle save branch resource with history
   const handleSaveBranchResource = useCallback((resource: BranchResource, oldResource?: BranchResource) => {
-    const db = getRealtimeDb();
-    const now = new Date().toISOString();
+    console.log('[BranchResource] handleSaveBranchResource called:', resource.branchName);
     
-    // Update or add resource
+    // Update or add resource in local state
     setBranchResources(prev => {
       const exists = prev.find(b => b.id === resource.id);
       if (exists) {
@@ -498,41 +283,10 @@ const App: React.FC = () => {
       return [...prev, resource];
     });
 
-    // Save history
-    if (db && oldResource) {
-      const changes: Record<string, { from: any; to: any }> = {};
-      const fields: (keyof BranchResource)[] = ['trucks', 'tripsPerDay', 'loaders', 'checkers', 'admin', 'workHoursPerDay', 'loaderWage', 'checkerWage', 'adminWage', 'truckCostPerDay'];
-      fields.forEach(field => {
-        if (oldResource[field] !== resource[field]) {
-          changes[field] = { from: oldResource[field], to: resource[field] };
-        }
-      });
-      
-      if (Object.keys(changes).length > 0) {
-        const historyEntry: BranchResourceHistory = {
-          id: `history-${Date.now()}`,
-          branchId: resource.id,
-          action: 'update',
-          changes,
-          updatedAt: now,
-          updatedBy: resource.updatedBy
-        };
-        set(ref(db, `${BRANCH_RESOURCES_HISTORY_PATH}/${resource.id}/${historyEntry.id}`), cleanUndefined(historyEntry))
-          .catch(e => console.warn('[Firebase] save history error:', e));
-      }
-    } else if (db && !oldResource) {
-      // New resource - save create history
-      const historyEntry: BranchResourceHistory = {
-        id: `history-${Date.now()}`,
-        branchId: resource.id,
-        action: 'create',
-        changes: {},
-        updatedAt: now,
-        updatedBy: resource.updatedBy
-      };
-      set(ref(db, `${BRANCH_RESOURCES_HISTORY_PATH}/${resource.id}/${historyEntry.id}`), cleanUndefined(historyEntry))
-        .catch(e => console.warn('[Firebase] save history error:', e));
-    }
+    // Save to NAS API
+    api.saveBranchResource(resource)
+      .then(() => console.log('[NAS API] Branch resource saved:', resource.branchName))
+      .catch(err => console.error('[NAS API] Save branch resource error:', err));
   }, []);
 
   const handleAddKpiConfig = useCallback((newConfig: Omit<KpiConfig, 'id'>) => {
@@ -546,15 +300,8 @@ const App: React.FC = () => {
   const handleUpdateDelivery = useCallback((updated: DeliveryRecord, action?: 'submitted' | 'approved' | 'rejected') => {
     setDeliveries(prev => prev.map(d => d.orderNo === updated.orderNo ? updated : d));
 
-    // Sync updated delivery to Firebase
-    const db = getRealtimeDb();
-    if (db) {
-      const key = sanitizeFirebaseKey(updated.orderNo);
-      const { productDetails: _pd, ...rest } = updated;
-      set(ref(db, `deliveries/${key}`), cleanUndefined(rest)).catch(e =>
-        console.warn('[Firebase] sync updated delivery error:', e)
-      );
-    }
+    // Save to NAS API
+    api.saveDelivery(updated).catch(err => console.warn('[NAS API] save delivery error:', err));
 
     if (action) {
       const auditLog: ReasonAuditLog = {
@@ -616,7 +363,18 @@ const App: React.FC = () => {
           />
         );
       case 'upload-history':
-        return <UploadHistory importLogs={importLogs} deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+        return <UploadHistory 
+          importLogs={importLogs} 
+          deliveries={deliveries} 
+          kpiConfigs={kpiConfigs}
+          onUpdateDelivery={async (orderNo, updates) => {
+            const existing = deliveries.find(d => d.orderNo === orderNo);
+            if (existing) {
+              const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+              handleUpdateDelivery(updated);
+            }
+          }}
+        />;
       case 'delivery-status':
         return <DeliveryTracker 
           deliveries={deliveries} 
@@ -635,32 +393,9 @@ const App: React.FC = () => {
               delayDays: updated.delayDays
             });
             
-            // Update single delivery in state + localStorage in one call
-            setDeliveries(prev => {
-              const newList = prev.map(d => d.orderNo === updated.orderNo ? updated : d);
-              // No localStorage cache - Firebase is source of truth
-              return newList;
-            });
-            // Sync to Firebase
-            const db = getRealtimeDb();
-            const { productDetails: _pd, ...rest } = updated;
-            const stripped = cleanUndefined(rest);
-            
-            // Debug log เพื่อดูว่า cleanUndefined ลบ flag/KPI หรือไม่
-            console.log(`[App.tsx] After cleanUndefined (sending to Firebase):`, {
-              orderNo: stripped.orderNo,
-              manualPlanDate: stripped.manualPlanDate,
-              manualActualDate: stripped.manualActualDate,
-              kpiStatus: stripped.kpiStatus,
-              delayDays: stripped.delayDays,
-              actualDate: stripped.actualDate
-            });
-            
-            if (db) {
-              set(ref(db, `deliveries/${sanitizeFirebaseKey(updated.orderNo)}`), stripped)
-                .then(() => console.log(`[Firebase] Saved ${updated.orderNo} with flags`))
-                .catch(e => console.warn('[Firebase] sync error:', e));
-            }
+            // Update single delivery in state and save to NAS
+            setDeliveries(prev => prev.map(d => d.orderNo === updated.orderNo ? updated : d));
+            api.saveDelivery(updated).catch(err => console.warn('[NAS API] save error:', err));
           }}
         />;
       case 'weekly-report':
@@ -670,17 +405,12 @@ const App: React.FC = () => {
           storeMappings={storeMappings}
           onUpdateDeliveries={(updated) => {
             setDeliveries(updated);
-            // Sync to Firebase
-            const db = getRealtimeDb();
-            const stripped = updated.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
-            if (db) {
-              const obj: Record<string, any> = {};
-              stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
-              set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] sync error:', e));
-            }
-            // No localStorage cache - Firebase is source of truth
+            api.saveDeliveries(updated).catch(err => console.warn('[NAS API] sync error:', err));
           }}
-          onAddStoreMapping={(mapping) => setStoreMappings(prev => [...prev.filter(m => m.storeId !== mapping.storeId), mapping])}
+          onAddStoreMapping={(mapping) => {
+            setStoreMappings(prev => [...prev.filter(m => m.storeId !== mapping.storeId), mapping]);
+            api.saveStoreMapping(mapping).catch(err => console.warn('[NAS API] save mapping error:', err));
+          }}
         />;
       case 'document-import':
         return <DocumentImport 
@@ -688,14 +418,7 @@ const App: React.FC = () => {
           kpiConfigs={kpiConfigs}
           onUpdateDeliveries={(updated) => {
             setDeliveries(updated);
-            const db = getRealtimeDb();
-            const stripped = updated.map(d => { const { productDetails: _pd, ...rest } = d; return cleanUndefined(rest); });
-            if (db) {
-              const obj: Record<string, any> = {};
-              stripped.forEach(d => { obj[sanitizeFirebaseKey(d.orderNo)] = d; });
-              set(ref(db, 'deliveries'), obj).catch(e => console.warn('[Firebase] sync error:', e));
-            }
-            // No localStorage cache - Firebase is source of truth
+            api.saveDeliveries(updated).catch(err => console.warn('[NAS API] sync error:', err));
           }}
         />;
       case 'document-report':
