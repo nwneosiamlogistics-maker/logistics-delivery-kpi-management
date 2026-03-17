@@ -88,7 +88,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
       if (map.has(dayName)) {
         const entry = map.get(dayName)!;
         entry.count += 1;
-        entry.qty += (Number(d.qty) || 0);
+        entry.qty += d.qty;
       }
     });
 
@@ -96,7 +96,7 @@ export const WeekdayAnalysis: React.FC<WeekdayAnalysisProps> = ({ deliveries, kp
   }, [filteredData]);
 
   const totalTrips = analyticsData.reduce((s, d) => s + d.count, 0);
-  const totalQty = analyticsData.reduce((s, d) => s + (Number(d.qty) || 0), 0);
+  const totalQty = analyticsData.reduce((s, d) => s + d.qty, 0);
   const maxTripDay = analyticsData.reduce((prev, current) => (prev.count > current.count) ? prev : current, analyticsData[0]);
   const minTripDay = analyticsData.filter(d => d.count > 0).reduce((prev, current) => (prev.count < current.count) ? prev : current, { name: '-', nameThai: '-', count: 0 } as any);
   // Calculate holiday trips: Sunday + public holidays + company holidays + store closures

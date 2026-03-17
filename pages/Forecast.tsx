@@ -192,7 +192,7 @@ const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs }) => {
         return refDate && refDate >= start && refDate <= end;
       });
       
-      const totalQty = filtered.reduce((sum, d) => sum + (Number(d.qty) || 0), 0);
+      const totalQty = filtered.reduce((sum, d) => sum + d.qty, 0);
       const uniqueDays = new Set(filtered.map(d => d.openDate || d.planDate)).size;
       
       result[key] = {
