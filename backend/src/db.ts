@@ -12,6 +12,7 @@ const pool = mariadb.createPool({
   connectionLimit: 10,
   acquireTimeout: 30000,
   decimalAsNumber: true,
+  charset: 'utf8mb4',
 });
 
 export async function getConnection() {

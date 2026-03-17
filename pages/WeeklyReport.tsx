@@ -42,6 +42,9 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 // Export to CSV function
+// Format ISO date string (2026-03-11T00:00:00.000Z → 2026-03-11)
+const formatDateStr = (d: string | undefined) => d ? d.slice(0, 10) : '';
+
 function exportToCSV(data: DeliveryRecord[], columns: { key: keyof DeliveryRecord | string; header: string; format?: (d: DeliveryRecord) => string }[], filename: string) {
   const headers = columns.map(c => c.header);
   const rows = data.map(d => columns.map(c => {
@@ -782,8 +785,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
                       <td className="px-3 py-2 text-center">{formatQty(d.qty)}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.actualDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.openDate) || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.actualDate) || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-center">
                         <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-bold">{calcDeliveryDays(d) <= 0 ? 'ทันเวลา' : `${calcDeliveryDays(d)} วัน`}</span>
                       </td>
@@ -885,8 +888,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
                       <td className="px-3 py-2 text-center">{formatQty(d.qty)}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.actualDate || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.openDate) || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.actualDate) || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-center">
                         <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">{calcDeliveryDays(d)} วัน</span>
                       </td>
@@ -1015,8 +1018,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
                       <td className="px-3 py-2 text-center text-gray-700">{formatQty(d.qty)}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.openDate) || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.planDate)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                           d.deliveryStatus === DeliveryStatus.IN_TRANSIT ? 'bg-blue-100 text-blue-700' :
@@ -1127,8 +1130,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                       <td className="px-3 py-2 text-gray-600">{d.sender || <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{d.province ? `${d.province} / ` : ''}{d.district}</td>
                       <td className="px-3 py-2 text-center">{formatQty(d.qty)}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.openDate || <span className="text-gray-300">-</span>}</td>
-                      <td className="px-3 py-2 text-center font-mono text-gray-500">{d.planDate}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.openDate) || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-3 py-2 text-center font-mono text-gray-500">{formatDateStr(d.planDate)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold">+{calcDeliveryDays(d)} วัน</span>
                       </td>

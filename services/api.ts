@@ -225,20 +225,37 @@ export async function saveImportLog(log: ImportLog): Promise<void> {
   });
 }
 
+// Strip ISO time portion from date strings (2026-03-11T00:00:00.000Z → 2026-03-11)
+function formatApiDate(d: string | null | undefined): string {
+  if (!d) return '';
+  return d.includes('T') ? d.slice(0, 10) : d;
+}
+
+// Fix double-encoded UTF-8 Thai text (browser-side)
+function fixDoubleEncoded(str: string | null | undefined): string {
+  if (!str || !/[À-ÿ]/.test(str)) return str || '';
+  try {
+    const bytes = new Uint8Array([...str].map(c => c.charCodeAt(0)));
+    const decoded = new TextDecoder('utf-8').decode(bytes);
+    if (!decoded.includes('\uFFFD')) return decoded;
+  } catch { /* ignore */ }
+  return str;
+}
+
 // ========== Mapping Helpers ==========
 function mapDeliveryFromAPI(d: any): DeliveryRecord {
   return {
     orderNo: d.order_no,
     district: d.district,
     storeId: d.store_id,
-    planDate: d.plan_date,
-    openDate: d.open_date,
-    actualDate: d.actual_date,
+    planDate: formatApiDate(d.plan_date),
+    openDate: formatApiDate(d.open_date),
+    actualDate: formatApiDate(d.actual_date),
     qty: parseFloat(String(d.qty)) || 0,
     sender: d.sender,
     province: d.province,
     importFileId: d.import_file_id,
-    deliveryStatus: d.delivery_status,
+    deliveryStatus: fixDoubleEncoded(d.delivery_status),
     actualDatetime: d.actual_datetime,
     productDetails: d.product_details,
     kpiStatus: d.kpi_status,

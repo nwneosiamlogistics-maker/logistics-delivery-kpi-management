@@ -16,6 +16,20 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 
+// Fix double-encoded UTF-8 strings (e.g. Thai text stored as latin1→utf8)
+function fixDoubleEncoded(str: string | null | undefined): string | null {
+  if (!str) return str as null;
+  // Detect mojibake pattern: Ã or Â followed by high bytes
+  if (!/[À-ÿ]/.test(str)) return str;
+  try {
+    const bytes = Buffer.from(str, 'latin1');
+    const decoded = bytes.toString('utf8');
+    // Verify it decoded to valid text (no replacement chars)
+    if (!decoded.includes('\uFFFD')) return decoded;
+  } catch { /* ignore */ }
+  return str;
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -26,10 +40,12 @@ app.get('/api/deliveries', async (req, res) => {
   try {
     const rows = await query('SELECT * FROM deliveries ORDER BY updated_at DESC');
     // MariaDB DECIMAL returns strings — convert to numbers for frontend
+    // Fix double-encoded Thai text in delivery_status
     const sanitized = rows.map((r: any) => ({
       ...r,
       qty: r.qty !== null && r.qty !== undefined ? parseFloat(String(r.qty)) : 0,
       delay_days: r.delay_days !== null && r.delay_days !== undefined ? parseInt(String(r.delay_days), 10) : 0,
+      delivery_status: fixDoubleEncoded(r.delivery_status),
     }));
     res.json(sanitized);
   } catch (error) {
