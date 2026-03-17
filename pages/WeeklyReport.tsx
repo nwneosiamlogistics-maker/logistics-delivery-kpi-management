@@ -75,6 +75,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const [selectedDistricts, setSelectedDistricts] = useState<Record<string, string>>({}); // displayKey -> selected district
   const [selectedProvinces, setSelectedProvinces] = useState<Record<string, string>>({}); // displayKey -> selected province
   const [rememberStore, setRememberStore] = useState<Record<string, boolean>>({});
+  const [savedDistricts, setSavedDistricts] = useState<Set<string>>(new Set()); // track saved displayKeys
   const [podPendingPage, setPodPendingPage] = useState(1);
   const [over2DaysPage, setOver2DaysPage] = useState(1);
   const [on1DayPage, setOn1DayPage] = useState(1);
@@ -331,7 +332,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       });
     }
 
-    // Clear selection
+    // Mark as saved and clear selection
+    setSavedDistricts(prev => new Set(prev).add(displayKey));
     setSelectedDistricts(prev => {
       const next = { ...prev };
       delete next[displayKey];
@@ -543,11 +545,19 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
             <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <h4 className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
                 <i className="fas fa-exclamation-triangle"></i>
-                อำเภอ/จังหวัด ที่ยังไม่ได้ตั้งค่าสาขา ({unmappedDistricts.length} รายการ)
+                อำเภอ/จังหวัด ที่ยังไม่ได้ตั้งค่าสาขา ({unmappedDistricts.filter(([k]) => !savedDistricts.has(k)).length} รายการ)
               </h4>
               <p className="text-xs text-amber-600 mb-3">เลือกอำเภอแล้วกดบันทึกเพื่อแก้ไข หรือไปที่ "ตั้งค่าข้อมูลหลัก" → "กฎ KPI"</p>
               <div className="space-y-3">
                 {unmappedDistricts.map(([displayKey, data]) => {
+                  if (savedDistricts.has(displayKey)) {
+                    return (
+                      <div key={displayKey} className="p-3 bg-green-50 border border-green-300 rounded-lg flex items-center gap-3">
+                        <i className="fas fa-check-circle text-green-500"></i>
+                        <span className="text-sm font-medium text-green-800">บันทึกแล้ว: {displayKey}</span>
+                      </div>
+                    );
+                  }
                   const availableDistricts = getDistrictsForProvince(data.province);
                   return (
                     <div key={displayKey} className="p-3 bg-white border border-amber-300 rounded-lg">
