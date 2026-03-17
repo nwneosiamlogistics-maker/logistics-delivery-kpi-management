@@ -37,10 +37,12 @@ export interface ImportResult {
   updated: DeliveryRecord[];
   skipped: { row: number; reason: string; data?: any }[];
   errors: { row: number; error: string; data?: any }[];
+  warnings: { row: number; warning: string; data?: any }[];
 }
 
 const REQUIRED_COLUMNS = ['orderNo', 'district', 'storeId'];
 const QTY_COLUMNS = ['qty', 'productDetails']; // At least one must exist
+const MAX_QTY_FALLBACK = 5000; // Cap qty at this value when using fallback (>500)
 
 const COLUMN_ALIASES: Record<string, string[]> = {
   orderNo: ['orderNo', 'order_no', 'orderno', 'Order No', 'Order Number', 'เลขที่ใบสั่ง', 'เลขที่ออเดอร์', 'ใบสั่งซื้อ', 'เลขที่ใบสินค้า', 'รหัสใบสั่ง', 'ID', 'เลขที่'],
@@ -352,8 +354,12 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
           }
         }
         
-        // Fallback: ใช้ directQty แม้จะเกิน 500 (ดีกว่าไม่มี)
+        // Fallback: ใช้ directQty แม้จะเกิน 500 แต่ cap ที่ MAX_QTY_FALLBACK
         if (directQty && !isNaN(directQty) && directQty > 0) {
+          if (directQty > MAX_QTY_FALLBACK) {
+            console.warn(`[QTY WARNING] orderNo=${m.orderNo}, qty=${directQty} เกิน ${MAX_QTY_FALLBACK} — cap ที่ ${MAX_QTY_FALLBACK} (อาจเป็นน้ำหนักไม่ใช่กล่อง)`);
+            return MAX_QTY_FALLBACK;
+          }
           console.log(`[QTY DEBUG] orderNo=${m.orderNo}, fallback to directQty=${directQty}`);
           return directQty;
         }
@@ -402,7 +408,7 @@ export function processImport(
   importFileId?: string,
   storeMappings: StoreMapping[] = []
 ): ImportResult {
-  const result: ImportResult = { created: [], updated: [], skipped: [], errors: [] };
+  const result: ImportResult = { created: [], updated: [], skipped: [], errors: [], warnings: [] };
   // Use orderNo as unique key — every Inv. stored separately
   const existingMap = new Map(
     existingDeliveries.map(d => [d.orderNo, d])

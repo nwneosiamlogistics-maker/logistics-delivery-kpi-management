@@ -89,7 +89,7 @@ export const Import: React.FC<ImportProps> = ({
         const parsedRows = parseExcelFile(arrayBuffer);
 
         if (parsedRows.length === 0) {
-          results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [{ row: 0, error: 'ไม่พบข้อมูลในไฟล์', data: {} }] }, error: 'ไม่พบข้อมูลในไฟล์' });
+          results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [{ row: 0, error: 'ไม่พบข้อมูลในไฟล์', data: {} }], warnings: [] }, error: 'ไม่พบข้อมูลในไฟล์' });
           continue;
         }
 
@@ -134,7 +134,7 @@ export const Import: React.FC<ImportProps> = ({
           onImportComplete(newRecords, importLog);
         }
       } catch (err: any) {
-        results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [] }, error: err.message || 'ไม่สามารถประมวลผลไฟล์ได้' });
+        results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [], warnings: [] }, error: err.message || 'ไม่สามารถประมวลผลไฟล์ได้' });
       }
     }
 

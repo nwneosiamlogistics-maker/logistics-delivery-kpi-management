@@ -2,8 +2,13 @@ node_modules
 dist
 .git
 .netlify
+.firebase
+.env
+.env.*
+backend
 samples
 scripts
+docs
 *.log
 *.py
 requirements.txt
@@ -11,3 +16,6 @@ export_data.py
 seed_emulator.json
 database-debug.log
 firebase-debug.log
+database.rules.json
+firebase.json
+metadata.json
