@@ -56,6 +56,13 @@ function generateSQL() {
   sql += 'SET NAMES utf8mb4;\n';
   sql += 'SET CHARACTER SET utf8mb4;\n\n';
   
+  // Extend column sizes to handle Thai text
+  sql += '-- Extend columns for Thai text\n';
+  sql += 'ALTER TABLE deliveries MODIFY COLUMN store_id VARCHAR(255);\n';
+  sql += 'ALTER TABLE deliveries MODIFY COLUMN sender VARCHAR(255);\n';
+  sql += 'ALTER TABLE store_closures MODIFY COLUMN store_id VARCHAR(255);\n';
+  sql += 'ALTER TABLE store_mappings MODIFY COLUMN store_id VARCHAR(255);\n\n';
+  
   const counts = { deliveries: 0, kpiConfigs: 0, holidays: 0, storeClosures: 0, delayReasons: 0, storeMappings: 0, branchResources: 0 };
 
   // Deliveries
