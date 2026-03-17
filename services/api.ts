@@ -15,6 +15,36 @@ import {
   ImportLog 
 } from '../types';
 
+// Strip ISO time portion from date strings (2026-03-11T00:00:00.000Z → 2026-03-11)
+function formatApiDate(d: string | null | undefined): string {
+  if (!d) return '';
+  return d.includes('T') ? d.slice(0, 10) : d;
+}
+
+// Windows-1252 → byte mapping (MySQL "latin1" is actually cp1252)
+const CP1252_MAP: Record<number, number> = {
+  0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,
+  0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,
+  0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,
+  0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,
+  0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,
+  0x017E:0x9E,0x0178:0x9F,
+};
+
+// Fix double-encoded UTF-8 Thai text (browser-side, cp1252-aware)
+function fixDoubleEncoded(str: string | null | undefined): string {
+  if (!str || !/[À-ÿ]/.test(str)) return str || '';
+  try {
+    const bytes = new Uint8Array([...str].map(c => {
+      const cp = c.charCodeAt(0);
+      return CP1252_MAP[cp] ?? (cp & 0xFF);
+    }));
+    const decoded = new TextDecoder('utf-8').decode(bytes);
+    if (!decoded.includes('\uFFFD')) return decoded;
+  } catch { /* ignore */ }
+  return str;
+}
+
 // API Base URL - Cloudflare Tunnel to NAS
 // Use empty string for local dev (Vite proxy), full URL for production (Vercel)
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://mat-designed-restoration-talented.trycloudflare.com';
@@ -59,7 +89,7 @@ export async function getHolidays(): Promise<Holiday[]> {
   const data = await fetchAPI<any[]>('/api/holidays');
   return data.map(h => ({
     id: h.id,
-    date: h.date,
+    date: formatApiDate(h.date),
     name: h.name,
     type: h.type,
   }));
@@ -105,7 +135,7 @@ export async function getStoreClosures(): Promise<StoreClosure[]> {
   return data.map(s => ({
     id: s.id,
     storeId: s.store_id,
-    date: s.date,
+    date: formatApiDate(s.date),
     closeRule: s.close_rule,
     reason: s.reason,
   }));
@@ -225,36 +255,6 @@ export async function saveImportLog(log: ImportLog): Promise<void> {
   });
 }
 
-// Strip ISO time portion from date strings (2026-03-11T00:00:00.000Z → 2026-03-11)
-function formatApiDate(d: string | null | undefined): string {
-  if (!d) return '';
-  return d.includes('T') ? d.slice(0, 10) : d;
-}
-
-// Windows-1252 → byte mapping (MySQL "latin1" is actually cp1252)
-const CP1252_MAP: Record<number, number> = {
-  0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,
-  0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,
-  0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,
-  0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,
-  0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,
-  0x017E:0x9E,0x0178:0x9F,
-};
-
-// Fix double-encoded UTF-8 Thai text (browser-side, cp1252-aware)
-function fixDoubleEncoded(str: string | null | undefined): string {
-  if (!str || !/[À-ÿ]/.test(str)) return str || '';
-  try {
-    const bytes = new Uint8Array([...str].map(c => {
-      const cp = c.charCodeAt(0);
-      return CP1252_MAP[cp] ?? (cp & 0xFF);
-    }));
-    const decoded = new TextDecoder('utf-8').decode(bytes);
-    if (!decoded.includes('\uFFFD')) return decoded;
-  } catch { /* ignore */ }
-  return str;
-}
-
 // ========== Mapping Helpers ==========
 function mapDeliveryFromAPI(d: any): DeliveryRecord {
   return {
@@ -279,8 +279,8 @@ function mapDeliveryFromAPI(d: any): DeliveryRecord {
     updatedAt: d.updated_at,
     weekday: d.weekday,
     documentReturned: Boolean(d.document_returned),
-    documentReturnedDate: d.document_returned_date,
-    documentReturnBillDate: d.document_return_bill_date,
+    documentReturnedDate: formatApiDate(d.document_returned_date),
+    documentReturnBillDate: formatApiDate(d.document_return_bill_date),
     documentReturnSource: d.document_return_source,
     manualPlanDate: Boolean(d.manual_plan_date),
     manualActualDate: Boolean(d.manual_actual_date),
