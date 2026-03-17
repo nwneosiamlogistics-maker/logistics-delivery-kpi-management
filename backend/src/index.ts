@@ -214,6 +214,75 @@ app.post('/api/kpi-configs', async (req, res) => {
   }
 });
 
+app.delete('/api/kpi-configs/:id', async (req, res) => {
+  try {
+    await execute('DELETE FROM kpi_configs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete KPI config' });
+  }
+});
+
+// ============ STORE CLOSURES ============
+app.get('/api/store-closures', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM store_closures ORDER BY date');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch store closures' });
+  }
+});
+
+app.post('/api/store-closures', async (req, res) => {
+  try {
+    const s = req.body;
+    await execute('INSERT INTO store_closures (id, store_id, date, close_rule, reason) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE store_id = VALUES(store_id), date = VALUES(date), close_rule = VALUES(close_rule), reason = VALUES(reason)',
+      [s.id, s.storeId, s.date, s.closeRule, s.reason]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save store closure' });
+  }
+});
+
+app.delete('/api/store-closures/:id', async (req, res) => {
+  try {
+    await execute('DELETE FROM store_closures WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete store closure' });
+  }
+});
+
+// ============ DELAY REASONS ============
+app.get('/api/delay-reasons', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM delay_reasons');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch delay reasons' });
+  }
+});
+
+app.post('/api/delay-reasons', async (req, res) => {
+  try {
+    const d = req.body;
+    await execute('INSERT INTO delay_reasons (code, label, category) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE label = VALUES(label), category = VALUES(category)',
+      [d.code, d.label, d.category]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save delay reason' });
+  }
+});
+
+app.delete('/api/delay-reasons/:code', async (req, res) => {
+  try {
+    await execute('DELETE FROM delay_reasons WHERE code = ?', [req.params.code]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete delay reason' });
+  }
+});
+
 // ============ IMPORT LOGS ============
 app.get('/api/import-logs', async (req, res) => {
   try {

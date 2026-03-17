@@ -102,6 +102,10 @@ export async function saveHoliday(holiday: Holiday): Promise<void> {
   });
 }
 
+export async function deleteHoliday(id: string): Promise<void> {
+  await fetchAPI(`/api/holidays/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 // ========== KPI Configs ==========
 export async function getKpiConfigs(): Promise<KpiConfig[]> {
   const data = await fetchAPI<any[]>('/api/kpi-configs');
@@ -129,6 +133,10 @@ export async function saveKpiConfig(config: KpiConfig): Promise<void> {
   });
 }
 
+export async function deleteKpiConfig(id: string): Promise<void> {
+  await fetchAPI(`/api/kpi-configs/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 // ========== Store Closures ==========
 export async function getStoreClosures(): Promise<StoreClosure[]> {
   const data = await fetchAPI<any[]>('/api/store-closures');
@@ -141,6 +149,23 @@ export async function getStoreClosures(): Promise<StoreClosure[]> {
   }));
 }
 
+export async function saveStoreClosure(closure: StoreClosure): Promise<void> {
+  await fetchAPI('/api/store-closures', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: closure.id,
+      storeId: closure.storeId,
+      date: closure.date,
+      closeRule: closure.closeRule,
+      reason: closure.reason,
+    }),
+  });
+}
+
+export async function deleteStoreClosure(id: string): Promise<void> {
+  await fetchAPI(`/api/store-closures/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 // ========== Delay Reasons ==========
 export async function getDelayReasons(): Promise<DelayReason[]> {
   const data = await fetchAPI<any[]>('/api/delay-reasons');
@@ -149,6 +174,17 @@ export async function getDelayReasons(): Promise<DelayReason[]> {
     label: d.label,
     category: d.category,
   }));
+}
+
+export async function saveDelayReason(reason: DelayReason): Promise<void> {
+  await fetchAPI('/api/delay-reasons', {
+    method: 'POST',
+    body: JSON.stringify(reason),
+  });
+}
+
+export async function deleteDelayReason(code: string): Promise<void> {
+  await fetchAPI(`/api/delay-reasons/${encodeURIComponent(code)}`, { method: 'DELETE' });
 }
 
 // ========== Store Mappings ==========

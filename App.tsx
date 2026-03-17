@@ -147,9 +147,14 @@ const App: React.FC = () => {
       });
 
       // คืนค่า dedupedConfigs (แทน prevConfigs) เพื่อลบ duplicate ที่มีอยู่
-      return draftsToAdd.length > 0
-        ? [...dedupedConfigs, ...draftsToAdd]
-        : dedupedConfigs;
+      if (draftsToAdd.length > 0) {
+        // Sync new draft configs to NAS
+        draftsToAdd.forEach(c => {
+          api.saveKpiConfig(c).catch(err => console.warn('[NAS API] save draft kpi config error:', err));
+        });
+        return [...dedupedConfigs, ...draftsToAdd];
+      }
+      return dedupedConfigs;
     });
 
     setActiveTab('dashboard');
@@ -238,14 +243,16 @@ const App: React.FC = () => {
           kpiConfigsData,
           delayReasonsData,
           storeMappingsData,
-          branchResourcesData
+          branchResourcesData,
+          storeClosuresData
         ] = await Promise.all([
           api.getDeliveries().catch(() => []),
           api.getHolidays().catch(() => HOLIDAYS),
           api.getKpiConfigs().catch(() => KPI_CONFIGS),
           api.getDelayReasons().catch(() => DELAY_REASONS),
           api.getStoreMappings().catch(() => []),
-          api.getBranchResources().catch(() => [])
+          api.getBranchResources().catch(() => []),
+          api.getStoreClosures().catch(() => STORE_CLOSURES)
         ]);
 
         console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
@@ -262,6 +269,7 @@ const App: React.FC = () => {
         setDelayReasons(delayReasonsData.length > 0 ? delayReasonsData : DELAY_REASONS);
         setStoreMappings(storeMappingsData);
         setBranchResources(branchResourcesData);
+        setStoreClosures(storeClosuresData.length > 0 ? storeClosuresData : STORE_CLOSURES);
         
         if (deliveriesData.length > 0) {
           syncWeeklyDeliveriesToReturnNeosiam(deliveriesData, kpiConfigsData);
@@ -305,6 +313,7 @@ const App: React.FC = () => {
       id: `kpi-${Date.now()}`
     };
     setKpiConfigs(prev => [...prev, config]);
+    api.saveKpiConfig(config).catch(err => console.warn('[NAS API] save new kpi config error:', err));
   }, []);
 
   const handleUpdateDelivery = useCallback((updated: DeliveryRecord, action?: 'submitted' | 'approved' | 'rejected') => {
@@ -475,11 +484,59 @@ const App: React.FC = () => {
             delayReasons={delayReasons}
             importLogs={importLogs}
             deliveries={deliveries}
-            onUpdateHolidays={setHolidays}
-            onUpdateStoreClosures={setStoreClosures}
-            onUpdateKpiConfigs={setKpiConfigs}
+            onUpdateHolidays={(updated) => {
+              // Detect added or removed holidays and sync to NAS
+              const oldIds = new Set(holidays.map(h => h.id));
+              const newIds = new Set(updated.map(h => h.id));
+              // Save new holidays
+              updated.filter(h => !oldIds.has(h.id)).forEach(h => {
+                api.saveHoliday(h).catch(err => console.warn('[NAS API] save holiday error:', err));
+              });
+              // Delete removed holidays
+              holidays.filter(h => !newIds.has(h.id)).forEach(h => {
+                api.deleteHoliday(h.id).catch(err => console.warn('[NAS API] delete holiday error:', err));
+              });
+              setHolidays(updated);
+            }}
+            onUpdateStoreClosures={(updated) => {
+              const oldIds = new Set(storeClosures.map(c => c.id));
+              const newIds = new Set(updated.map(c => c.id));
+              updated.filter(c => !oldIds.has(c.id)).forEach(c => {
+                api.saveStoreClosure(c).catch(err => console.warn('[NAS API] save store closure error:', err));
+              });
+              storeClosures.filter(c => !newIds.has(c.id)).forEach(c => {
+                api.deleteStoreClosure(c.id).catch(err => console.warn('[NAS API] delete store closure error:', err));
+              });
+              setStoreClosures(updated);
+            }}
+            onUpdateKpiConfigs={(updated) => {
+              const oldMap = new Map(kpiConfigs.map(c => [c.id, c]));
+              const newIds = new Set(updated.map(c => c.id));
+              // Save new or updated configs
+              updated.forEach(c => {
+                const orig = oldMap.get(c.id);
+                if (!orig || JSON.stringify(orig) !== JSON.stringify(c)) {
+                  api.saveKpiConfig(c).catch(err => console.warn('[NAS API] save kpi config error:', err));
+                }
+              });
+              // Delete removed configs
+              kpiConfigs.filter(c => !newIds.has(c.id)).forEach(c => {
+                api.deleteKpiConfig(c.id).catch(err => console.warn('[NAS API] delete kpi config error:', err));
+              });
+              setKpiConfigs(updated);
+            }}
             onAddKpiConfig={handleAddKpiConfig}
-            onUpdateDelayReasons={setDelayReasons}
+            onUpdateDelayReasons={(updated) => {
+              const oldCodes = new Set(delayReasons.map(r => r.code));
+              const newCodes = new Set(updated.map(r => r.code));
+              updated.filter(r => !oldCodes.has(r.code)).forEach(r => {
+                api.saveDelayReason(r).catch(err => console.warn('[NAS API] save delay reason error:', err));
+              });
+              delayReasons.filter(r => !newCodes.has(r.code)).forEach(r => {
+                api.deleteDelayReason(r.code).catch(err => console.warn('[NAS API] delete delay reason error:', err));
+              });
+              setDelayReasons(updated);
+            }}
             onRecalculateKpi={handleRecalculateKpi}
             userRole={currentUser.role}
           />
