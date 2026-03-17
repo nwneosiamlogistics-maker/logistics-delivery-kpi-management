@@ -30,14 +30,10 @@ const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs }) => {
   
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   
-  // District to branch mapping
+  // District to branch mapping (province-aware composite key)
   const districtBranchMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    kpiConfigs.forEach(k => {
-      if (k.branch && k.district) {
-        map[k.district] = k.branch;
-      }
-    });
+    const map = new Map<string, string>();
+    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
     return map;
   }, [kpiConfigs]);
   
@@ -45,7 +41,9 @@ const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs }) => {
   const filteredDeliveries = useMemo(() => {
     if (!selectedBranch) return deliveries;
     return deliveries.filter(d => {
-      const branch = districtBranchMap[d.district];
+      const key = `${d.province || ''}||${d.district}`;
+      const keyNoProvince = `||${d.district}`;
+      const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
       return branch === selectedBranch;
     });
   }, [deliveries, selectedBranch, districtBranchMap]);
