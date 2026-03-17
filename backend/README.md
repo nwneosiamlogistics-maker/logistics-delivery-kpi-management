@@ -72,11 +72,23 @@ VITE_API_URL=https://neosiam.DSCloud.biz:5001/api
 | POST | `/api/deliveries/bulk` | Bulk create/update |
 | PATCH | `/api/deliveries/:orderNo` | Update specific fields |
 | GET | `/api/holidays` | List holidays |
-| POST | `/api/holidays` | Create holiday |
+| POST | `/api/holidays` | Create/update holiday |
+| DELETE | `/api/holidays/:id` | Delete holiday |
 | GET | `/api/kpi-configs` | List KPI configs |
+| POST | `/api/kpi-configs` | Create/update KPI config |
+| DELETE | `/api/kpi-configs/:id` | Delete KPI config |
+| GET | `/api/store-closures` | List store closures |
+| POST | `/api/store-closures` | Create/update store closure |
+| DELETE | `/api/store-closures/:id` | Delete store closure |
+| GET | `/api/delay-reasons` | List delay reasons |
+| POST | `/api/delay-reasons` | Create/update delay reason |
+| DELETE | `/api/delay-reasons/:code` | Delete delay reason |
 | GET | `/api/import-logs` | List import logs |
+| POST | `/api/import-logs` | Create import log |
 | GET | `/api/store-mappings` | List store mappings |
+| POST | `/api/store-mappings` | Create/update store mapping |
 | GET | `/api/branch-resources` | List branch resources |
+| POST | `/api/branch-resources` | Create/update branch resource |
 
 ## Development
 
