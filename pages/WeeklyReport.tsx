@@ -287,7 +287,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   };
 
   // Handle save district fix
-  const handleSaveDistrictFix = (displayKey: string, data: { orderNos: string[]; storeIds: string[]; province: string }) => {
+  const handleSaveDistrictFix = (displayKey: string, data: { orderNos: string[]; storeIds: string[]; province: string; district: string }) => {
     const selectedDistrict = selectedDistricts[displayKey];
     const selectedProvince = selectedProvinces[displayKey];
     
@@ -295,14 +295,12 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     console.log('[WeeklyReport] onUpdateDeliveries:', onUpdateDeliveries ? 'available' : 'undefined');
     
     // Need at least district OR province to proceed
-    if ((!selectedDistrict && !selectedProvince) || !onUpdateDeliveries) {
+    const finalProvince = selectedProvince || data.province;
+    const finalDistrict = selectedDistrict || data.district || '';
+    if ((!finalDistrict && !finalProvince) || !onUpdateDeliveries) {
       console.log('[WeeklyReport] Cannot save: missing district/province or onUpdateDeliveries');
       return;
     }
-
-    // Update deliveries with the selected district and/or province
-    const finalProvince = selectedProvince || data.province;
-    const finalDistrict = selectedDistrict || '';
     
     const updatedDeliveries = deliveries.map(d => {
       if (data.orderNos.includes(d.orderNo)) {
@@ -592,7 +590,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                             {/* Province dropdown - shown when province looks wrong */}
                             <select
                               aria-label="เลือกจังหวัด"
-                              value={selectedProvinces[displayKey] || ''}
+                              value={selectedProvinces[displayKey] ?? data.province ?? ''}
                               onChange={e => {
                                 const newProvince = e.target.value;
                                 setSelectedProvinces(prev => ({ ...prev, [displayKey]: newProvince }));
@@ -610,7 +608,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                             {/* District dropdown - uses selected province or original province */}
                             <select
                               aria-label="เลือกอำเภอ"
-                              value={selectedDistricts[displayKey] || ''}
+                              value={selectedDistricts[displayKey] ?? data.district ?? ''}
                               onChange={e => setSelectedDistricts(prev => ({ ...prev, [displayKey]: e.target.value }))}
                               className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 outline-none"
                             >
@@ -621,7 +619,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                             </select>
                             <button
                               onClick={() => handleSaveDistrictFix(displayKey, data)}
-                              disabled={!selectedDistricts[displayKey] && !selectedProvinces[displayKey]}
+                              disabled={!(selectedDistricts[displayKey] || data.district) && !(selectedProvinces[displayKey] || data.province)}
                               className="px-3 py-1 text-xs font-medium bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               💾 บันทึก
