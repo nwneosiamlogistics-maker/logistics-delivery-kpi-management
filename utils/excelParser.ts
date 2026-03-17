@@ -62,7 +62,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     'วันที่ส่งจริง',
     // หมายเหตุ: ไม่ใส่ 'วันที่ส่ง' / 'วันส่ง' / 'วันที่แก้ไข' / 'วันที่จัดส่ง' เพื่อป้องกัน conflict
   ],
-  qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น', 'น.น.', 'น.น', 'นน', 'น้ำหนัก'],
+  qty: ['qty', 'Qty', 'quantity', 'Quantity', 'จำนวน', 'ชิ้น', 'จำนวนชิ้น', 'ปริมาณ', 'พาเลท', 'ขึ้น'],
+  weight: ['น.น.', 'น.น', 'นน', 'น้ำหนัก', 'weight', 'Weight', 'น.น.(กก.)', 'กก.', 'kg', 'KG'],
   productDetails: ['productDetails', 'สินค้า', 'product', 'Product', 'รายการสินค้า', 'รายละเอียดสินค้า'],
   sender: ['sender', 'Sender', 'ผู้ส่ง', 'ต้นทาง', 'บริษัทผู้ส่ง', 'shipper', 'Shipper'],
   province: ['province', 'Province', 'จังหวัด', 'จว.', 'จว'],
@@ -225,7 +226,54 @@ function parseDate(v: any): string | null {
   return null;
 }
 
-export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
+// ========== Column Preview for UI ==========
+export interface ColumnPreview {
+  headers: string[];           // raw Excel headers
+  columnMap: Record<string, string>;  // raw header → canonical name
+  sampleRows: Record<string, any>[];  // first 3 rows for preview
+  weightColumns: string[];     // columns detected as weight (not qty)
+  qtyColumns: string[];        // columns detected as qty
+  unmappedColumns: string[];   // columns not mapped to any field
+}
+
+export function previewExcelHeaders(file: ArrayBuffer): ColumnPreview {
+  if (!XLSX || typeof XLSX.read !== 'function') {
+    throw new Error('ไม่สามารถโหลดตัวอ่านไฟล์ได้');
+  }
+  const wb = XLSX.read(file, { type: 'array', cellDates: false, raw: false });
+  if (!wb?.SheetNames?.length) throw new Error('ไฟล์ว่างเปล่า');
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, any>[];
+  if (rows.length === 0) throw new Error('ไม่พบข้อมูลในไฟล์');
+
+  const headers = Object.keys(rows[0]);
+  const columnMap: Record<string, string> = {};
+  const weightColumns: string[] = [];
+  const qtyColumns: string[] = [];
+  const unmappedColumns: string[] = [];
+
+  headers.forEach(h => {
+    const can = mapHeader(h);
+    if (can) {
+      columnMap[h] = can;
+      if (can === 'weight') weightColumns.push(h);
+      if (can === 'qty') qtyColumns.push(h);
+    } else {
+      unmappedColumns.push(h);
+    }
+  });
+
+  return {
+    headers,
+    columnMap,
+    sampleRows: rows.slice(0, 3),
+    weightColumns,
+    qtyColumns,
+    unmappedColumns,
+  };
+}
+
+export function parseExcelFile(file: ArrayBuffer, columnOverrides?: Record<string, string>): ParsedRow[] {
   console.log('ExcelParser V9 (Robust-Headers) Running', {
     hasLib: !!XLSX,
     hasRead: !!XLSX?.read,
@@ -267,6 +315,14 @@ export function parseExcelFile(file: ArrayBuffer): ParsedRow[] {
     const can = mapHeader(h);
     if (can) columnMap[h] = can;
   });
+
+  // Apply user overrides (e.g., user chose a weight column as qty)
+  if (columnOverrides) {
+    Object.entries(columnOverrides).forEach(([rawHeader, canonical]) => {
+      columnMap[rawHeader] = canonical;
+    });
+    console.log('[ExcelParser] Column overrides applied:', columnOverrides);
+  }
 
   console.log('[ExcelParser] All headers found:', headers);
   console.log('[ExcelParser] Column map:', columnMap);

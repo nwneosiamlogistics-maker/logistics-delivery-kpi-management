@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { DeliveryRecord, KpiConfig, Holiday, StoreClosure, ImportLog, User, StoreMapping } from '../types';
-import { parseExcelFile, processImport, ImportResult } from '../utils/excelParser';
+import { parseExcelFile, processImport, ImportResult, previewExcelHeaders, ColumnPreview } from '../utils/excelParser';
 
 interface ImportProps {
   onImportComplete: (newDeliveries: DeliveryRecord[], importLog: ImportLog) => void;
@@ -30,6 +30,13 @@ export const Import: React.FC<ImportProps> = ({
   const [processedCount, setProcessedCount] = useState(0);
   const [totalFiles, setTotalFiles] = useState(0);
 
+  // Step 2: Column mapping preview state
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [columnPreviews, setColumnPreviews] = useState<Array<{ fileName: string; preview: ColumnPreview; buffer: ArrayBuffer }>>([]);
+  const [columnOverrides, setColumnOverrides] = useState<Record<string, string>>({});
+  const [showColumnMapping, setShowColumnMapping] = useState(false);
+
+  // Step 1: Read headers and show mapping preview
   const handleFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
 
@@ -44,7 +51,6 @@ export const Import: React.FC<ImportProps> = ({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
 
-    // Filter valid files
     const validFiles = files.filter(file => 
       validTypes.includes(file.type) || file.name.match(/\.(csv|xlsx|xls)$/i)
     );
@@ -54,42 +60,48 @@ export const Import: React.FC<ImportProps> = ({
       return;
     }
 
-    setIsUploading(true);
     setError(null);
     setImportResults([]);
-    setTotalFiles(validFiles.length);
+
+    // Read headers from first file and show preview
+    try {
+      const previews: Array<{ fileName: string; preview: ColumnPreview; buffer: ArrayBuffer }> = [];
+      for (const file of validFiles) {
+        const buffer = await file.arrayBuffer();
+        const preview = previewExcelHeaders(buffer);
+        previews.push({ fileName: file.name, preview, buffer });
+      }
+      setPendingFiles(validFiles);
+      setColumnPreviews(previews);
+      setColumnOverrides({});
+      setShowColumnMapping(true);
+    } catch (err: any) {
+      setError(err.message || 'ไม่สามารถอ่านไฟล์ได้');
+    }
+  }, [isDataLoaded]);
+
+  // Step 2: Process files after user confirms column mapping
+  const processFiles = useCallback(async () => {
+    setShowColumnMapping(false);
+    setIsUploading(true);
+    setTotalFiles(columnPreviews.length);
     setProcessedCount(0);
 
     const results: Array<{ fileName: string; result: ImportResult; error?: string }> = [];
     let allNewRecords: DeliveryRecord[] = [];
     let currentDeliveries = [...existingDeliveries];
-    
-    // Debug: ตรวจสอบว่า existingDeliveries มี flag หรือไม่
-    const recordsWithManualFlag = currentDeliveries.filter(d => d.manualPlanDate || d.manualActualDate);
-    console.log(`[Import] existingDeliveries with manual flags: ${recordsWithManualFlag.length}`, 
-      recordsWithManualFlag.map(d => ({ orderNo: d.orderNo, manualPlanDate: d.manualPlanDate, manualActualDate: d.manualActualDate }))
-    );
-    
-    // Debug: ตรวจสอบ B0226013518 โดยเฉพาะ
-    const b022 = currentDeliveries.find(d => d.orderNo === 'B0226013518');
-    console.log(`[Import] B0226013518 in existingDeliveries:`, b022 ? {
-      manualPlanDate: b022.manualPlanDate,
-      manualActualDate: b022.manualActualDate,
-      kpiStatus: b022.kpiStatus,
-      delayDays: b022.delayDays,
-      actualDate: b022.actualDate
-    } : 'NOT FOUND');
 
-    for (let i = 0; i < validFiles.length; i++) {
-      const file = validFiles[i];
+    const overrides = Object.keys(columnOverrides).length > 0 ? columnOverrides : undefined;
+
+    for (let i = 0; i < columnPreviews.length; i++) {
+      const { fileName, buffer } = columnPreviews[i];
       setProcessedCount(i + 1);
 
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        const parsedRows = parseExcelFile(arrayBuffer);
+        const parsedRows = parseExcelFile(buffer, overrides);
 
         if (parsedRows.length === 0) {
-          results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [{ row: 0, error: 'ไม่พบข้อมูลในไฟล์', data: {} }], warnings: [] }, error: 'ไม่พบข้อมูลในไฟล์' });
+          results.push({ fileName, result: { created: [], updated: [], skipped: [], errors: [{ row: 0, error: 'ไม่พบข้อมูลในไฟล์', data: {} }], warnings: [] }, error: 'ไม่พบข้อมูลในไฟล์' });
           continue;
         }
 
@@ -104,14 +116,12 @@ export const Import: React.FC<ImportProps> = ({
           storeMappings
         );
 
-        results.push({ fileName: file.name, result });
+        results.push({ fileName, result });
 
         if (result.created.length > 0 || result.updated.length > 0) {
-          // Update currentDeliveries for next file processing
           const newRecords = [...result.created, ...result.updated];
           allNewRecords = [...allNewRecords, ...newRecords];
           
-          // Merge into currentDeliveries for next iteration
           const existingMap = new Map(currentDeliveries.map(d => [d.orderNo, d]));
           newRecords.forEach(r => existingMap.set(r.orderNo, r));
           currentDeliveries = Array.from(existingMap.values());
@@ -119,7 +129,7 @@ export const Import: React.FC<ImportProps> = ({
           const importLog: ImportLog = {
             id: importFileId,
             timestamp: new Date().toISOString(),
-            fileName: file.name,
+            fileName,
             userId: currentUser.id,
             userName: currentUser.name,
             recordsProcessed: parsedRows.length,
@@ -134,13 +144,15 @@ export const Import: React.FC<ImportProps> = ({
           onImportComplete(newRecords, importLog);
         }
       } catch (err: any) {
-        results.push({ fileName: file.name, result: { created: [], updated: [], skipped: [], errors: [], warnings: [] }, error: err.message || 'ไม่สามารถประมวลผลไฟล์ได้' });
+        results.push({ fileName, result: { created: [], updated: [], skipped: [], errors: [], warnings: [] }, error: err.message || 'ไม่สามารถประมวลผลไฟล์ได้' });
       }
     }
 
     setImportResults(results);
     setIsUploading(false);
-  }, [existingDeliveries, kpiConfigs, holidays, storeClosures, currentUser, onImportComplete, isDataLoaded, storeMappings]);
+    setPendingFiles([]);
+    setColumnPreviews([]);
+  }, [columnPreviews, columnOverrides, existingDeliveries, kpiConfigs, holidays, storeClosures, currentUser, onImportComplete, storeMappings]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -173,6 +185,10 @@ export const Import: React.FC<ImportProps> = ({
     setError(null);
     setProcessedCount(0);
     setTotalFiles(0);
+    setPendingFiles([]);
+    setColumnPreviews([]);
+    setColumnOverrides({});
+    setShowColumnMapping(false);
   };
 
   // Calculate totals
@@ -184,8 +200,146 @@ export const Import: React.FC<ImportProps> = ({
     filesWithError: acc.filesWithError + (r.error ? 1 : 0)
   }), { created: 0, updated: 0, skipped: 0, errors: 0, filesWithError: 0 });
 
+  // Derive first preview for the column mapping modal
+  const firstPreview = columnPreviews.length > 0 ? columnPreviews[0].preview : null;
+
+  // Compute effective column map (auto + overrides) for display
+  const effectiveMap = firstPreview ? { ...firstPreview.columnMap, ...columnOverrides } : {};
+  const hasQtyColumn = Object.values(effectiveMap).includes('qty');
+  const hasWeightColumn = Object.values(effectiveMap).includes('weight');
+
   return (
     <div className="space-y-8 animate-fade-in-up">
+      {/* ===== Column Mapping Modal ===== */}
+      {showColumnMapping && firstPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-full">
+                    <i className="fas fa-columns text-white"></i>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-lg">ตรวจสอบการ Map คอลัมน์</h3>
+                    <p className="text-indigo-100 text-sm">{columnPreviews.length} ไฟล์ • ตัวอย่าง: {firstPreview.sampleRows.length > 0 ? columnPreviews[0].fileName : '-'}</p>
+                  </div>
+                </div>
+                <button aria-label="ปิด" onClick={resetForm} className="text-white/70 hover:text-white">
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Warning if no qty but has weight */}
+              {!hasQtyColumn && hasWeightColumn && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                  <i className="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
+                  <div>
+                    <p className="font-bold text-amber-900">ไม่พบคอลัมน์ "จำนวนชิ้น" — พบเฉพาะ "น้ำหนัก"</p>
+                    <p className="text-amber-700 text-sm mt-1">กรุณาเลือกว่าจะใช้คอลัมน์น้ำหนักเป็นจำนวนชิ้นหรือไม่ (ค่าน้ำหนักไม่ใช่จำนวนกล่อง)</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Column mapping table */}
+              <div>
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <i className="fas fa-table text-indigo-500"></i>
+                  คอลัมน์ที่ตรวจพบ
+                </h4>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left font-bold text-gray-700">ชื่อคอลัมน์ (Excel)</th>
+                        <th className="px-4 py-2.5 text-left font-bold text-gray-700">ตัวอย่างข้อมูล</th>
+                        <th className="px-4 py-2.5 text-left font-bold text-gray-700">ระบบตรวจพบว่า</th>
+                        <th className="px-4 py-2.5 text-center font-bold text-gray-700">ใช้เป็น qty?</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {firstPreview.headers.map((h, i) => {
+                        const autoMap = firstPreview.columnMap[h];
+                        const effectiveMapping = effectiveMap[h];
+                        const isWeight = effectiveMapping === 'weight';
+                        const isQty = effectiveMapping === 'qty';
+                        const sampleVal = firstPreview.sampleRows[0]?.[h] ?? '';
+                        return (
+                          <tr key={i} className={`border-t border-gray-100 ${isWeight ? 'bg-amber-50/50' : isQty ? 'bg-green-50/50' : ''}`}>
+                            <td className="px-4 py-2 font-mono text-gray-800 font-medium">{h}</td>
+                            <td className="px-4 py-2 text-gray-500 truncate max-w-[150px]">{String(sampleVal).substring(0, 40)}</td>
+                            <td className="px-4 py-2">
+                              {isQty && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-bold">จำนวนชิ้น (qty)</span>}
+                              {isWeight && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">น้ำหนัก (weight)</span>}
+                              {autoMap && !isWeight && !isQty && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs">{autoMap}</span>}
+                              {!autoMap && !columnOverrides[h] && <span className="text-gray-300 text-xs">—</span>}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {(isWeight || isQty || !autoMap) && (
+                                <button
+                                  onClick={() => {
+                                    if (isQty && autoMap === 'qty') {
+                                      // Already auto-mapped as qty, can't toggle off
+                                      return;
+                                    }
+                                    setColumnOverrides(prev => {
+                                      const next = { ...prev };
+                                      if (next[h] === 'qty') {
+                                        // Revert to original
+                                        delete next[h];
+                                      } else {
+                                        // Set this column as qty
+                                        // Remove qty override from other columns first
+                                        Object.keys(next).forEach(k => { if (next[k] === 'qty') delete next[k]; });
+                                        next[h] = 'qty';
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className={`w-8 h-8 rounded-lg transition-all ${
+                                    isQty
+                                      ? 'bg-green-500 text-white shadow-md'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-600'
+                                  }`}
+                                  title={isQty ? 'ใช้เป็นจำนวนชิ้นแล้ว' : 'เลือกเป็นจำนวนชิ้น'}
+                                >
+                                  <i className={`fas ${isQty ? 'fa-check' : 'fa-plus'}`}></i>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-between pt-2">
+                <button onClick={resetForm} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium">
+                  <i className="fas fa-arrow-left mr-2"></i>ยกเลิก
+                </button>
+                <button
+                  onClick={processFiles}
+                  disabled={!hasQtyColumn}
+                  className={`px-6 py-2.5 rounded-xl font-bold transition-all ${
+                    hasQtyColumn
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-lg hover:-translate-y-0.5'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <i className="fas fa-file-import mr-2"></i>
+                  ยืนยันและนำเข้า ({columnPreviews.length} ไฟล์)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-emerald-600">
