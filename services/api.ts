@@ -166,9 +166,10 @@ export async function saveStoreMapping(mapping: StoreMapping): Promise<void> {
   await fetchAPI('/api/store-mappings', {
     method: 'POST',
     body: JSON.stringify({
-      store_id: mapping.storeId,
+      storeId: mapping.storeId,
       district: mapping.district,
       province: mapping.province,
+      createdAt: mapping.createdAt || new Date().toISOString().slice(0, 10),
     }),
   });
 }
