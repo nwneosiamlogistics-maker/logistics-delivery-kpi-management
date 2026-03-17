@@ -161,7 +161,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
   const passCount = activeDeliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
   const failCount = total - passCount;
   const passRate = total > 0 ? (passCount / total) * 100 : 0;
-  const totalQty = filtered.reduce((sum, d) => sum + d.qty, 0);
+  const totalQty = filtered.reduce((sum, d) => sum + (Number(d.qty) || 0), 0);
 
   const pieData = [
     { name: 'ตรงเวลา', value: passCount, color: '#10B981' },
