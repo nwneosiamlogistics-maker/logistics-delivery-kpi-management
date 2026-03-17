@@ -269,7 +269,6 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
             <div className={`${c.bg} ${c.color} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
               <i className={`fas ${c.icon} text-xl`}></i>
             </div>
-// ...
             <div>
               <p className="text-xs text-gray-400">{c.label}</p>
               <p className="text-2xl font-bold text-gray-900">{c.value}</p>
