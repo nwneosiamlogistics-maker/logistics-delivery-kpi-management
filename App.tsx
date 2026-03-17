@@ -414,8 +414,17 @@ const App: React.FC = () => {
           kpiConfigs={kpiConfigs} 
           storeMappings={storeMappings}
           onUpdateDeliveries={(updated) => {
+            // Find only changed records by comparing with current state
+            const deliveryMap = new Map(deliveries.map(d => [d.orderNo, d]));
+            const changed = updated.filter(u => {
+              const orig = deliveryMap.get(u.orderNo);
+              return !orig || orig.province !== u.province || orig.district !== u.district;
+            });
             setDeliveries(updated);
-            api.saveDeliveries(updated).catch(err => console.warn('[NAS API] sync error:', err));
+            if (changed.length > 0) {
+              console.log(`[App] Syncing ${changed.length} changed deliveries (not all ${updated.length})`);
+              api.saveDeliveries(changed).catch(err => console.warn('[NAS API] sync error:', err));
+            }
           }}
           onAddStoreMapping={(mapping) => {
             setStoreMappings(prev => [...prev.filter(m => m.storeId !== mapping.storeId), mapping]);
@@ -427,8 +436,16 @@ const App: React.FC = () => {
           deliveries={deliveries}
           kpiConfigs={kpiConfigs}
           onUpdateDeliveries={(updated) => {
+            const deliveryMap = new Map(deliveries.map(d => [d.orderNo, d]));
+            const changed = updated.filter(u => {
+              const orig = deliveryMap.get(u.orderNo);
+              return !orig || JSON.stringify(orig) !== JSON.stringify(u);
+            });
             setDeliveries(updated);
-            api.saveDeliveries(updated).catch(err => console.warn('[NAS API] sync error:', err));
+            if (changed.length > 0) {
+              console.log(`[App] Syncing ${changed.length} changed deliveries (not all ${updated.length})`);
+              api.saveDeliveries(changed).catch(err => console.warn('[NAS API] sync error:', err));
+            }
           }}
         />;
       case 'document-report':
