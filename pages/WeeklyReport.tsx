@@ -154,7 +154,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const over2Days = deliveredThisWeek.filter(d => calcDeliveryDays(d) > 2);
 
   const totalInv = weekDeliveries.length;
-  const totalQty = weekDeliveries.reduce((s, d) => s + d.qty, 0);
+  const totalQty = weekDeliveries.reduce((s, d) => s + (Number(d.qty) || 0), 0);
 
   const pct = (n: number, total: number) =>
     total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
@@ -370,7 +370,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
 
   const delayRow = (label: string, records: DeliveryRecord[], color: string) => {
     const invCount = records.length;
-    const qtySum = records.reduce((s, d) => s + d.qty, 0);
+    const qtySum = records.reduce((s, d) => s + (Number(d.qty) || 0), 0);
     const pctVal = pct(invCount, deliveredThisWeek.length);
     return (
       <tr className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -673,7 +673,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                 <td className="px-4 py-3 font-bold text-gray-700 text-xs">รวมทั้งหมด</td>
                 <td className="px-4 py-3 text-center font-bold text-gray-800">{formatNum(deliveredThisWeek.length)}</td>
                 <td className="px-4 py-3 text-center font-bold text-gray-800">
-                  {formatQty(deliveredThisWeek.reduce((s, d) => s + d.qty, 0))}
+                  {formatQty(deliveredThisWeek.reduce((s, d) => s + (Number(d.qty) || 0), 0))}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`font-bold ${parseFloat(pct(on1Day.length + on2Days.length, deliveredThisWeek.length)) >= 90 ? 'text-green-600' : 'text-red-600'}`}>
@@ -730,7 +730,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
               <i className="fas fa-check-circle text-green-500"></i>
               รายการส่งภายใน 1 วัน ({filteredOn1.length} Inv.)
             </h3>
-            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOn1.reduce((s, d) => s + d.qty, 0))} ชิ้น/กล่อง</p>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOn1.reduce((s, d) => s + (Number(d.qty) || 0), 0))} ชิ้น/กล่อง</p>
             
             <div className="mb-4 space-y-3">
               <div className="flex flex-wrap gap-3">
@@ -833,7 +833,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
               <i className="fas fa-clock text-blue-500"></i>
               รายการส่งภายใน 2 วัน ({filteredOn2.length} Inv.)
             </h3>
-            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOn2.reduce((s, d) => s + d.qty, 0))} ชิ้น/กล่อง</p>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOn2.reduce((s, d) => s + (Number(d.qty) || 0), 0))} ชิ้น/กล่อง</p>
             
             <div className="mb-4 space-y-3">
               <div className="flex flex-wrap gap-3">
@@ -1076,7 +1076,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
               <i className="fas fa-exclamation-triangle text-red-500"></i>
               รายการส่งช้าเกิน 2 วัน ({filteredOver2.length} Inv.)
             </h3>
-            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOver2.reduce((s, d) => s + d.qty, 0))} ชิ้น/กล่อง</p>
+            <p className="text-xs text-gray-400 mb-4">จำนวนสินค้ารวม {formatQty(filteredOver2.reduce((s, d) => s + (Number(d.qty) || 0), 0))} ชิ้น/กล่อง</p>
             
             {/* Filters */}
             <div className="mb-4 space-y-3">
