@@ -81,7 +81,11 @@ const App: React.FC = () => {
           existingMap.set(record.orderNo, record);
         }
       });
-      const merged = Array.from(existingMap.values());
+      const merged = Array.from(existingMap.values()).map(d => ({
+        ...d,
+        qty: typeof d.qty === 'number' ? d.qty : (parseFloat(String(d.qty)) || 0),
+        delayDays: typeof d.delayDays === 'number' ? d.delayDays : (parseInt(String(d.delayDays), 10) || 0),
+      }));
 
       // Save to NAS API
       api.saveDeliveries(merged).catch(err => console.warn('[NAS API] save deliveries error:', err));
@@ -246,7 +250,13 @@ const App: React.FC = () => {
 
         console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
         
-        setDeliveries(deliveriesData);
+        // Force-sanitize qty & delayDays to numbers (MariaDB DECIMAL returns strings)
+        const sanitized = deliveriesData.map(d => ({
+          ...d,
+          qty: typeof d.qty === 'number' ? d.qty : (parseFloat(String(d.qty)) || 0),
+          delayDays: typeof d.delayDays === 'number' ? d.delayDays : (parseInt(String(d.delayDays), 10) || 0),
+        }));
+        setDeliveries(sanitized);
         setHolidays(holidaysData.length > 0 ? holidaysData : HOLIDAYS);
         setKpiConfigs(kpiConfigsData.length > 0 ? kpiConfigsData : KPI_CONFIGS);
         setDelayReasons(delayReasonsData.length > 0 ? delayReasonsData : DELAY_REASONS);

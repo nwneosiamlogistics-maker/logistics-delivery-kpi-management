@@ -11,6 +11,7 @@ const pool = mariadb.createPool({
   database: process.env.DB_NAME || 'logistics_kpi',
   connectionLimit: 10,
   acquireTimeout: 30000,
+  decimalAsNumber: true,
 });
 
 export async function getConnection() {

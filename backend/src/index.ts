@@ -25,7 +25,13 @@ app.get('/health', (req, res) => {
 app.get('/api/deliveries', async (req, res) => {
   try {
     const rows = await query('SELECT * FROM deliveries ORDER BY updated_at DESC');
-    res.json(rows);
+    // MariaDB DECIMAL returns strings — convert to numbers for frontend
+    const sanitized = rows.map((r: any) => ({
+      ...r,
+      qty: r.qty !== null && r.qty !== undefined ? parseFloat(String(r.qty)) : 0,
+      delay_days: r.delay_days !== null && r.delay_days !== undefined ? parseInt(String(r.delay_days), 10) : 0,
+    }));
+    res.json(sanitized);
   } catch (error) {
     console.error('Error fetching deliveries:', error);
     res.status(500).json({ error: 'Failed to fetch deliveries' });
