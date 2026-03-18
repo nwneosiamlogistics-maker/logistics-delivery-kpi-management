@@ -97,9 +97,18 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const itemsPerPage = 50;
 
   // Build district → branch map from kpiConfigs
+  const normalize = (value?: string | null) => (value ?? '').trim().toLowerCase();
+  const makeKey = (province?: string | null, district?: string | null) => `${normalize(province)}||${normalize(district)}`;
+
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
-    kpiConfigs.forEach(c => { if (c.branch && c.district) map.set(`${c.province || ''}||${c.district}`, c.branch); });
+    kpiConfigs.forEach(c => {
+      if (!c.branch || !c.district) return;
+      const fullKey = makeKey(c.province, c.district);
+      const districtOnlyKey = makeKey('', c.district);
+      if (fullKey.trim() !== '||') map.set(fullKey, c.branch);
+      map.set(districtOnlyKey, c.branch);
+    });
     return map;
   }, [kpiConfigs]);
 
@@ -192,8 +201,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       if (!checkDate) return;
       if (!(checkDate >= start && checkDate <= end)) return;
 
-      const key = `${d.province || ''}||${d.district}`;
-      const keyNoProvince = `||${d.district}`;
+      const key = makeKey(d.province, d.district);
+      const keyNoProvince = makeKey('', d.district);
       const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince) || 'ไม่ระบุสาขา';
 
       const data = branchData.get(branch) || { total: 0, delivered: 0, pending: 0, kpiPass: 0, kpiTotal: 0 };
@@ -236,8 +245,8 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       if (!checkDate) return;
       if (!(checkDate >= start && checkDate <= end)) return;
 
-      const key = `${d.province || ''}||${d.district}`;
-      const keyNoProvince = `||${d.district}`;
+      const key = makeKey(d.province, d.district);
+      const keyNoProvince = makeKey('', d.district);
       const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
       
       if (!branch) {
