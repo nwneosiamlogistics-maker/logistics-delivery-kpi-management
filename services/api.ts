@@ -12,6 +12,7 @@ import {
   DelayReason, 
   StoreMapping, 
   BranchResource,
+  BranchResourceHistory,
   ImportLog 
 } from '../types';
 
@@ -251,6 +252,19 @@ export async function saveBranchResource(resource: BranchResource): Promise<void
       truck_cost_per_day: resource.truckCostPerDay,
     }),
   });
+}
+
+// ========== Branch Resource History ==========
+export async function getBranchResourceHistory(branchId: string): Promise<BranchResourceHistory[]> {
+  const data = await fetchAPI<any[]>(`/api/branch-resource-history/${branchId}`);
+  return data.map(h => ({
+    id: h.id,
+    branchId: h.branch_id,
+    action: h.action,
+    changes: typeof h.changes === 'string' ? JSON.parse(h.changes) : h.changes,
+    updatedAt: h.updated_at,
+    updatedBy: h.updated_by,
+  }));
 }
 
 // ========== Import Logs ==========

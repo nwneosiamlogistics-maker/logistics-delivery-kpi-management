@@ -351,6 +351,16 @@ app.post('/api/branch-resources', async (req, res) => {
   }
 });
 
+// ============ BRANCH RESOURCE HISTORY ============
+app.get('/api/branch-resource-history/:branchId', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM branch_resource_history WHERE branch_id = ? ORDER BY updated_at DESC', [req.params.branchId]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch branch resource history' });
+  }
+});
+
 // Helper: camelCase to snake_case
 function toSnakeCase(str: string): string {
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);

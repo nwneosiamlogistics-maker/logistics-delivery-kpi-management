@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DeliveryRecord, KpiConfig, BranchResource } from '../types';
 import { formatNum, formatQty } from '../utils/formatters';
-import { getRealtimeDb } from '../services/firebase';
-import { ref, onValue } from 'firebase/database';
 
 interface ForecastProps {
   deliveries: DeliveryRecord[];
   kpiConfigs: KpiConfig[];
+  branchResources: BranchResource[];
 }
 
 const toLocalDateStr = (d: Date) => {
@@ -18,7 +17,7 @@ const toLocalDateStr = (d: Date) => {
 
 const monthNames = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
-const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs }) => {
+const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs, branchResources }) => {
   // Branch selection
   const branchNames = useMemo(() => {
     const names = new Set<string>();
@@ -120,20 +119,7 @@ const Forecast: React.FC<ForecastProps> = ({ deliveries, kpiConfigs }) => {
   const [existingAdmin, setExistingAdmin] = useState(0);
   
   // Branch Resources state
-  const [branchResources, setBranchResources] = useState<BranchResource[]>([]);
   const [branchDataLoaded, setBranchDataLoaded] = useState(false);
-  
-  // Load branchResources from Firebase (realtime listener)
-  useEffect(() => {
-    const db = getRealtimeDb();
-    if (!db) return;
-    const unsubscribe = onValue(ref(db, 'branchResources'), (snapshot) => {
-      if (snapshot.exists()) {
-        setBranchResources(Object.values(snapshot.val()) as BranchResource[]);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
   
   // Auto-load branch data when branch is selected
   useEffect(() => {

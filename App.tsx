@@ -462,7 +462,7 @@ const App: React.FC = () => {
       case 'kpi-dashboard':
         return <KpiDashboard deliveries={deliveries} kpiConfigs={kpiConfigs} />;
       case 'forecast':
-        return <Forecast deliveries={deliveries} kpiConfigs={kpiConfigs} />;
+        return <Forecast deliveries={deliveries} kpiConfigs={kpiConfigs} branchResources={branchResources} />;
       case 'branch-resources':
         return (
           <BranchResources

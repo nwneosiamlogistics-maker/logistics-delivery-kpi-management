@@ -11,7 +11,7 @@ services:
       - DB_HOST=host.docker.internal  # Connect to NAS MariaDB
       - DB_PORT=3306
       - DB_USER=logistics_api
-      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PASSWORD=LogisticsKPI2026!
       - DB_NAME=logistics_kpi
       - PORT=3001
       - CORS_ORIGIN=https://logistics-delivery-kpi-management-two.vercel.app

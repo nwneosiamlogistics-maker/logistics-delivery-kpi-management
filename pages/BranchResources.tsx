@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BranchResource, BranchResourceHistory, KpiConfig, DeliveryRecord } from '../types';
-import { getRealtimeDb } from '../services/firebase';
-import { ref, get } from 'firebase/database';
+import { getBranchResourceHistory } from '../services/api';
 
 interface BranchResourcesProps {
   kpiConfigs: KpiConfig[];
@@ -217,20 +216,9 @@ export const BranchResources: React.FC<BranchResourcesProps> = ({
       return;
     }
 
-    const db = getRealtimeDb();
-    if (!db) {
-      setShowHistory(true);
-      return;
-    }
-
     try {
-      const snapshot = await get(ref(db, `branchResourcesHistory/${existing.id}`));
-      if (snapshot.exists()) {
-        const historyData = Object.values(snapshot.val()) as BranchResourceHistory[];
-        setHistory(historyData.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
-      } else {
-        setHistory([]);
-      }
+      const historyData = await getBranchResourceHistory(existing.id);
+      setHistory(historyData.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
     } catch (e) {
       console.warn('Load history error:', e);
       setHistory([]);
