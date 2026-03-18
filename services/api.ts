@@ -22,6 +22,13 @@ function formatApiDate(d: string | null | undefined): string {
   return d.includes('T') ? d.slice(0, 10) : d;
 }
 
+// Convert empty/whitespace date strings to null before sending to API
+function normalizeApiDate(d: string | null | undefined): string | null {
+  if (!d) return null;
+  const trimmed = d.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 // Windows-1252 → byte mapping (MySQL "latin1" is actually cp1252)
 const CP1252_MAP: Record<number, number> = {
   0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,
@@ -343,26 +350,26 @@ function mapDeliveryToAPI(d: DeliveryRecord): any {
     orderNo: d.orderNo,
     district: d.district,
     storeId: d.storeId,
-    planDate: d.planDate,
-    openDate: d.openDate,
-    actualDate: d.actualDate,
+    planDate: normalizeApiDate(d.planDate),
+    openDate: normalizeApiDate(d.openDate),
+    actualDate: normalizeApiDate(d.actualDate),
     qty: d.qty,
     sender: d.sender,
     province: d.province,
     importFileId: d.importFileId,
     deliveryStatus: d.deliveryStatus,
-    actualDatetime: d.actualDatetime,
+    actualDatetime: normalizeApiDate(d.actualDatetime),
     productDetails: d.productDetails,
     kpiStatus: d.kpiStatus,
     delayDays: d.delayDays,
     reasonRequired: d.reasonRequired ? 1 : 0,
     reasonStatus: d.reasonStatus,
     delayReason: d.delayReason,
-    updatedAt: d.updatedAt,
+    updatedAt: normalizeApiDate(d.updatedAt) ?? new Date().toISOString(),
     weekday: d.weekday,
     documentReturned: d.documentReturned ? 1 : 0,
-    documentReturnedDate: d.documentReturnedDate,
-    documentReturnBillDate: d.documentReturnBillDate,
+    documentReturnedDate: normalizeApiDate(d.documentReturnedDate),
+    documentReturnBillDate: normalizeApiDate(d.documentReturnBillDate),
     documentReturnSource: d.documentReturnSource,
     manualPlanDate: d.manualPlanDate ? 1 : 0,
     manualActualDate: d.manualActualDate ? 1 : 0,
