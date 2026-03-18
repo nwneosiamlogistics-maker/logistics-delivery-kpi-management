@@ -46,6 +46,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+function normalizeDate(value: any): string | null {
+  if (!value && value !== 0) return null;
+  if (typeof value !== 'string') return value ?? null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
 // ============ DELIVERIES ============
 app.get('/api/deliveries', async (req, res) => {
   try {
@@ -81,6 +88,13 @@ app.get('/api/deliveries/:orderNo', async (req, res) => {
 app.post('/api/deliveries', async (req, res) => {
   try {
     const d = req.body;
+    const planDate = normalizeDate(d.planDate);
+    const openDate = normalizeDate(d.openDate);
+    const actualDate = normalizeDate(d.actualDate);
+    const actualDatetime = normalizeDate(d.actualDatetime);
+    const documentReturnedDate = normalizeDate(d.documentReturnedDate);
+    const documentReturnBillDate = normalizeDate(d.documentReturnBillDate);
+    const updatedAt = normalizeDate(d.updatedAt) ?? new Date().toISOString();
     await execute(`
       INSERT INTO deliveries (
         order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province,
@@ -100,10 +114,10 @@ app.post('/api/deliveries', async (req, res) => {
         document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
         manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
     `, [
-      d.orderNo, d.district, d.storeId, d.planDate, d.openDate, d.actualDate, d.qty, d.sender, d.province,
-      d.importFileId, d.deliveryStatus, d.actualDatetime, d.productDetails, d.kpiStatus, d.delayDays,
-      d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, d.updatedAt, d.weekday, d.documentReturned ? 1 : 0,
-      d.documentReturnedDate, d.documentReturnBillDate, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+      d.orderNo, d.district, d.storeId, planDate, openDate, actualDate, d.qty, d.sender, d.province,
+      d.importFileId, d.deliveryStatus, actualDatetime, d.productDetails, d.kpiStatus, d.delayDays,
+      d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, updatedAt, d.weekday, d.documentReturned ? 1 : 0,
+      documentReturnedDate, documentReturnBillDate, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
     ]);
     res.json({ success: true, orderNo: d.orderNo });
   } catch (error) {
@@ -117,6 +131,13 @@ app.post('/api/deliveries/bulk', async (req, res) => {
     const deliveries = req.body;
     let saved = 0;
     for (const d of deliveries) {
+      const planDate = normalizeDate(d.planDate);
+      const openDate = normalizeDate(d.openDate);
+      const actualDate = normalizeDate(d.actualDate);
+      const actualDatetime = normalizeDate(d.actualDatetime);
+      const documentReturnedDate = normalizeDate(d.documentReturnedDate);
+      const documentReturnBillDate = normalizeDate(d.documentReturnBillDate);
+      const updatedAt = normalizeDate(d.updatedAt) ?? new Date().toISOString();
       await execute(`
         INSERT INTO deliveries (
           order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province,
@@ -136,10 +157,10 @@ app.post('/api/deliveries/bulk', async (req, res) => {
           document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
           manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
       `, [
-        d.orderNo, d.district, d.storeId, d.planDate, d.openDate, d.actualDate, d.qty, d.sender, d.province,
-        d.importFileId, d.deliveryStatus, d.actualDatetime, d.productDetails, d.kpiStatus, d.delayDays,
-        d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, d.updatedAt, d.weekday, d.documentReturned ? 1 : 0,
-        d.documentReturnedDate, d.documentReturnBillDate, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+        d.orderNo, d.district, d.storeId, planDate, openDate, actualDate, d.qty, d.sender, d.province,
+        d.importFileId, d.deliveryStatus, actualDatetime, d.productDetails, d.kpiStatus, d.delayDays,
+        d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, updatedAt, d.weekday, d.documentReturned ? 1 : 0,
+        documentReturnedDate, documentReturnBillDate, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
       ]);
       saved++;
     }
@@ -347,6 +368,7 @@ app.post('/api/branch-resources', async (req, res) => {
     `, [r.id, r.branchName, r.trucks, r.tripsPerDay, r.loaders, r.checkers, r.admin, r.workHoursPerDay, r.loaderWage, r.checkerWage, r.adminWage, r.truckCostPerDay, r.calculatedCapacity, r.calculatedSpeed, r.updatedAt, r.updatedBy]);
     res.json({ success: true });
   } catch (error) {
+    console.error('[branch-resources] save error:', error);
     res.status(500).json({ error: 'Failed to save branch resource' });
   }
 });
@@ -357,6 +379,7 @@ app.get('/api/branch-resource-history/:branchId', async (req, res) => {
     const rows = await query('SELECT * FROM branch_resource_history WHERE branch_id = ? ORDER BY updated_at DESC', [req.params.branchId]);
     res.json(rows);
   } catch (error) {
+    console.error('[branch-resource-history] fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch branch resource history' });
   }
 });
