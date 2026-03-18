@@ -101,7 +101,7 @@ app.post('/api/deliveries', async (req, res) => {
         import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
         reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
         document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?, ?, ?, NULLIF(?,\'\'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
         open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),
@@ -144,7 +144,7 @@ app.post('/api/deliveries/bulk', async (req, res) => {
           import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
           reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
           document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?, ?, ?, NULLIF(?,\'\'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
           open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),
