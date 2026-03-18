@@ -59,40 +59,38 @@ const App: React.FC = () => {
   const [currentUser] = useState<User>(DEFAULT_USER);
 
   const handleImportComplete = useCallback((newRecords: DeliveryRecord[], importLog: ImportLog) => {
+    const sanitizedNew = newRecords.map(d => ({
+      ...d,
+      qty: typeof d.qty === 'number' ? d.qty : (parseFloat(String(d.qty)) || 0),
+      delayDays: typeof d.delayDays === 'number' ? d.delayDays : (parseInt(String(d.delayDays), 10) || 0),
+    }));
+
     setDeliveries(prev => {
-      // Use orderNo as unique key — every Inv. stored separately
       const existingMap = new Map(prev.map(d => [d.orderNo, d]));
-      newRecords.forEach(record => {
+      sanitizedNew.forEach(record => {
         const existing = existingMap.get(record.orderNo);
-        // ถ้า order เดิมมีการระบุเหตุผลแล้ว (SUBMITTED/APPROVED) → ให้คง reason ไว้
         if (existing && (existing.reasonStatus === ReasonStatus.SUBMITTED || existing.reasonStatus === ReasonStatus.APPROVED)) {
           existingMap.set(record.orderNo, {
             ...record,
-            // Force overwrite qty ถ้า record ใหม่มีค่า > 0
             qty: record.qty > 0 ? record.qty : existing.qty,
             reasonStatus: existing.reasonStatus,
             delayReason: existing.delayReason,
             updatedAt: existing.updatedAt,
           });
-        } else if (existing) {
-          // Force overwrite: ใช้ record ใหม่ทั้งหมด ไม่เก็บค่าเก่าที่อาจผิดพลาด
-          existingMap.set(record.orderNo, record);
         } else {
           existingMap.set(record.orderNo, record);
         }
       });
-      const merged = Array.from(existingMap.values()).map(d => ({
-        ...d,
-        qty: typeof d.qty === 'number' ? d.qty : (parseFloat(String(d.qty)) || 0),
-        delayDays: typeof d.delayDays === 'number' ? d.delayDays : (parseInt(String(d.delayDays), 10) || 0),
-      }));
-
-      // Save to NAS API
-      api.saveDeliveries(merged).catch(err => console.warn('[NAS API] save deliveries error:', err));
-      syncWeeklyDeliveriesToReturnNeosiam(merged, kpiConfigs);
-
-      return merged;
+      return Array.from(existingMap.values());
     });
+
+    // Save only new/updated records to NAS (not all deliveries)
+    api.saveDeliveries(sanitizedNew)
+      .then(() => console.log(`[NAS API] Saved ${sanitizedNew.length} imported deliveries`))
+      .catch(err => console.error('[NAS API] save deliveries error:', err));
+
+    syncWeeklyDeliveriesToReturnNeosiam(sanitizedNew, kpiConfigs);
+
     setImportLogs(prev => [...prev, importLog]);
 
     // Auto-detect new province/district combos not in KPI config → create drafts
@@ -230,61 +228,51 @@ const App: React.FC = () => {
     });
   }, [kpiConfigs, holidays, storeClosures]);
 
-  // Load all data from NAS API on mount
-  useEffect(() => {
-    const loadDataFromNAS = async () => {
-      try {
-        console.log('[NAS API] Loading data from NAS...');
-        
-        // Load all data in parallel
-        const [
-          deliveriesData,
-          holidaysData,
-          kpiConfigsData,
-          delayReasonsData,
-          storeMappingsData,
-          branchResourcesData,
-          storeClosuresData
-        ] = await Promise.all([
-          api.getDeliveries().catch(() => []),
-          api.getHolidays().catch(() => HOLIDAYS),
-          api.getKpiConfigs().catch(() => KPI_CONFIGS),
-          api.getDelayReasons().catch(() => DELAY_REASONS),
-          api.getStoreMappings().catch(() => []),
-          api.getBranchResources().catch(() => []),
-          api.getStoreClosures().catch(() => STORE_CLOSURES)
-        ]);
+  const loadDataFromNAS = useCallback(async () => {
+    try {
+      console.log('[NAS API] Loading data from NAS...');
+      const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData] = await Promise.all([
+        api.getDeliveries().catch(() => []),
+        api.getHolidays().catch(() => HOLIDAYS),
+        api.getKpiConfigs().catch(() => KPI_CONFIGS),
+        api.getDelayReasons().catch(() => DELAY_REASONS),
+        api.getStoreMappings().catch(() => []),
+        api.getBranchResources().catch(() => []),
+        api.getStoreClosures().catch(() => STORE_CLOSURES)
+      ]);
 
-        console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
-        
-        // Force-sanitize qty & delayDays to numbers (MariaDB DECIMAL returns strings)
-        const sanitized = deliveriesData.map(d => ({
-          ...d,
-          qty: typeof d.qty === 'number' ? d.qty : (parseFloat(String(d.qty)) || 0),
-          delayDays: typeof d.delayDays === 'number' ? d.delayDays : (parseInt(String(d.delayDays), 10) || 0),
-        }));
-        setDeliveries(sanitized);
-        setHolidays(holidaysData.length > 0 ? holidaysData : HOLIDAYS);
-        setKpiConfigs(kpiConfigsData.length > 0 ? kpiConfigsData : KPI_CONFIGS);
-        setDelayReasons(delayReasonsData.length > 0 ? delayReasonsData : DELAY_REASONS);
-        setStoreMappings(storeMappingsData);
-        setBranchResources(branchResourcesData);
-        setStoreClosures(storeClosuresData.length > 0 ? storeClosuresData : STORE_CLOSURES);
-        
-        if (deliveriesData.length > 0) {
-          syncWeeklyDeliveriesToReturnNeosiam(deliveriesData, kpiConfigsData);
-        }
-        
-        dataLoadedFromNAS.current = true;
-        setDeliveriesLoaded(true);
-      } catch (error) {
-        console.error('[NAS API] Error loading data:', error);
-        setDeliveriesLoaded(true);
+      console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
+      
+      const sanitized = deliveriesData.map(d => ({
+        ...d,
+        qty: typeof d.qty === 'number' ? d.qty : (parseFloat(String(d.qty)) || 0),
+        delayDays: typeof d.delayDays === 'number' ? d.delayDays : (parseInt(String(d.delayDays), 10) || 0),
+      }));
+      setDeliveries(sanitized);
+      setHolidays(holidaysData.length > 0 ? holidaysData : HOLIDAYS);
+      setKpiConfigs(kpiConfigsData.length > 0 ? kpiConfigsData : KPI_CONFIGS);
+      setDelayReasons(delayReasonsData.length > 0 ? delayReasonsData : DELAY_REASONS);
+      setStoreMappings(storeMappingsData);
+      setBranchResources(branchResourcesData);
+      setStoreClosures(storeClosuresData.length > 0 ? storeClosuresData : STORE_CLOSURES);
+      
+      if (deliveriesData.length > 0) {
+        syncWeeklyDeliveriesToReturnNeosiam(deliveriesData, kpiConfigsData);
       }
-    };
-    
-    loadDataFromNAS();
+      
+      dataLoadedFromNAS.current = true;
+      setDeliveriesLoaded(true);
+    } catch (error) {
+      console.error('[NAS API] Error loading data:', error);
+      setDeliveriesLoaded(true);
+    }
   }, []);
+
+  useEffect(() => {
+    loadDataFromNAS();
+    const interval = setInterval(() => loadDataFromNAS(), 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadDataFromNAS]);
 
   // All data is now loaded from NAS API in the useEffect above
 
