@@ -48,7 +48,7 @@ function fixDoubleEncoded(str: string | null | undefined): string {
 
 // API Base URL - Cloudflare Tunnel to NAS
 // Use empty string for local dev (Vite proxy), full URL for production (Vercel)
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://mat-designed-restoration-talented.trycloudflare.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://neosiam.dscloud.biz:5001';
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
