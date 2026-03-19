@@ -343,18 +343,30 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     onUpdateDeliveries(updatedDeliveries);
     console.log('[WeeklyReport] Deliveries updated successfully');
 
-    // If remember store is checked (default true), add store mappings
-    if (rememberStore[displayKey] !== false && onAddStoreMapping && finalDistrict) {
-      data.storeIds.forEach(storeId => {
-        const trimmedStoreId = storeId.trim();
-        if (!trimmedStoreId) return;
-        onAddStoreMapping({
-          storeId: trimmedStoreId,
-          district: finalDistrict,
-          province: finalProvince,
-          createdAt: new Date().toISOString().slice(0, 10)
-        });
+    // Always save a district-level synthetic mapping as guaranteed fallback
+    // (individual storeId saves may fail if storeId is too long or empty)
+    if (onAddStoreMapping && finalDistrict) {
+      const syntheticId = `_dist_${(finalProvince || '').slice(0, 50)}_${finalDistrict.slice(0, 50)}`;
+      onAddStoreMapping({
+        storeId: syntheticId,
+        district: finalDistrict,
+        province: finalProvince,
+        createdAt: new Date().toISOString().slice(0, 10)
       });
+
+      // Also save per-storeId if remember store is checked
+      if (rememberStore[displayKey] !== false) {
+        data.storeIds.forEach(storeId => {
+          const trimmedStoreId = storeId.trim().slice(0, 255);
+          if (!trimmedStoreId) return;
+          onAddStoreMapping({
+            storeId: trimmedStoreId,
+            district: finalDistrict,
+            province: finalProvince,
+            createdAt: new Date().toISOString().slice(0, 10)
+          });
+        });
+      }
     }
 
     // Mark as saved and clear selection

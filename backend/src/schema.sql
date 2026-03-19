@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS reason_audit_logs (
 
 -- Store mappings
 CREATE TABLE IF NOT EXISTS store_mappings (
-  store_id VARCHAR(50) PRIMARY KEY,
+  store_id VARCHAR(255) PRIMARY KEY,
   district VARCHAR(100),
   province VARCHAR(100),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP

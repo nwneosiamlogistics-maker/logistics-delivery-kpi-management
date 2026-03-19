@@ -41,7 +41,20 @@ function fixDoubleEncoded(str: string | null | undefined): string | null {
   return str;
 }
 
-console.log('[STARTUP] index.js v8 - 2026-03-19 fixDate+sqlDate+batch-log active');
+console.log('[STARTUP] index.js v9 - 2026-03-19 store-mapping-fix active');
+
+// Auto-migrate: expand store_id column if still VARCHAR(50)
+(async () => {
+  try {
+    await execute("ALTER TABLE store_mappings MODIFY store_id VARCHAR(255)");
+    console.log('[MIGRATION] store_mappings.store_id expanded to VARCHAR(255)');
+  } catch (e: any) {
+    // Ignore if already correct size or table doesn't exist yet
+    if (!String(e?.message).includes('store_mappings')) {
+      console.warn('[MIGRATION] store_mappings alter skipped:', e?.message);
+    }
+  }
+})();
 
 // Health check
 app.get('/health', (req, res) => {
