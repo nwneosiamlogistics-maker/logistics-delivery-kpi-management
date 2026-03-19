@@ -50,7 +50,17 @@ function normalizeDate(value: any): string | null {
   if (!value && value !== 0) return null;
   if (typeof value !== 'string') return value ?? null;
   const trimmed = value.trim();
-  return trimmed.length ? trimmed : null;
+  if (!trimmed.length) return null;
+  return trimmed.includes('T') ? trimmed.slice(0, 10) : trimmed;
+}
+
+function normalizeDatetime(value: any): string | null {
+  if (!value && value !== 0) return null;
+  if (typeof value !== 'string') return value ?? null;
+  const trimmed = value.trim();
+  if (!trimmed.length) return null;
+  if (trimmed.includes('T')) return trimmed.slice(0, 19).replace('T', ' ');
+  return trimmed;
 }
 
 // ============ DELIVERIES ============
@@ -91,17 +101,17 @@ app.post('/api/deliveries', async (req, res) => {
     const planDate = normalizeDate(d.planDate);
     const openDate = normalizeDate(d.openDate);
     const actualDate = normalizeDate(d.actualDate);
-    const actualDatetime = normalizeDate(d.actualDatetime);
+    const actualDatetime = normalizeDatetime(d.actualDatetime);
     const documentReturnedDate = normalizeDate(d.documentReturnedDate);
     const documentReturnBillDate = normalizeDate(d.documentReturnBillDate);
-    const updatedAt = normalizeDate(d.updatedAt) ?? new Date().toISOString();
+    const updatedAt = normalizeDatetime(d.updatedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' ');
     await execute(`
       INSERT INTO deliveries (
         order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province,
         import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
         reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
         document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
-      ) VALUES (?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?, ?, ?, NULLIF(?,\'\'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
         open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),
@@ -134,17 +144,17 @@ app.post('/api/deliveries/bulk', async (req, res) => {
       const planDate = normalizeDate(d.planDate);
       const openDate = normalizeDate(d.openDate);
       const actualDate = normalizeDate(d.actualDate);
-      const actualDatetime = normalizeDate(d.actualDatetime);
+      const actualDatetime = normalizeDatetime(d.actualDatetime);
       const documentReturnedDate = normalizeDate(d.documentReturnedDate);
       const documentReturnBillDate = normalizeDate(d.documentReturnBillDate);
-      const updatedAt = normalizeDate(d.updatedAt) ?? new Date().toISOString();
+      const updatedAt = normalizeDatetime(d.updatedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' ');
       await execute(`
         INSERT INTO deliveries (
           order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province,
           import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
           reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
           document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
-        ) VALUES (?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?, ?, ?, NULLIF(?,\'\'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?,\'\'), NULLIF(?,\'\'), ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
           open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),

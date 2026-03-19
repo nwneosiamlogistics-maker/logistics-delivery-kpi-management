@@ -13,6 +13,7 @@ const pool = mariadb.createPool({
   acquireTimeout: 30000,
   decimalAsNumber: true,
   charset: 'utf8mb4',
+  initSql: "SET sql_mode='NO_ENGINE_SUBSTITUTION'",
 });
 
 export async function getConnection() {
