@@ -270,7 +270,22 @@ const App: React.FC = () => {
       }));
       setDeliveries(sanitized);
       setHolidays(holidaysData.length > 0 ? holidaysData : HOLIDAYS);
-      setKpiConfigs(kpiConfigsData.length > 0 ? kpiConfigsData : KPI_CONFIGS);
+      // Clean up draft duplicates: delete drafts where a configured entry exists for same province+district
+      const normStr = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+      const configuredKeys = new Set(
+        kpiConfigsData.filter(c => !c.isDraft && c.district).map(c =>
+          `${normStr(c.province || '')}|${normStr(c.district)}`
+        )
+      );
+      const draftsToDelete = kpiConfigsData.filter(c =>
+        c.isDraft && configuredKeys.has(`${normStr(c.province || '')}|${normStr(c.district)}`)
+      );
+      if (draftsToDelete.length > 0) {
+        console.log(`[KPI Cleanup] Deleting ${draftsToDelete.length} duplicate drafts`);
+        draftsToDelete.forEach(c => api.deleteKpiConfig(c.id).catch(() => {}));
+      }
+      const cleanedConfigs = kpiConfigsData.filter(c => !draftsToDelete.some(d => d.id === c.id));
+      setKpiConfigs(cleanedConfigs.length > 0 ? cleanedConfigs : KPI_CONFIGS);
       setDelayReasons(delayReasonsData.length > 0 ? delayReasonsData : DELAY_REASONS);
       setStoreMappings(storeMappingsData);
       setBranchResources(branchResourcesData);
