@@ -41,12 +41,25 @@ function fixDoubleEncoded(str: string | null | undefined): string | null {
   return str;
 }
 
-console.log('[STARTUP] index.js v5 - 2026-03-19 CAST+NULL fix active');
+console.log('[STARTUP] index.js v6 - 2026-03-19 sqlDate literal injection active');
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+function sqlDate(v: string | null | undefined): string {
+  if (!v || v.trim() === '') return 'NULL';
+  const s = v.trim();
+  return `'${s.includes('T') ? s.slice(0, 10) : s}'`;
+}
+
+function sqlDatetime(v: string | null | undefined): string {
+  if (!v || v.trim() === '') return 'NULL';
+  const s = v.trim();
+  const dt = s.includes('T') ? s.slice(0, 19).replace('T', ' ') : s;
+  return `'${dt}'`;
+}
 
 function normalizeDate(value: any): string | null {
   if (!value && value !== 0) return null;
@@ -113,7 +126,7 @@ app.post('/api/deliveries', async (req, res) => {
         import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
         reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
         document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
-      ) VALUES (?, ?, ?, CAST(NULLIF(?, '') AS DATE), CAST(NULLIF(?, '') AS DATE), CAST(NULLIF(?, '') AS DATE), ?, ?, ?, ?, ?, CAST(NULLIF(?, '') AS DATETIME), ?, ?, ?, ?, ?, ?, CAST(NULLIF(?, '') AS DATETIME), ?, ?, CAST(NULLIF(?, '') AS DATE), CAST(NULLIF(?, '') AS DATE), ?, ?, ?)
+      ) VALUES (?, ?, ?, ${sqlDate(planDate)}, ${sqlDate(openDate)}, ${sqlDate(actualDate)}, ?, ?, ?, ?, ?, ${sqlDatetime(actualDatetime)}, ?, ?, ?, ?, ?, ?, ${sqlDatetime(updatedAt)}, ?, ?, ${sqlDate(documentReturnedDate)}, ${sqlDate(documentReturnBillDate)}, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
         open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),
@@ -126,10 +139,10 @@ app.post('/api/deliveries', async (req, res) => {
         document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
         manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
     `, [
-      d.orderNo, d.district, d.storeId, planDate || null, openDate || null, actualDate || null, d.qty, d.sender, d.province,
-      d.importFileId, d.deliveryStatus, actualDatetime || null, d.productDetails, d.kpiStatus, d.delayDays,
-      d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, updatedAt, d.weekday, d.documentReturned ? 1 : 0,
-      documentReturnedDate || null, documentReturnBillDate || null, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+      d.orderNo, d.district, d.storeId, d.qty, d.sender, d.province,
+      d.importFileId, d.deliveryStatus, d.productDetails, d.kpiStatus, d.delayDays,
+      d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, d.weekday, d.documentReturned ? 1 : 0,
+      d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
     ]);
     res.json({ success: true, orderNo: d.orderNo });
   } catch (error) {
@@ -154,13 +167,14 @@ app.post('/api/deliveries/bulk', async (req, res) => {
       const documentReturnedDate = normalizeDate(d.documentReturnedDate);
       const documentReturnBillDate = normalizeDate(d.documentReturnBillDate);
       const updatedAt = normalizeDatetime(d.updatedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' ');
+      if (saved === 0) console.log(`[NORM-DEBUG] orderNo=${d.orderNo} raw_actualDate=${JSON.stringify(d.actualDate)} sqlDate=${sqlDate(actualDate)} sqlDatetime=${sqlDatetime(actualDatetime)}`);
       await execute(`
         INSERT INTO deliveries (
           order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province,
           import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
           reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
           document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
-        ) VALUES (?, ?, ?, CAST(NULLIF(?, '') AS DATE), CAST(NULLIF(?, '') AS DATE), CAST(NULLIF(?, '') AS DATE), ?, ?, ?, ?, ?, CAST(NULLIF(?, '') AS DATETIME), ?, ?, ?, ?, ?, ?, CAST(NULLIF(?, '') AS DATETIME), ?, ?, CAST(NULLIF(?, '') AS DATE), CAST(NULLIF(?, '') AS DATE), ?, ?, ?)
+        ) VALUES (?, ?, ?, ${sqlDate(planDate)}, ${sqlDate(openDate)}, ${sqlDate(actualDate)}, ?, ?, ?, ?, ?, ${sqlDatetime(actualDatetime)}, ?, ?, ?, ?, ?, ?, ${sqlDatetime(updatedAt)}, ?, ?, ${sqlDate(documentReturnedDate)}, ${sqlDate(documentReturnBillDate)}, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
           open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),
@@ -173,10 +187,10 @@ app.post('/api/deliveries/bulk', async (req, res) => {
           document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
           manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
       `, [
-        d.orderNo, d.district, d.storeId, planDate || null, openDate || null, actualDate || null, d.qty, d.sender, d.province,
-        d.importFileId, d.deliveryStatus, actualDatetime || null, d.productDetails, d.kpiStatus, d.delayDays,
-        d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, updatedAt, d.weekday, d.documentReturned ? 1 : 0,
-        documentReturnedDate || null, documentReturnBillDate || null, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+        d.orderNo, d.district, d.storeId, d.qty, d.sender, d.province,
+        d.importFileId, d.deliveryStatus, d.productDetails, d.kpiStatus, d.delayDays,
+        d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, d.weekday, d.documentReturned ? 1 : 0,
+        d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
       ]);
       saved++;
     }
