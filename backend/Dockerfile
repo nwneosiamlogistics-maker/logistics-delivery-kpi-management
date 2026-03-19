@@ -3,20 +3,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files and tsconfig
-COPY package.json tsconfig.json ./
+# Copy package files
+COPY package.json ./
 
-# Install ALL dependencies (including devDependencies for build)
-RUN npm install
+# Install production dependencies only (no TypeScript needed - using pre-compiled dist/)
+RUN npm install --production
 
-# Copy source files
-COPY src/ ./src/
-
-# Build TypeScript
-RUN npm run build
-
-# Remove devDependencies after build
-RUN npm prune --production
+# Copy pre-compiled JS (no TypeScript build step needed)
+COPY dist/ ./dist/
 
 # Environment
 ENV NODE_ENV=production
