@@ -172,6 +172,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
               onSave={handleUpdateKpiConfig}
               onCancel={() => setEditingItem(null)}
               onDelete={(id) => { onUpdateKpiConfigs(kpiConfigs.filter(c => c.id !== id)); setTimeout(() => { onRecalculateKpi(); alert('✅ ลบกฎ KPI และคำนวณ KPI ใหม่เสร็จสิ้น'); }, 100); }}
+              onDeleteAllDrafts={() => { onUpdateKpiConfigs(kpiConfigs.filter(c => !c.isDraft)); setTimeout(() => { onRecalculateKpi(); alert('✅ ลบร่างทั้งหมดเสร็จสิ้น'); }, 100); }}
             />
           )}
 
@@ -371,7 +372,8 @@ const KpiConfigTab: React.FC<{
   onSave: (config: KpiConfig) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
-}> = ({ configs, isAdmin, editingItem, onEdit, onAdd, onSave, onCancel, onDelete }) => {
+  onDeleteAllDrafts?: () => void;
+}> = ({ configs, isAdmin, editingItem, onEdit, onAdd, onSave, onCancel, onDelete, onDeleteAllDrafts }) => {
   const [editValues, setEditValues] = useState<KpiConfig | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -416,12 +418,22 @@ const KpiConfigTab: React.FC<{
           )}
         </div>
         {isAdmin && (
-          <button
-            onClick={onAdd}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            <i className="fas fa-plus mr-2"></i>เพิ่มเกณฑ์พื้นที่
-          </button>
+          <div className="flex gap-2">
+            {draftCount > 0 && onDeleteAllDrafts && (
+              <button
+                onClick={() => window.confirm(`ลบร่างทั้งหมด ${draftCount} รายการ?`) && onDeleteAllDrafts()}
+                className="px-3 py-2 bg-amber-100 text-amber-700 border border-amber-300 rounded-lg text-sm font-semibold hover:bg-amber-200 transition-colors"
+              >
+                <i className="fas fa-trash mr-1"></i>ลบร่างทั้งหมด ({draftCount})
+              </button>
+            )}
+            <button
+              onClick={onAdd}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              <i className="fas fa-plus mr-2"></i>เพิ่มเกณฑ์พื้นที่
+            </button>
+          </div>
         )}
       </div>
 
