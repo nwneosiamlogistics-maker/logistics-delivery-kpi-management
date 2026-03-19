@@ -86,7 +86,15 @@ const App: React.FC = () => {
 
     // Save only new/updated records to NAS (not all deliveries)
     api.saveDeliveries(sanitizedNew)
-      .then(() => console.log(`[NAS API] Saved ${sanitizedNew.length} imported deliveries`))
+      .then(() => {
+        console.log(`[NAS API] Saved ${sanitizedNew.length} imported deliveries`);
+        // Reload from DB after all batches saved — ensures refresh shows correct data
+        setTimeout(() => {
+          api.getDeliveries()
+            .then(rows => setDeliveries(rows))
+            .catch(err => console.warn('[NAS API] post-save reload error:', err));
+        }, 500);
+      })
       .catch(err => console.error('[NAS API] save deliveries error:', err));
 
     syncWeeklyDeliveriesToReturnNeosiam(sanitizedNew, kpiConfigs);
@@ -156,7 +164,7 @@ const App: React.FC = () => {
     });
 
     setActiveTab('dashboard');
-  }, []);
+  }, []); // loadDataFromNAS called in saveDeliveries.then() - stable ref
 
   const handleRecalculateKpi = useCallback(() => {
     console.log('[Recalculate KPI] Started - will also reset invalid actualDate');
