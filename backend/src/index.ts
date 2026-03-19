@@ -41,7 +41,7 @@ function fixDoubleEncoded(str: string | null | undefined): string | null {
   return str;
 }
 
-console.log('[STARTUP] index.js v7 - 2026-03-19 fixDate+sqlDate double-layer active');
+console.log('[STARTUP] index.js v8 - 2026-03-19 fixDate+sqlDate+batch-log active');
 
 // Health check
 app.get('/health', (req, res) => {
@@ -202,6 +202,7 @@ app.post('/api/deliveries/bulk', async (req, res) => {
       ]);
       saved++;
     }
+    console.log(`[BULK] Saved ${saved}/${deliveries.length} records`);
     res.json({ success: true, saved });
   } catch (error) {
     console.error('Error bulk saving deliveries:', error);
