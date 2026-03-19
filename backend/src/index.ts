@@ -41,22 +41,30 @@ function fixDoubleEncoded(str: string | null | undefined): string | null {
   return str;
 }
 
-console.log('[STARTUP] index.js v6 - 2026-03-19 sqlDate literal injection active');
+console.log('[STARTUP] index.js v7 - 2026-03-19 fixDate+sqlDate double-layer active');
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+function fixDate(value: any): string | null {
+  if (!value) return null;
+  if (value === '' || value === '-' || value === 'N/A') return null;
+  return value;
+}
+
 function sqlDate(v: string | null | undefined): string {
-  if (!v || v.trim() === '') return 'NULL';
-  const s = v.trim();
+  const safe = fixDate(v);
+  if (!safe || safe.trim() === '') return 'NULL';
+  const s = safe.trim();
   return `'${s.includes('T') ? s.slice(0, 10) : s}'`;
 }
 
 function sqlDatetime(v: string | null | undefined): string {
-  if (!v || v.trim() === '') return 'NULL';
-  const s = v.trim();
+  const safe = fixDate(v);
+  if (!safe || safe.trim() === '') return 'NULL';
+  const s = safe.trim();
   const dt = s.includes('T') ? s.slice(0, 19).replace('T', ' ') : s;
   return `'${dt}'`;
 }
