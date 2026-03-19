@@ -229,10 +229,16 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       .sort((a, b) => b[1].total - a[1].total);
   }, [deliveries, branches, districtBranchMap, start, end]);
 
-  // Build storeId → assigned district/province from storeMappings (persisted assignments)
-  const assignedStoreIdSet = useMemo(() => {
+  // Build province/district keys that were already assigned via storeMappings
+  // (level-based: if ANY storeMapping points to this district, the whole group is considered assigned)
+  const assignedDistrictKeys = useMemo(() => {
     const s = new Set<string>();
-    storeMappings.forEach(m => { if (m.storeId) s.add(m.storeId.trim()); });
+    storeMappings.forEach(m => {
+      if (m.district) {
+        s.add(makeKey(m.province, m.district));
+        s.add(makeKey('', m.district));
+      }
+    });
     return s;
   }, [storeMappings]);
 
@@ -256,9 +262,10 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       const keyNoProvince = makeKey('', d.district);
       const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
       
-      // Skip if branch found OR if storeId was already assigned via storeMappings
+      // Skip if branch found in KPI configs
       if (branch) return;
-      if (d.storeId && assignedStoreIdSet.has(d.storeId.trim())) return;
+      // Skip if this province/district was already assigned via storeMappings (group-level check)
+      if (assignedDistrictKeys.has(key) || assignedDistrictKeys.has(keyNoProvince)) return;
 
       const displayKey = d.province ? `${d.province} / ${d.district || '(ไม่ระบุอำเภอ)'}` : (d.district || '(ไม่ระบุ)');
       const existing = unmapped.get(displayKey) || { 
@@ -277,7 +284,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
     });
 
     return Array.from(unmapped.entries()).sort((a, b) => b[1].count - a[1].count);
-  }, [deliveries, districtBranchMap, assignedStoreIdSet, start, end]);
+  }, [deliveries, districtBranchMap, assignedDistrictKeys, start, end]);
 
   // Get all unique provinces from kpiConfigs + deliveries (รวมจังหวัดที่ยังไม่มี KPI Config)
   const allProvinces = useMemo(() => {
