@@ -131,10 +131,10 @@ app.post('/api/deliveries', async (req, res) => {
         document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
         manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
     `, [
-            d.orderNo, d.district, d.storeId, planDate, openDate, actualDate, d.qty, d.sender, d.province,
-            d.importFileId, d.deliveryStatus, actualDatetime, d.productDetails, d.kpiStatus, d.delayDays,
+            d.orderNo, d.district, d.storeId, planDate || null, openDate || null, actualDate || null, d.qty, d.sender, d.province,
+            d.importFileId, d.deliveryStatus, actualDatetime || null, d.productDetails, d.kpiStatus, d.delayDays,
             d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, updatedAt, d.weekday, d.documentReturned ? 1 : 0,
-            documentReturnedDate, documentReturnBillDate, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+            documentReturnedDate || null, documentReturnBillDate || null, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
         ]);
         res.json({ success: true, orderNo: d.orderNo });
     }
@@ -174,10 +174,10 @@ app.post('/api/deliveries/bulk', async (req, res) => {
           document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
           manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
       `, [
-                d.orderNo, d.district, d.storeId, planDate, openDate, actualDate, d.qty, d.sender, d.province,
-                d.importFileId, d.deliveryStatus, actualDatetime, d.productDetails, d.kpiStatus, d.delayDays,
+                d.orderNo, d.district, d.storeId, planDate || null, openDate || null, actualDate || null, d.qty, d.sender, d.province,
+                d.importFileId, d.deliveryStatus, actualDatetime || null, d.productDetails, d.kpiStatus, d.delayDays,
                 d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, updatedAt, d.weekday, d.documentReturned ? 1 : 0,
-                documentReturnedDate, documentReturnBillDate, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+                documentReturnedDate || null, documentReturnBillDate || null, d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
             ]);
             saved++;
         }
