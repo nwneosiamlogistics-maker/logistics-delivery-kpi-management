@@ -229,6 +229,13 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       .sort((a, b) => b[1].total - a[1].total);
   }, [deliveries, branches, districtBranchMap, start, end]);
 
+  // Build storeId → assigned district/province from storeMappings (persisted assignments)
+  const assignedStoreIdSet = useMemo(() => {
+    const s = new Set<string>();
+    storeMappings.forEach(m => { if (m.storeId) s.add(m.storeId.trim()); });
+    return s;
+  }, [storeMappings]);
+
   // Find unmapped districts (districts without branch mapping) with order numbers and storeIds
   const unmappedDistricts = useMemo(() => {
     const unmapped = new Map<string, { 
@@ -249,26 +256,28 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       const keyNoProvince = makeKey('', d.district);
       const branch = districtBranchMap.get(key) || districtBranchMap.get(keyNoProvince);
       
-      if (!branch) {
-        const displayKey = d.province ? `${d.province} / ${d.district || '(ไม่ระบุอำเภอ)'}` : (d.district || '(ไม่ระบุ)');
-        const existing = unmapped.get(displayKey) || { 
-          count: 0, 
-          orderNos: [], 
-          storeIds: [],
-          province: d.province || '',
-          district: d.district || ''
-        };
-        existing.count++;
-        existing.orderNos.push(d.orderNo);
-        if (d.storeId && !existing.storeIds.includes(d.storeId)) {
-          existing.storeIds.push(d.storeId);
-        }
-        unmapped.set(displayKey, existing);
+      // Skip if branch found OR if storeId was already assigned via storeMappings
+      if (branch) return;
+      if (d.storeId && assignedStoreIdSet.has(d.storeId.trim())) return;
+
+      const displayKey = d.province ? `${d.province} / ${d.district || '(ไม่ระบุอำเภอ)'}` : (d.district || '(ไม่ระบุ)');
+      const existing = unmapped.get(displayKey) || { 
+        count: 0, 
+        orderNos: [], 
+        storeIds: [],
+        province: d.province || '',
+        district: d.district || ''
+      };
+      existing.count++;
+      existing.orderNos.push(d.orderNo);
+      if (d.storeId && !existing.storeIds.includes(d.storeId)) {
+        existing.storeIds.push(d.storeId);
       }
+      unmapped.set(displayKey, existing);
     });
 
     return Array.from(unmapped.entries()).sort((a, b) => b[1].count - a[1].count);
-  }, [deliveries, districtBranchMap, start, end]);
+  }, [deliveries, districtBranchMap, assignedStoreIdSet, start, end]);
 
   // Get all unique provinces from kpiConfigs + deliveries (รวมจังหวัดที่ยังไม่มี KPI Config)
   const allProvinces = useMemo(() => {
