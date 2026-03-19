@@ -107,13 +107,25 @@ const App: React.FC = () => {
       const normStr = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
       // ── Auto-deduplicate prevConfigs ที่มีอยู่ (กัน double จาก import คราวก่อน) ───
+      // Sort: configured (isDraft=false) ก่อน draft เสมอ เพื่อให้เก็บ configured ไว้
+      const sortedConfigs = [...prevConfigs].sort((a, b) => {
+        if (a.isDraft && !b.isDraft) return 1;
+        if (!a.isDraft && b.isDraft) return -1;
+        return 0;
+      });
       const seenIds = new Set<string>();
-      const dedupedConfigs = prevConfigs.filter(c => {
+      const draftsToDelete: string[] = [];
+      const dedupedConfigs = sortedConfigs.filter(c => {
         const key = `${normStr(c.province || '')}|${normStr(c.district)}`;
-        if (seenIds.has(key)) return false; // ซ้ำ → ตัดออก
+        if (seenIds.has(key)) {
+          if (c.isDraft) draftsToDelete.push(c.id); // draft ซ้ำ → ลบออกจาก DB
+          return false;
+        }
         seenIds.add(key);
         return true;
       });
+      // ลบ draft ซ้ำออกจาก DB (configured entry มีอยู่แล้ว)
+      draftsToDelete.forEach(id => api.deleteKpiConfig(id).catch(() => {}));
 
       // ── Build seen set จาก deduped configs ─────────────────────────────────────
       const seen = new Set(dedupedConfigs.map(c =>
