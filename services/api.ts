@@ -86,10 +86,15 @@ export async function saveDelivery(delivery: DeliveryRecord): Promise<void> {
 }
 
 export async function saveDeliveries(deliveries: DeliveryRecord[]): Promise<void> {
-  await fetchAPI('/api/deliveries/bulk', {
-    method: 'POST',
-    body: JSON.stringify(deliveries.map(mapDeliveryToAPI)),
-  });
+  const BATCH_SIZE = 500;
+  const mapped = deliveries.map(mapDeliveryToAPI);
+  for (let i = 0; i < mapped.length; i += BATCH_SIZE) {
+    const batch = mapped.slice(i, i + BATCH_SIZE);
+    await fetchAPI('/api/deliveries/bulk', {
+      method: 'POST',
+      body: JSON.stringify(batch),
+    });
+  }
 }
 
 // ========== Holidays ==========
