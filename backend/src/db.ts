@@ -24,6 +24,7 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> 
   let conn;
   try {
     conn = await pool.getConnection();
+    await conn.query("SET SESSION sql_mode=''");
     const rows = await conn.query(sql, params);
     return rows as T[];
   } finally {
@@ -35,6 +36,7 @@ export async function execute(sql: string, params?: any[]): Promise<mariadb.Upse
   let conn;
   try {
     conn = await pool.getConnection();
+    await conn.query("SET SESSION sql_mode=''");
     const result = await conn.query(sql, params);
     return result;
   } finally {

@@ -28,6 +28,7 @@ async function query(sql, params) {
     let conn;
     try {
         conn = await pool.getConnection();
+        await conn.query("SET SESSION sql_mode=''");
         const rows = await conn.query(sql, params);
         return rows;
     }
@@ -40,6 +41,7 @@ async function execute(sql, params) {
     let conn;
     try {
         conn = await pool.getConnection();
+        await conn.query("SET SESSION sql_mode=''");
         const result = await conn.query(sql, params);
         return result;
     }
