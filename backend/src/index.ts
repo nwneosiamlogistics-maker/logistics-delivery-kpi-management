@@ -41,6 +41,8 @@ function fixDoubleEncoded(str: string | null | undefined): string | null {
   return str;
 }
 
+console.log('[STARTUP] index.js v5 - 2026-03-19 CAST+NULL fix active');
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -139,6 +141,10 @@ app.post('/api/deliveries', async (req, res) => {
 app.post('/api/deliveries/bulk', async (req, res) => {
   try {
     const deliveries = req.body;
+    if (deliveries.length > 0) {
+      const f = deliveries[0];
+      console.log(`[BULK-DEBUG] first record: orderNo=${f.orderNo} planDate=${JSON.stringify(f.planDate)} actualDate=${JSON.stringify(f.actualDate)} actualDatetime=${JSON.stringify(f.actualDatetime)}`);
+    }
     let saved = 0;
     for (const d of deliveries) {
       const planDate = normalizeDate(d.planDate);
