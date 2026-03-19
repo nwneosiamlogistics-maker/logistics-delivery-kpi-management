@@ -461,7 +461,7 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
                       <td className="px-2 py-2 text-xs text-gray-600 max-w-[120px] truncate" title={doc.sender}>{doc.sender || '-'}</td>
                       <td className="px-2 py-2 text-xs text-gray-600">{doc.found ? getBranch({ district: doc.district || '', province: doc.province || '' } as DeliveryRecord) : '-'}</td>
                       <td className="px-2 py-2 text-xs text-gray-600">{doc.province || '-'} / {doc.district || '-'}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
+                      <td className="px-2 py-2 text-xs text-center text-gray-600">{doc.qty != null && doc.qty > 0 ? formatQty(doc.qty) : <span className="text-gray-300">-</span>}</td>
                       <td className="px-2 py-2 font-mono text-xs text-gray-500">{doc.openDate || '-'}</td>
                       <td className="px-2 py-2 font-mono text-xs text-gray-500">{doc.planDate || '-'}</td>
                       <td className="px-2 py-2 font-mono text-xs text-gray-600">{doc.actualDate || '-'}</td>
@@ -574,7 +574,7 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
                       <td className="px-3 py-2 text-gray-600">{doc.sender || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{getBranch(doc)}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.province || ''}{doc.province && doc.district ? ' / ' : ''}{doc.district || '-'}</td>
-                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty ? formatQty(doc.qty) : '-'}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{doc.qty != null && doc.qty > 0 ? formatQty(doc.qty) : <span className="text-gray-300">-</span>}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.openDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.planDate || '-'}</td>
                       <td className="px-3 py-2 text-gray-600">{doc.actualDate || '-'}</td>
