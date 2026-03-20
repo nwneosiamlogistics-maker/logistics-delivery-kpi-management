@@ -147,8 +147,8 @@ export async function saveKpiConfig(config: KpiConfig): Promise<void> {
       branch: config.branch,
       province: config.province,
       district: config.district,
-      on_time_limit: config.onTimeLimit,
-      is_draft: config.isDraft ? 1 : 0,
+      onTimeLimit: config.onTimeLimit,
+      isDraft: config.isDraft ? 1 : 0,
     }),
   });
 }
