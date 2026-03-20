@@ -77,6 +77,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
   };
 
   const getFileIcon = (fileName: string) => {
+    if (!fileName) return 'fa-file text-gray-400';
     if (fileName.match(/\.xlsx?$/i)) return 'fa-file-excel text-green-500';
     if (fileName.match(/\.csv$/i)) return 'fa-file-csv text-blue-500';
     return 'fa-file text-gray-400';
