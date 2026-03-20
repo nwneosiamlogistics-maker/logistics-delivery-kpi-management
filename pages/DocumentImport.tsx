@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { DeliveryRecord, KpiConfig } from '../types';
+import { DeliveryRecord, KpiConfig, DocumentImportLog } from '../types';
 import { formatQty } from '../utils/formatters';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -9,6 +9,8 @@ interface DocumentImportProps {
   deliveries: DeliveryRecord[];
   onUpdateDeliveries: (deliveries: DeliveryRecord[]) => void;
   kpiConfigs?: KpiConfig[];
+  documentImportLogs?: DocumentImportLog[];
+  onSaveDocumentImportLog?: (log: DocumentImportLog) => void;
 }
 
 interface ExtractedDoc {
@@ -63,7 +65,7 @@ function parsePdfDate(text: string): string | null {
   return null;
 }
 
-export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUpdateDeliveries, kpiConfigs = [] }) => {
+export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUpdateDeliveries, kpiConfigs = [], documentImportLogs = [], onSaveDocumentImportLog }) => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedDocs, setExtractedDocs] = useState<ExtractedDoc[]>([]);
   const [manualInput, setManualInput] = useState('');
@@ -317,10 +319,22 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
     if (manualCount - skippedCount > 0) msg += ` (⌨️ พิมพ์เอง: ${manualCount - skippedCount})`;
     if (skippedCount > 0) msg += ` (ข้าม ${skippedCount} รายการที่เคย Import PDF ไปแล้ว)`;
     setImportSuccess(msg);
+    if (onSaveDocumentImportLog) {
+      const docLog: DocumentImportLog = {
+        id: `doclog_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        fileNames: uploadedFiles.map(f => f.fileName),
+        returnDate: manualReturnDate || '',
+        confirmedCount: selectedDocs.length - skippedCount,
+        pdfCount,
+        manualCount: manualCount - skippedCount,
+      };
+      onSaveDocumentImportLog(docLog);
+    }
     setExtractedDocs([]);
     setPdfReturnDate(null);
     setManualReturnDate('');
-  }, [extractedDocs, deliveries, onUpdateDeliveries, manualReturnDate]);
+  }, [extractedDocs, deliveries, onUpdateDeliveries, manualReturnDate, uploadedFiles, onSaveDocumentImportLog]);
 
   const removeExtracted = useCallback((orderNo: string) => {
     setExtractedDocs(prev => prev.filter(d => d.orderNo !== orderNo));
@@ -633,6 +647,35 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
           </div>
         );
       })()}
+
+      {/* Document Import History */}
+      {documentImportLogs.length > 0 && (
+        <div className="glass-panel rounded-2xl p-4">
+          <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <i className="fas fa-history text-teal-500"></i>
+            ประวัติการ Import ใบส่งคืนเอกสาร ({documentImportLogs.length} ครั้ง)
+          </h3>
+          <div className="space-y-2">
+            {documentImportLogs.slice(0, 10).map(log => (
+              <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
+                <i className="fas fa-file-pdf text-red-400 flex-shrink-0"></i>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-800 truncate">
+                    {log.fileNames.length > 0 ? log.fileNames.join(', ') : 'พิมพ์เอง'}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(log.timestamp).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {log.returnDate ? ` · วันคืนบิล: ${log.returnDate}` : ''}
+                  </p>
+                </div>
+                <span className="px-2 py-0.5 bg-teal-50 text-teal-700 rounded text-xs font-bold border border-teal-100 flex-shrink-0">
+                  {log.confirmedCount} รายการ
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

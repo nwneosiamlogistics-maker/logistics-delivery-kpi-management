@@ -107,6 +107,16 @@ export interface ImportLog {
   skippedDetails?: { row: number; reason: string }[];
 }
 
+export interface DocumentImportLog {
+  id: string;
+  timestamp: string;
+  fileNames: string[];
+  returnDate: string;
+  confirmedCount: number;
+  pdfCount: number;
+  manualCount: number;
+}
+
 export interface ReasonAuditLog {
   id: string;
   timestamp: string;

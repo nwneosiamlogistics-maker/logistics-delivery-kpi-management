@@ -28,6 +28,7 @@ import {
   KpiConfig,
   DelayReason,
   ImportLog,
+  DocumentImportLog,
   ReasonAuditLog,
   User,
   ReasonStatus,
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const dataLoadedFromNAS = useRef(false);
   const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
+  const [documentImportLogs, setDocumentImportLogs] = useState<DocumentImportLog[]>([]);
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
   const [currentUser] = useState<User>(DEFAULT_USER);
 
@@ -252,7 +254,7 @@ const App: React.FC = () => {
   const loadDataFromNAS = useCallback(async () => {
     try {
       console.log('[NAS API] Loading data from NAS...');
-      const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData] = await Promise.all([
+      const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData, documentImportLogsData] = await Promise.all([
         api.getDeliveries().catch(() => []),
         api.getHolidays().catch(() => HOLIDAYS),
         api.getKpiConfigs().catch(() => KPI_CONFIGS),
@@ -261,6 +263,7 @@ const App: React.FC = () => {
         api.getBranchResources().catch(() => []),
         api.getStoreClosures().catch(() => STORE_CLOSURES),
         api.getImportLogs().catch(() => []),
+        api.getDocumentImportLogs().catch(() => []),
       ]);
 
       console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
@@ -299,6 +302,7 @@ const App: React.FC = () => {
       setBranchResources(branchResourcesData);
       setStoreClosures(storeClosuresData.length > 0 ? storeClosuresData : STORE_CLOSURES);
       if (importLogsData.length > 0) setImportLogs(importLogsData);
+      if (documentImportLogsData.length > 0) setDocumentImportLogs(documentImportLogsData);
       
       if (deliveriesData.length > 0) {
         syncWeeklyDeliveriesToReturnNeosiam(deliveriesData, kpiConfigsData);
@@ -476,6 +480,11 @@ const App: React.FC = () => {
         return <DocumentImport 
           deliveries={deliveries}
           kpiConfigs={kpiConfigs}
+          documentImportLogs={documentImportLogs}
+          onSaveDocumentImportLog={(log) => {
+            setDocumentImportLogs(prev => [log, ...prev]);
+            api.saveDocumentImportLog(log).catch(err => console.warn('[NAS API] save document import log error:', err));
+          }}
           onUpdateDeliveries={(updated) => {
             const deliveryMap = new Map(deliveries.map(d => [d.orderNo, d]));
             const changed = updated.filter(u => {

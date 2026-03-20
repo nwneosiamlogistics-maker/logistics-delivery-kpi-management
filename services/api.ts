@@ -13,7 +13,8 @@ import {
   StoreMapping, 
   BranchResource,
   BranchResourceHistory,
-  ImportLog 
+  ImportLog,
+  DocumentImportLog
 } from '../types';
 
 // Strip ISO time portion from date strings (2026-03-11T00:00:00.000Z → 2026-03-11)
@@ -321,6 +322,35 @@ export async function saveImportLog(log: ImportLog): Promise<void> {
       errors: log.errors,
       errorDetails: log.errorDetails,
       skippedDetails: log.skippedDetails,
+    }),
+  });
+}
+
+// ========== Document Import Logs ==========
+export async function getDocumentImportLogs(): Promise<DocumentImportLog[]> {
+  const data = await fetchAPI<any[]>('/api/document-import-logs');
+  return data.map(l => ({
+    id: l.id,
+    timestamp: l.timestamp,
+    fileNames: l.fileNames || [],
+    returnDate: l.returnDate || '',
+    confirmedCount: l.confirmedCount || 0,
+    pdfCount: l.pdfCount || 0,
+    manualCount: l.manualCount || 0,
+  }));
+}
+
+export async function saveDocumentImportLog(log: DocumentImportLog): Promise<void> {
+  await fetchAPI('/api/document-import-logs', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: log.id,
+      timestamp: log.timestamp,
+      fileNames: log.fileNames,
+      returnDate: log.returnDate,
+      confirmedCount: log.confirmedCount,
+      pdfCount: log.pdfCount,
+      manualCount: log.manualCount,
     }),
   });
 }
