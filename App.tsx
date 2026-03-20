@@ -277,8 +277,14 @@ const App: React.FC = () => {
           `${normStr(c.province || '')}|${normStr(c.district)}`
         )
       );
+      const configuredDistricts = new Set(
+        kpiConfigsData.filter(c => !c.isDraft && c.district).map(c => normStr(c.district))
+      );
       const draftsToDelete = kpiConfigsData.filter(c =>
-        c.isDraft && configuredKeys.has(`${normStr(c.province || '')}|${normStr(c.district)}`)
+        c.isDraft && (
+          configuredKeys.has(`${normStr(c.province || '')}|${normStr(c.district)}`) ||
+          configuredDistricts.has(normStr(c.district))
+        )
       );
       if (draftsToDelete.length > 0) {
         console.log(`[KPI Cleanup] Deleting ${draftsToDelete.length} duplicate drafts`);
