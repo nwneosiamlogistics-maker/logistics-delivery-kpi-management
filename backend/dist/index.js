@@ -44,7 +44,7 @@ function fixDoubleEncoded(str) {
     catch { /* ignore */ }
     return str;
 }
-console.log('[STARTUP] index.js v10 - 2026-03-20 import-logs-persist active');
+console.log('[STARTUP] index.js v11 - 2026-03-20 document-import-logs active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -76,6 +76,22 @@ console.log('[STARTUP] index.js v10 - 2026-03-20 import-logs-persist active');
     }
     catch (e) {
         console.warn('[MIGRATION] import_logs create skipped:', e?.message);
+    }
+    try {
+        await (0, db_1.execute)(`CREATE TABLE IF NOT EXISTS document_import_logs (
+      id VARCHAR(100) PRIMARY KEY,
+      timestamp VARCHAR(50),
+      file_names TEXT,
+      return_date VARCHAR(20),
+      confirmed_count INT DEFAULT 0,
+      pdf_count INT DEFAULT 0,
+      manual_count INT DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB`);
+        console.log('[MIGRATION] document_import_logs table ready');
+    }
+    catch (e) {
+        console.warn('[MIGRATION] document_import_logs create skipped:', e?.message);
     }
 })();
 // Health check
@@ -380,29 +396,6 @@ app.delete('/api/delay-reasons/:code', async (req, res) => {
         res.status(500).json({ error: 'Failed to delete delay reason' });
     }
 });
-// ============ IMPORT LOGS ============
-app.get('/api/import-logs', async (req, res) => {
-    try {
-        const rows = await (0, db_1.query)('SELECT * FROM import_logs ORDER BY timestamp DESC');
-        res.json(rows);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch import logs' });
-    }
-});
-app.post('/api/import-logs', async (req, res) => {
-    try {
-        const log = req.body;
-        await (0, db_1.execute)(`
-      INSERT INTO import_logs (id, timestamp, file_name, user_id, user_name, records_processed, created, updated, skipped, errors, error_details, skipped_details)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [log.id, log.timestamp, log.fileName, log.userId, log.userName, log.recordsProcessed, log.created, log.updated, log.skipped, log.errors, JSON.stringify(log.errorDetails), JSON.stringify(log.skippedDetails)]);
-        res.json({ success: true });
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to save import log' });
-    }
-});
 // ============ STORE MAPPINGS ============
 app.get('/api/store-mappings', async (req, res) => {
     try {
@@ -485,6 +478,37 @@ app.post('/api/import-logs', async (req, res) => {
     catch (error) {
         console.error('[import-logs] save error:', error);
         res.status(500).json({ error: 'Failed to save import log' });
+    }
+});
+// ============ DOCUMENT IMPORT LOGS ============
+app.get('/api/document-import-logs', async (req, res) => {
+    try {
+        const rows = await (0, db_1.query)('SELECT * FROM document_import_logs ORDER BY timestamp DESC LIMIT 200');
+        const logs = rows.map((r) => ({
+            id: r.id,
+            timestamp: r.timestamp,
+            fileNames: r.file_names ? JSON.parse(r.file_names) : [],
+            returnDate: r.return_date,
+            confirmedCount: r.confirmed_count,
+            pdfCount: r.pdf_count,
+            manualCount: r.manual_count,
+        }));
+        res.json(logs);
+    }
+    catch (error) {
+        console.error('[document-import-logs] fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch document import logs' });
+    }
+});
+app.post('/api/document-import-logs', async (req, res) => {
+    try {
+        const l = req.body;
+        await (0, db_1.execute)('INSERT INTO document_import_logs (id, timestamp, file_names, return_date, confirmed_count, pdf_count, manual_count) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp)', [l.id, l.timestamp, JSON.stringify(l.fileNames || []), l.returnDate || '', l.confirmedCount || 0, l.pdfCount || 0, l.manualCount || 0]);
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('[document-import-logs] save error:', error);
+        res.status(500).json({ error: 'Failed to save document import log' });
     }
 });
 // ============ BRANCH RESOURCE HISTORY ============
