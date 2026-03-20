@@ -44,7 +44,40 @@ function fixDoubleEncoded(str) {
     catch { /* ignore */ }
     return str;
 }
-console.log('[STARTUP] index.js v8 - 2026-03-19 fixDate+sqlDate+batch-log active');
+console.log('[STARTUP] index.js v10 - 2026-03-20 import-logs-persist active');
+// Auto-migrate: expand store_id column + create import_logs table
+(async () => {
+    try {
+        await (0, db_1.execute)("ALTER TABLE store_mappings MODIFY store_id VARCHAR(255)");
+        console.log('[MIGRATION] store_mappings.store_id expanded to VARCHAR(255)');
+    }
+    catch (e) {
+        if (!String(e?.message).includes('store_mappings')) {
+            console.warn('[MIGRATION] store_mappings alter skipped:', e?.message);
+        }
+    }
+    try {
+        await (0, db_1.execute)(`CREATE TABLE IF NOT EXISTS import_logs (
+      id VARCHAR(100) PRIMARY KEY,
+      timestamp VARCHAR(50),
+      file_name VARCHAR(500),
+      user_id VARCHAR(100),
+      user_name VARCHAR(200),
+      records_processed INT DEFAULT 0,
+      created INT DEFAULT 0,
+      updated INT DEFAULT 0,
+      skipped INT DEFAULT 0,
+      errors INT DEFAULT 0,
+      error_details TEXT,
+      skipped_details TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB`);
+        console.log('[MIGRATION] import_logs table ready');
+    }
+    catch (e) {
+        console.warn('[MIGRATION] import_logs create skipped:', e?.message);
+    }
+})();
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -413,6 +446,45 @@ app.post('/api/branch-resources', async (req, res) => {
     catch (error) {
         console.error('[branch-resources] save error:', error);
         res.status(500).json({ error: 'Failed to save branch resource' });
+    }
+});
+// ============ IMPORT LOGS ============
+app.get('/api/import-logs', async (req, res) => {
+    try {
+        const rows = await (0, db_1.query)('SELECT * FROM import_logs ORDER BY timestamp DESC LIMIT 200');
+        const logs = rows.map((r) => ({
+            id: r.id,
+            timestamp: r.timestamp,
+            fileName: r.file_name,
+            userId: r.user_id,
+            userName: r.user_name,
+            recordsProcessed: r.records_processed,
+            created: r.created,
+            updated: r.updated,
+            skipped: r.skipped,
+            errors: r.errors,
+            errorDetails: r.error_details ? JSON.parse(r.error_details) : undefined,
+            skippedDetails: r.skipped_details ? JSON.parse(r.skipped_details) : undefined,
+        }));
+        res.json(logs);
+    }
+    catch (error) {
+        console.error('[import-logs] fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch import logs' });
+    }
+});
+app.post('/api/import-logs', async (req, res) => {
+    try {
+        const l = req.body;
+        await (0, db_1.execute)('INSERT INTO import_logs (id, timestamp, file_name, user_id, user_name, records_processed, created, updated, skipped, errors, error_details, skipped_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp)', [l.id, l.timestamp, l.fileName, l.userId, l.userName,
+            l.recordsProcessed || 0, l.created || 0, l.updated || 0, l.skipped || 0, l.errors || 0,
+            l.errorDetails ? JSON.stringify(l.errorDetails) : null,
+            l.skippedDetails ? JSON.stringify(l.skippedDetails) : null]);
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('[import-logs] save error:', error);
+        res.status(500).json({ error: 'Failed to save import log' });
     }
 });
 // ============ BRANCH RESOURCE HISTORY ============
