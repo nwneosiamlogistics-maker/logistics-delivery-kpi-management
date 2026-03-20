@@ -100,6 +100,7 @@ const App: React.FC = () => {
     syncWeeklyDeliveriesToReturnNeosiam(sanitizedNew, kpiConfigs);
 
     setImportLogs(prev => [...prev, importLog]);
+    api.saveImportLog(importLog).catch(err => console.warn('[NAS API] save import log error:', err));
 
     // Auto-detect new province/district combos not in KPI config → create drafts
     setKpiConfigs(prevConfigs => {
@@ -251,14 +252,15 @@ const App: React.FC = () => {
   const loadDataFromNAS = useCallback(async () => {
     try {
       console.log('[NAS API] Loading data from NAS...');
-      const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData] = await Promise.all([
+      const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData] = await Promise.all([
         api.getDeliveries().catch(() => []),
         api.getHolidays().catch(() => HOLIDAYS),
         api.getKpiConfigs().catch(() => KPI_CONFIGS),
         api.getDelayReasons().catch(() => DELAY_REASONS),
         api.getStoreMappings().catch(() => []),
         api.getBranchResources().catch(() => []),
-        api.getStoreClosures().catch(() => STORE_CLOSURES)
+        api.getStoreClosures().catch(() => STORE_CLOSURES),
+        api.getImportLogs().catch(() => []),
       ]);
 
       console.log(`[NAS API] Loaded: ${deliveriesData.length} deliveries, ${kpiConfigsData.length} kpi-configs`);
@@ -296,6 +298,7 @@ const App: React.FC = () => {
       setStoreMappings(storeMappingsData);
       setBranchResources(branchResourcesData);
       setStoreClosures(storeClosuresData.length > 0 ? storeClosuresData : STORE_CLOSURES);
+      if (importLogsData.length > 0) setImportLogs(importLogsData);
       
       if (deliveriesData.length > 0) {
         syncWeeklyDeliveriesToReturnNeosiam(deliveriesData, kpiConfigsData);

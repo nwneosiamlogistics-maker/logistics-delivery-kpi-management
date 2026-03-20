@@ -108,6 +108,23 @@ CREATE TABLE IF NOT EXISTS reason_audit_logs (
   INDEX idx_timestamp (timestamp)
 ) ENGINE=InnoDB;
 
+-- Import logs
+CREATE TABLE IF NOT EXISTS import_logs (
+  id VARCHAR(100) PRIMARY KEY,
+  timestamp VARCHAR(50),
+  file_name VARCHAR(500),
+  user_id VARCHAR(100),
+  user_name VARCHAR(200),
+  records_processed INT DEFAULT 0,
+  created INT DEFAULT 0,
+  updated INT DEFAULT 0,
+  skipped INT DEFAULT 0,
+  errors INT DEFAULT 0,
+  error_details TEXT,
+  skipped_details TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- Store mappings
 CREATE TABLE IF NOT EXISTS store_mappings (
   store_id VARCHAR(255) PRIMARY KEY,

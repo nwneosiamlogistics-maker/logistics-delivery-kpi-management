@@ -292,16 +292,16 @@ export async function getImportLogs(): Promise<ImportLog[]> {
   return data.map(l => ({
     id: l.id,
     timestamp: l.timestamp,
-    fileName: l.file_name,
-    userId: l.user_id,
-    userName: l.user_name,
-    recordsProcessed: l.records_processed,
+    fileName: l.fileName,
+    userId: l.userId,
+    userName: l.userName,
+    recordsProcessed: l.recordsProcessed,
     created: l.created,
     updated: l.updated,
     skipped: l.skipped,
     errors: l.errors,
-    errorDetails: l.error_details,
-    skippedDetails: l.skipped_details,
+    errorDetails: l.errorDetails,
+    skippedDetails: l.skippedDetails,
   }));
 }
 
@@ -311,16 +311,16 @@ export async function saveImportLog(log: ImportLog): Promise<void> {
     body: JSON.stringify({
       id: log.id,
       timestamp: log.timestamp,
-      file_name: log.fileName,
-      user_id: log.userId,
-      user_name: log.userName,
-      records_processed: log.recordsProcessed,
+      fileName: log.fileName,
+      userId: log.userId,
+      userName: log.userName,
+      recordsProcessed: log.recordsProcessed,
       created: log.created,
       updated: log.updated,
       skipped: log.skipped,
       errors: log.errors,
-      error_details: log.errorDetails,
-      skipped_details: log.skippedDetails,
+      errorDetails: log.errorDetails,
+      skippedDetails: log.skippedDetails,
     }),
   });
 }
