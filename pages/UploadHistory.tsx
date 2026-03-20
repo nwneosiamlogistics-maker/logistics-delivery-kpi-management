@@ -47,8 +47,8 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
     if (!searchTerm) return importLogs;
     const term = searchTerm.toLowerCase();
     return importLogs.filter(log =>
-      log.fileName.toLowerCase().includes(term) ||
-      log.userName.toLowerCase().includes(term)
+      (log.fileName || '').toLowerCase().includes(term) ||
+      (log.userName || '').toLowerCase().includes(term)
     );
   }, [importLogs, searchTerm]);
 
@@ -63,9 +63,9 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
     return map;
   }, [deliveries]);
 
-  const totalCreated = importLogs.reduce((s, l) => s + l.created, 0);
-  const totalUpdated = importLogs.reduce((s, l) => s + l.updated, 0);
-  const totalErrors = importLogs.reduce((s, l) => s + l.errors, 0);
+  const totalCreated = importLogs.reduce((s, l) => s + (l.created || 0), 0);
+  const totalUpdated = importLogs.reduce((s, l) => s + (l.updated || 0), 0);
+  const totalErrors = importLogs.reduce((s, l) => s + (l.errors || 0), 0);
 
   const formatDateTime = (iso: string) => {
     try {
@@ -149,8 +149,8 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
               d.orderNo.toLowerCase().includes(fileQ) ||
               (d.sender || '').toLowerCase().includes(fileQ) ||
               (d.province || '').toLowerCase().includes(fileQ) ||
-              d.district.toLowerCase().includes(fileQ) ||
-              d.storeId.toLowerCase().includes(fileQ)
+              (d.district || '').toLowerCase().includes(fileQ) ||
+              (d.storeId || '').toLowerCase().includes(fileQ)
             )
             : allFileDeliveries;
 
@@ -180,7 +180,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ importLogs, delive
                       {log.errors} error
                     </span>
                   )}
-                  <span className="text-xs text-gray-400">{log.recordsProcessed.toLocaleString()} รายการ</span>
+                  <span className="text-xs text-gray-400">{(log.recordsProcessed || 0).toLocaleString()} รายการ</span>
                   <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-gray-400 text-xs ml-2`}></i>
                 </div>
               </button>
