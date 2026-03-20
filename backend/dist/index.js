@@ -44,7 +44,17 @@ function fixDoubleEncoded(str) {
     catch { /* ignore */ }
     return str;
 }
-console.log('[STARTUP] index.js v11 - 2026-03-20 document-import-logs active');
+function safeJsonParse(val) {
+    if (!val)
+        return undefined;
+    try {
+        return JSON.parse(val);
+    }
+    catch {
+        return undefined;
+    }
+}
+console.log('[STARTUP] index.js v12 - 2026-03-20 safe-json-parse active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -456,8 +466,8 @@ app.get('/api/import-logs', async (req, res) => {
             updated: r.updated,
             skipped: r.skipped,
             errors: r.errors,
-            errorDetails: r.error_details ? JSON.parse(r.error_details) : undefined,
-            skippedDetails: r.skipped_details ? JSON.parse(r.skipped_details) : undefined,
+            errorDetails: safeJsonParse(r.error_details),
+            skippedDetails: safeJsonParse(r.skipped_details),
         }));
         res.json(logs);
     }
