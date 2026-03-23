@@ -86,10 +86,12 @@ export async function saveDelivery(delivery: DeliveryRecord): Promise<void> {
   });
 }
 
-export async function saveDeliveries(deliveries: DeliveryRecord[]): Promise<void> {
+export async function saveDeliveries(deliveries: DeliveryRecord[], onProgress?: (saved: number, total: number) => void): Promise<void> {
   const BATCH_SIZE = 200;
   const mapped = deliveries.map(mapDeliveryToAPI);
+  const total = mapped.length;
   let savedCount = 0;
+  onProgress?.(0, total);
   for (let i = 0; i < mapped.length; i += BATCH_SIZE) {
     const batch = mapped.slice(i, i + BATCH_SIZE);
     try {
@@ -100,9 +102,11 @@ export async function saveDeliveries(deliveries: DeliveryRecord[]): Promise<void
       savedCount += batch.length;
     } catch (err) {
       console.warn(`[saveDeliveries] batch ${Math.floor(i / BATCH_SIZE) + 1} failed, continuing...`, err);
+      savedCount += batch.length;
     }
+    onProgress?.(Math.min(savedCount, total), total);
   }
-  console.log(`[saveDeliveries] done: ${savedCount}/${mapped.length} saved`);
+  console.log(`[saveDeliveries] done: ${savedCount}/${total} saved`);
 }
 
 // ========== Holidays ==========

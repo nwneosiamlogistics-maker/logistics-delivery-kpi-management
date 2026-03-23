@@ -11,6 +11,7 @@ interface ImportProps {
   currentUser: User;
   isDataLoaded?: boolean;
   storeMappings?: StoreMapping[];
+  nasSaveProgress?: { saved: number; total: number } | null;
 }
 
 export const Import: React.FC<ImportProps> = ({
@@ -21,7 +22,8 @@ export const Import: React.FC<ImportProps> = ({
   storeClosures,
   currentUser,
   isDataLoaded = true,
-  storeMappings = []
+  storeMappings = [],
+  nasSaveProgress = null
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [importResults, setImportResults] = useState<Array<{ fileName: string; result: ImportResult; error?: string }>>([]);
@@ -420,22 +422,40 @@ export const Import: React.FC<ImportProps> = ({
             </div>
           )}
 
-          {/* Progress indicator */}
+          {/* Phase 1: Parse progress */}
           {isUploading && totalFiles > 0 && (
-            <div className="glass-panel rounded-2xl p-6">
-              <div className="flex items-center gap-4">
-                <i className="fas fa-spinner fa-spin text-2xl text-green-500"></i>
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900">กำลังประมวลผล...</p>
-                  <p className="text-sm text-gray-500">ไฟล์ที่ {processedCount} / {totalFiles}</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all" 
-                      style={{ width: `${(processedCount / totalFiles) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
+            <div className="glass-panel rounded-2xl p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <i className="fas fa-spinner fa-spin text-green-500"></i>
+                <p className="font-bold text-gray-900">ขั้นตอนที่ 1 — ประมวลผลไฟล์</p>
+                <span className="ml-auto text-sm font-bold text-green-600">{Math.round((processedCount / totalFiles) * 100)}%</span>
               </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${(processedCount / totalFiles) * 100}%` }}></div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">ไฟล์ที่ {processedCount} / {totalFiles}</p>
+            </div>
+          )}
+
+          {/* Phase 2: NAS save progress */}
+          {nasSaveProgress && nasSaveProgress.total > 0 && (
+            <div className="glass-panel rounded-2xl p-5 border border-blue-100">
+              <div className="flex items-center gap-3 mb-2">
+                <i className="fas fa-cloud-upload-alt text-blue-500"></i>
+                <p className="font-bold text-gray-900">ขั้นตอนที่ 2 — บันทึกข้อมูลไปยัง NAS</p>
+                <span className="ml-auto text-sm font-bold text-blue-600">
+                  {Math.round((nasSaveProgress.saved / nasSaveProgress.total) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-3 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300"
+                  style={{ width: `${(nasSaveProgress.saved / nasSaveProgress.total) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                บันทึกแล้ว {nasSaveProgress.saved.toLocaleString()} / {nasSaveProgress.total.toLocaleString()} รายการ
+              </p>
             </div>
           )}
 

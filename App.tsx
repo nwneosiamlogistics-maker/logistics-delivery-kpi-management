@@ -58,6 +58,7 @@ const App: React.FC = () => {
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [documentImportLogs, setDocumentImportLogs] = useState<DocumentImportLog[]>([]);
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
+  const [nasSaveProgress, setNasSaveProgress] = useState<{ saved: number; total: number } | null>(null);
   const [currentUser] = useState<User>(DEFAULT_USER);
 
   const handleImportComplete = useCallback((newRecords: DeliveryRecord[], importLog: ImportLog) => {
@@ -87,9 +88,13 @@ const App: React.FC = () => {
     });
 
     // Save only new/updated records to NAS (not all deliveries)
-    api.saveDeliveries(sanitizedNew)
+    setNasSaveProgress({ saved: 0, total: sanitizedNew.length });
+    api.saveDeliveries(sanitizedNew, (saved, total) => {
+      setNasSaveProgress({ saved, total });
+    })
       .then(() => {
         console.log(`[NAS API] Saved ${sanitizedNew.length} imported deliveries`);
+        setNasSaveProgress(null);
         // Reload from DB after all batches saved — ensures refresh shows correct data
         setTimeout(() => {
           api.getDeliveries()
@@ -97,7 +102,10 @@ const App: React.FC = () => {
             .catch(err => console.warn('[NAS API] post-save reload error:', err));
         }, 500);
       })
-      .catch(err => console.error('[NAS API] save deliveries error:', err));
+      .catch(err => {
+        console.error('[NAS API] save deliveries error:', err);
+        setNasSaveProgress(null);
+      });
 
     syncWeeklyDeliveriesToReturnNeosiam(sanitizedNew, kpiConfigs);
 
@@ -405,6 +413,7 @@ const App: React.FC = () => {
             currentUser={currentUser}
             isDataLoaded={deliveriesLoaded}
             storeMappings={storeMappings}
+            nasSaveProgress={nasSaveProgress}
           />
         );
       case 'exceptions':
