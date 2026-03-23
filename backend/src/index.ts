@@ -46,7 +46,7 @@ function safeJsonParse(val: any): any {
   try { return JSON.parse(val); } catch { return undefined; }
 }
 
-console.log('[STARTUP] index.js v12 - 2026-03-20 safe-json-parse active');
+console.log('[STARTUP] index.js v13 - 2026-03-23 deliveries-90day-filter active');
 
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
@@ -141,7 +141,13 @@ function normalizeDatetime(value: any): string | null {
 // ============ DELIVERIES ============
 app.get('/api/deliveries', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM deliveries ORDER BY updated_at DESC');
+    const all = req.query.all === 'true';
+    const days = parseInt(String(req.query.days || '90'), 10);
+    const sql = all
+      ? 'SELECT * FROM deliveries ORDER BY updated_at DESC'
+      : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) OR actual_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY updated_at DESC`;
+    const rows = await query(sql);
+    console.log(`[deliveries] loaded ${rows.length} rows (all=${all}, days=${days})`);
     // MariaDB DECIMAL returns strings — convert to numbers for frontend
     // Fix double-encoded Thai text in delivery_status
     const sanitized = rows.map((r: any) => ({

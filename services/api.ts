@@ -74,8 +74,13 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 // ========== Deliveries ==========
-export async function getDeliveries(): Promise<DeliveryRecord[]> {
-  const data = await fetchAPI<any[]>('/api/deliveries');
+export async function getDeliveries(days = 90): Promise<DeliveryRecord[]> {
+  const data = await fetchAPI<any[]>(`/api/deliveries?days=${days}`);
+  return data.map(mapDeliveryFromAPI);
+}
+
+export async function getAllDeliveries(): Promise<DeliveryRecord[]> {
+  const data = await fetchAPI<any[]>('/api/deliveries?all=true');
   return data.map(mapDeliveryFromAPI);
 }
 
