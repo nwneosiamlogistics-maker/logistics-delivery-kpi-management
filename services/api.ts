@@ -88,7 +88,7 @@ export async function saveDelivery(delivery: DeliveryRecord): Promise<void> {
 
 export async function saveDeliveries(deliveries: DeliveryRecord[], onProgress?: (saved: number, total: number) => void): Promise<void> {
   const BATCH_SIZE = 500;
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 2;
   const mapped = deliveries.map(mapDeliveryToAPI);
   const total = mapped.length;
   let savedCount = 0;
