@@ -79,6 +79,8 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
   const [returnedProvince, setReturnedProvince] = useState('');
   const [returnedDistrict, setReturnedDistrict] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgressLabel, setUploadProgressLabel] = useState('');
   const itemsPerPage = 50;
 
   // Build district → branch map
@@ -109,6 +111,8 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setIsExtracting(true);
+    setUploadProgress(0);
+    setUploadProgressLabel('กำลังเตรียมไฟล์...');
     setExtractedDocs([]);
     setUploadedFiles([]);
     setImportSuccess(null);
@@ -120,10 +124,21 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
     let latestDate: string | null = null;
     
     try {
+      // Pass 1: count total pages across all files
+      const pdfDocs: any[] = [];
+      let totalPages = 0;
+      for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
+        const arrayBuffer = await files[fileIdx].arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        pdfDocs.push(pdf);
+        totalPages += pdf.numPages;
+      }
+      
+      // Pass 2: process each page with progress
+      let processedPages = 0;
       for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
         const file = files[fileIdx];
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = pdfDocs[fileIdx];
         const orderNos: string[] = [];
         let extractedDate: string | null = null;
         
@@ -131,12 +146,15 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
           const text = textContent.items.map((item: any) => item.str).join(' ');
-          // Extract date from first page header
           if (i === 1 && !extractedDate) {
             extractedDate = parsePdfDate(text);
           }
           const matches = text.match(/\*?B\d{10}(\/\d+)?/g);
           if (matches) orderNos.push(...matches);
+          processedPages++;
+          const pct = Math.round((processedPages / totalPages) * 100);
+          setUploadProgress(pct);
+          setUploadProgressLabel(`ไฟล์ ${fileIdx + 1}/${files.length} · หน้า ${i}/${pdf.numPages} (${pct}%)`);
         }
         
         // Track file info
@@ -362,6 +380,24 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
             <i className="fas fa-keyboard"></i>พิมพ์เลขที่เอง
           </button>
         </div>
+
+        {isExtracting && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-teal-700 font-medium flex items-center gap-2">
+                <i className="fas fa-file-pdf text-red-400"></i>
+                {uploadProgressLabel}
+              </span>
+              <span className="text-sm font-bold text-teal-700">{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full bg-gradient-to-r from-teal-400 to-teal-600 transition-all duration-200"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {showManualInput && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
