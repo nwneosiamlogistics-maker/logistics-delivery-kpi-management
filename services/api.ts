@@ -87,24 +87,36 @@ export async function saveDelivery(delivery: DeliveryRecord): Promise<void> {
 }
 
 export async function saveDeliveries(deliveries: DeliveryRecord[], onProgress?: (saved: number, total: number) => void): Promise<void> {
-  const BATCH_SIZE = 200;
+  const BATCH_SIZE = 500;
+  const CONCURRENCY = 3;
   const mapped = deliveries.map(mapDeliveryToAPI);
   const total = mapped.length;
   let savedCount = 0;
   onProgress?.(0, total);
+
+  // Split into batches
+  const batches: any[][] = [];
   for (let i = 0; i < mapped.length; i += BATCH_SIZE) {
-    const batch = mapped.slice(i, i + BATCH_SIZE);
-    try {
-      await fetchAPI('/api/deliveries/bulk', {
-        method: 'POST',
-        body: JSON.stringify(batch),
-      });
-      savedCount += batch.length;
-    } catch (err) {
-      console.warn(`[saveDeliveries] batch ${Math.floor(i / BATCH_SIZE) + 1} failed, continuing...`, err);
-      savedCount += batch.length;
-    }
-    onProgress?.(Math.min(savedCount, total), total);
+    batches.push(mapped.slice(i, i + BATCH_SIZE));
+  }
+
+  // Process in parallel groups of CONCURRENCY
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const group = batches.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      group.map(async (batch, idx) => {
+        try {
+          await fetchAPI('/api/deliveries/bulk', {
+            method: 'POST',
+            body: JSON.stringify(batch),
+          });
+        } catch (err) {
+          console.warn(`[saveDeliveries] batch ${i + idx + 1}/${batches.length} failed, continuing...`, err);
+        }
+        savedCount += batch.length;
+        onProgress?.(Math.min(savedCount, total), total);
+      })
+    );
   }
   console.log(`[saveDeliveries] done: ${savedCount}/${total} saved`);
 }
