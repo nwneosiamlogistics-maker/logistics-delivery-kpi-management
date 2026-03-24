@@ -54,7 +54,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v15 - 2026-03-24 db-index+query-optimize active');
+console.log('[STARTUP] index.js v15b - 2026-03-24 use-updated_at-index active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -173,7 +173,7 @@ app.get('/api/deliveries', async (req, res) => {
         const days = parseInt(String(req.query.days || '90'), 10);
         const sql = all
             ? 'SELECT * FROM deliveries ORDER BY updated_at DESC'
-            : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY plan_date DESC`;
+            : `SELECT * FROM deliveries WHERE updated_at >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY updated_at DESC`;
         const rows = await (0, db_1.query)(sql);
         console.log(`[deliveries] loaded ${rows.length} rows (all=${all}, days=${days})`);
         // MariaDB DECIMAL returns strings — convert to numbers for frontend
