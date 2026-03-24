@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
   const [nasSaveProgress, setNasSaveProgress] = useState<{ saved: number; total: number } | null>(null);
   const [deliveriesIsPartial, setDeliveriesIsPartial] = useState(false);
+  const [deliveriesLoadedDays, setDeliveriesLoadedDays] = useState(30);
   const [isLoadingAllDeliveries, setIsLoadingAllDeliveries] = useState(false);
   const [currentUser] = useState<User>(DEFAULT_USER);
 
@@ -265,7 +266,7 @@ const App: React.FC = () => {
     try {
       console.log('[NAS API] Loading data from NAS...');
       const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData, documentImportLogsData] = await Promise.all([
-        api.getDeliveries().catch(() => []),
+        api.getDeliveries(30).catch(() => []),
         api.getHolidays().catch(() => HOLIDAYS),
         api.getKpiConfigs().catch(() => KPI_CONFIGS),
         api.getDelayReasons().catch(() => DELAY_REASONS),
@@ -316,6 +317,7 @@ const App: React.FC = () => {
       
       if (deliveriesData.length > 0 && !dataLoadedFromNAS.current) {
         setDeliveriesIsPartial(true);
+        setDeliveriesLoadedDays(30);
       }
       
       dataLoadedFromNAS.current = true;
@@ -610,26 +612,41 @@ const App: React.FC = () => {
 
       <main className={`flex-1 pt-16 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
         {deliveriesIsPartial && !isLoadingAllDeliveries && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-3 text-sm">
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-3 text-sm flex-wrap">
             <i className="fas fa-clock text-amber-500"></i>
-            <span className="text-amber-800">แสดงข้อมูล <strong>90 วันล่าสุด</strong> ({deliveries.length.toLocaleString()} รายการ)</span>
-            <button
-              onClick={async () => {
-                setIsLoadingAllDeliveries(true);
-                try {
-                  const all = await api.getAllDeliveries();
-                  setDeliveries(all);
-                  setDeliveriesIsPartial(false);
-                } catch (err) {
-                  console.warn('[NAS API] load all deliveries error:', err);
-                } finally {
-                  setIsLoadingAllDeliveries(false);
-                }
-              }}
-              className="ml-auto px-3 py-1 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 transition-colors"
-            >
-              <i className="fas fa-database mr-1"></i>โหลดข้อมูลทั้งหมด
-            </button>
+            <span className="text-amber-800">แสดงข้อมูล <strong>{deliveriesLoadedDays} วันล่าสุด</strong> ({deliveries.length.toLocaleString()} รายการ)</span>
+            <div className="ml-auto flex gap-1">
+              {[60, 90].map(d => (
+                <button key={d} onClick={async () => {
+                  setIsLoadingAllDeliveries(true);
+                  try {
+                    const rows = await api.getDeliveries(d);
+                    setDeliveries(rows);
+                    setDeliveriesLoadedDays(d);
+                  } catch (err) { console.warn(err); }
+                  finally { setIsLoadingAllDeliveries(false); }
+                }} className="px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium hover:bg-amber-200 transition-colors">
+                  {d} วัน
+                </button>
+              ))}
+              <button
+                onClick={async () => {
+                  setIsLoadingAllDeliveries(true);
+                  try {
+                    const all = await api.getAllDeliveries();
+                    setDeliveries(all);
+                    setDeliveriesIsPartial(false);
+                  } catch (err) {
+                    console.warn('[NAS API] load all deliveries error:', err);
+                  } finally {
+                    setIsLoadingAllDeliveries(false);
+                  }
+                }}
+                className="px-2 py-1 bg-amber-500 text-white rounded text-xs font-medium hover:bg-amber-600 transition-colors"
+              >
+                <i className="fas fa-database mr-1"></i>ทั้งหมด
+              </button>
+            </div>
           </div>
         )}
         {isLoadingAllDeliveries && (
