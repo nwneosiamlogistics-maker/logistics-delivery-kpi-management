@@ -54,7 +54,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v13 - 2026-03-23 deliveries-90day-filter active');
+console.log('[STARTUP] index.js v14 - 2026-03-24 server-side-import active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -281,6 +281,63 @@ app.post('/api/deliveries/bulk', async (req, res) => {
     catch (error) {
         console.error('Error bulk saving deliveries:', error);
         res.status(500).json({ error: 'Failed to bulk save deliveries' });
+    }
+});
+app.post('/api/deliveries/import', async (req, res) => {
+    try {
+        const deliveries = req.body;
+        if (!Array.isArray(deliveries) || deliveries.length === 0) {
+            return res.status(400).json({ error: 'Expected non-empty array of deliveries' });
+        }
+        console.log(`[IMPORT] Starting server-side import: ${deliveries.length} records`);
+        let saved = 0, errors = 0;
+        for (const d of deliveries) {
+            try {
+                const planDate = normalizeDate(d.planDate);
+                const openDate = normalizeDate(d.openDate);
+                const actualDate = normalizeDate(d.actualDate);
+                const actualDatetime = normalizeDatetime(d.actualDatetime);
+                const documentReturnedDate = normalizeDate(d.documentReturnedDate);
+                const documentReturnBillDate = normalizeDate(d.documentReturnBillDate);
+                const updatedAt = normalizeDatetime(d.updatedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' ');
+                await (0, db_1.execute)(`
+          INSERT INTO deliveries (
+            order_no, district, store_id, plan_date, open_date, actual_date, qty, sender, province,
+            import_file_id, delivery_status, actual_datetime, product_details, kpi_status, delay_days,
+            reason_required, reason_status, delay_reason, updated_at, weekday, document_returned,
+            document_returned_date, document_return_bill_date, document_return_source, manual_plan_date, manual_actual_date
+          ) VALUES (?, ?, ?, ${sqlDate(planDate)}, ${sqlDate(openDate)}, ${sqlDate(actualDate)}, ?, ?, ?, ?, ?, ${sqlDatetime(actualDatetime)}, ?, ?, ?, ?, ?, ?, ${sqlDatetime(updatedAt)}, ?, ?, ${sqlDate(documentReturnedDate)}, ${sqlDate(documentReturnBillDate)}, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            district = VALUES(district), store_id = VALUES(store_id), plan_date = VALUES(plan_date),
+            open_date = VALUES(open_date), actual_date = VALUES(actual_date), qty = VALUES(qty),
+            sender = VALUES(sender), province = VALUES(province), import_file_id = VALUES(import_file_id),
+            delivery_status = VALUES(delivery_status), actual_datetime = VALUES(actual_datetime),
+            product_details = VALUES(product_details), kpi_status = VALUES(kpi_status), delay_days = VALUES(delay_days),
+            reason_required = VALUES(reason_required), reason_status = VALUES(reason_status),
+            delay_reason = VALUES(delay_reason), updated_at = VALUES(updated_at), weekday = VALUES(weekday),
+            document_returned = VALUES(document_returned), document_returned_date = VALUES(document_returned_date),
+            document_return_bill_date = VALUES(document_return_bill_date), document_return_source = VALUES(document_return_source),
+            manual_plan_date = VALUES(manual_plan_date), manual_actual_date = VALUES(manual_actual_date)
+        `, [
+                    d.orderNo, d.district, d.storeId, d.qty, d.sender, d.province,
+                    d.importFileId, d.deliveryStatus, d.productDetails, d.kpiStatus, d.delayDays,
+                    d.reasonRequired ? 1 : 0, d.reasonStatus, d.delayReason, d.weekday, d.documentReturned ? 1 : 0,
+                    d.documentReturnSource, d.manualPlanDate ? 1 : 0, d.manualActualDate ? 1 : 0
+                ]);
+                saved++;
+            }
+            catch (err) {
+                errors++;
+                if (errors <= 3)
+                    console.warn(`[IMPORT] record error orderNo=${d.orderNo}:`, err);
+            }
+        }
+        console.log(`[IMPORT] Done: ${saved} saved, ${errors} errors / ${deliveries.length} total`);
+        res.json({ success: true, saved, errors, total: deliveries.length });
+    }
+    catch (error) {
+        console.error('[IMPORT] Fatal error:', error);
+        res.status(500).json({ error: 'Failed to import deliveries' });
     }
 });
 app.patch('/api/deliveries/:orderNo', async (req, res) => {

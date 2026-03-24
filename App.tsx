@@ -89,23 +89,23 @@ const App: React.FC = () => {
       return Array.from(existingMap.values());
     });
 
-    // Save only new/updated records to NAS (not all deliveries)
+    // Server-side import: send all records in ONE request (faster, handles concurrent users)
     setNasSaveProgress({ saved: 0, total: sanitizedNew.length });
-    api.saveDeliveries(sanitizedNew, (saved, total) => {
+    api.importDeliveries(sanitizedNew, (saved, total) => {
       setNasSaveProgress({ saved, total });
     })
-      .then(() => {
-        console.log(`[NAS API] Saved ${sanitizedNew.length} imported deliveries`);
+      .then((result) => {
+        console.log(`[NAS API] Server-side import done: ${result.saved} saved, ${result.errors} errors / ${result.total} total`);
         setNasSaveProgress(null);
-        // Reload from DB after all batches saved — ensures refresh shows correct data
+        // Reload from DB after import — ensures refresh shows correct data
         setTimeout(() => {
           api.getDeliveries()
             .then(rows => setDeliveries(rows))
-            .catch(err => console.warn('[NAS API] post-save reload error:', err));
+            .catch(err => console.warn('[NAS API] post-import reload error:', err));
         }, 500);
       })
       .catch(err => {
-        console.error('[NAS API] save deliveries error:', err);
+        console.error('[NAS API] server-side import error:', err);
         setNasSaveProgress(null);
       });
 

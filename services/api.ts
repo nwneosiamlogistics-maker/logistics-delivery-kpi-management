@@ -84,6 +84,20 @@ export async function getAllDeliveries(): Promise<DeliveryRecord[]> {
   return data.map(mapDeliveryFromAPI);
 }
 
+export async function importDeliveries(
+  deliveries: DeliveryRecord[],
+  onProgress?: (saved: number, total: number) => void
+): Promise<{ saved: number; errors: number; total: number }> {
+  const mapped = deliveries.map(mapDeliveryToAPI);
+  onProgress?.(0, mapped.length);
+  const result = await fetchAPI<{ saved: number; errors: number; total: number }>('/api/deliveries/import', {
+    method: 'POST',
+    body: JSON.stringify(mapped),
+  });
+  onProgress?.(result.saved, result.total);
+  return result;
+}
+
 export async function saveDelivery(delivery: DeliveryRecord): Promise<void> {
   await fetchAPI('/api/deliveries', {
     method: 'POST',
