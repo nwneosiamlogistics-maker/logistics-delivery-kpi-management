@@ -60,7 +60,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://neosiam.dscloud.bi
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       signal: controller.signal,

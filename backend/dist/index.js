@@ -6,7 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const zlib_1 = require("zlib");
+const util_1 = require("util");
 const db_1 = require("./db");
+const gzipAsync = (0, util_1.promisify)(zlib_1.gzip);
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -54,7 +57,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v15c - 2026-03-24 plan_date-index+fetch-timeout active');
+console.log('[STARTUP] index.js v15d - 2026-03-24 gzip-compression active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -176,15 +179,25 @@ app.get('/api/deliveries', async (req, res) => {
             : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY plan_date DESC`;
         const rows = await (0, db_1.query)(sql);
         console.log(`[deliveries] loaded ${rows.length} rows (all=${all}, days=${days})`);
-        // MariaDB DECIMAL returns strings — convert to numbers for frontend
-        // Fix double-encoded Thai text in delivery_status
         const sanitized = rows.map((r) => ({
             ...r,
             qty: r.qty !== null && r.qty !== undefined ? parseFloat(String(r.qty)) : 0,
             delay_days: r.delay_days !== null && r.delay_days !== undefined ? parseInt(String(r.delay_days), 10) : 0,
             delivery_status: fixDoubleEncoded(r.delivery_status),
         }));
-        res.json(sanitized);
+        const json = JSON.stringify(sanitized);
+        const acceptsGzip = String(req.headers['accept-encoding'] || '').includes('gzip');
+        if (acceptsGzip) {
+            const compressed = await gzipAsync(Buffer.from(json, 'utf-8'));
+            res.setHeader('Content-Encoding', 'gzip');
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Length', compressed.length);
+            res.end(compressed);
+        }
+        else {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(json);
+        }
     }
     catch (error) {
         console.error('Error fetching deliveries:', error);
