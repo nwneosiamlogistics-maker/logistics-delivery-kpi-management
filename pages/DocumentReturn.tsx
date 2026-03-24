@@ -2,8 +2,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DeliveryRecord } from '../types';
 import { formatQty } from '../utils/formatters';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 interface DocumentReturnProps {
   deliveries: DeliveryRecord[];
@@ -110,14 +111,18 @@ export const DocumentReturn: React.FC<DocumentReturnProps> = ({ deliveries, onUp
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pageTexts = await Promise.all(
+        Array.from({ length: pdf.numPages }, async (_, i) => {
+          const page = await pdf.getPage(i + 1);
+          const textContent = await page.getTextContent();
+          return textContent.items.map((item: any) => item.str).join(' ');
+        })
+      );
       const orderNos: string[] = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const text = textContent.items.map((item: any) => item.str).join(' ');
+      pageTexts.forEach(text => {
         const matches = text.match(/B\d{10}/g);
         if (matches) orderNos.push(...matches);
-      }
+      });
       const uniqueOrderNos = [...new Set(orderNos)];
       const deliveryOrderNos = new Set(deliveries.map(d => d.orderNo));
       const extracted: ExtractedDoc[] = uniqueOrderNos.map(orderNo => ({

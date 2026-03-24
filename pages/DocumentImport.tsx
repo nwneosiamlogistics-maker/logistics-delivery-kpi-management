@@ -2,8 +2,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DeliveryRecord, KpiConfig, DocumentImportLog } from '../types';
 import { formatQty } from '../utils/formatters';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 interface DocumentImportProps {
   deliveries: DeliveryRecord[];
@@ -124,17 +125,17 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
     let latestDate: string | null = null;
     
     try {
-      // Pass 1: count total pages across all files
-      const pdfDocs: any[] = [];
-      let totalPages = 0;
-      for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
-        const arrayBuffer = await files[fileIdx].arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        pdfDocs.push(pdf);
-        totalPages += pdf.numPages;
-      }
+      // Load all PDFs in parallel
+      setUploadProgressLabel('กำลังโหลดไฟล์ PDF...');
+      const pdfDocs = await Promise.all(
+        Array.from(files).map(async file => {
+          const arrayBuffer = await file.arrayBuffer();
+          return pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        })
+      );
+      const totalPages = pdfDocs.reduce((sum, pdf) => sum + pdf.numPages, 0);
       
-      // Pass 2: process each page with progress
+      // Process each file (parallel pages within each file)
       let processedPages = 0;
       for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
         const file = files[fileIdx];
@@ -142,20 +143,23 @@ export const DocumentImport: React.FC<DocumentImportProps> = ({ deliveries, onUp
         const orderNos: string[] = [];
         let extractedDate: string | null = null;
         
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          const text = textContent.items.map((item: any) => item.str).join(' ');
-          if (i === 1 && !extractedDate) {
-            extractedDate = parsePdfDate(text);
-          }
+        setUploadProgressLabel(`ไฟล์ ${fileIdx + 1}/${files.length} · ประมวลผล ${pdf.numPages} หน้า...`);
+        const pageTexts = await Promise.all(
+          Array.from({ length: pdf.numPages }, async (_, i) => {
+            const page = await pdf.getPage(i + 1);
+            const textContent = await page.getTextContent();
+            return textContent.items.map((item: any) => item.str).join(' ');
+          })
+        );
+        pageTexts.forEach((text, i) => {
+          if (i === 0) extractedDate = parsePdfDate(text);
           const matches = text.match(/\*?B\d{10}(\/\d+)?/g);
           if (matches) orderNos.push(...matches);
-          processedPages++;
-          const pct = Math.round((processedPages / totalPages) * 100);
-          setUploadProgress(pct);
-          setUploadProgressLabel(`ไฟล์ ${fileIdx + 1}/${files.length} · หน้า ${i}/${pdf.numPages} (${pct}%)`);
-        }
+        });
+        processedPages += pdf.numPages;
+        const pct = Math.round((processedPages / totalPages) * 100);
+        setUploadProgress(pct);
+        setUploadProgressLabel(`ไฟล์ ${fileIdx + 1}/${files.length} เสร็จแล้ว (${pct}%)`);
         
         // Track file info
         const uniqueFileOrderNos = [...new Set(orderNos)];
