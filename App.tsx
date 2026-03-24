@@ -60,7 +60,7 @@ const App: React.FC = () => {
   const [reasonAuditLogs, setReasonAuditLogs] = useState<ReasonAuditLog[]>([]);
   const [nasSaveProgress, setNasSaveProgress] = useState<{ saved: number; total: number } | null>(null);
   const [deliveriesIsPartial, setDeliveriesIsPartial] = useState(false);
-  const [deliveriesLoadedDays, setDeliveriesLoadedDays] = useState(30);
+  const [deliveriesLoadedDays, setDeliveriesLoadedDays] = useState(90);
   const [isLoadingAllDeliveries, setIsLoadingAllDeliveries] = useState(false);
   const [currentUser] = useState<User>(DEFAULT_USER);
 
@@ -266,7 +266,7 @@ const App: React.FC = () => {
     try {
       console.log('[NAS API] Loading data from NAS...');
       const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData, documentImportLogsData] = await Promise.all([
-        api.getDeliveries(30).catch(() => []),
+        api.getDeliveries(90).catch(() => []),
         api.getHolidays().catch(() => HOLIDAYS),
         api.getKpiConfigs().catch(() => KPI_CONFIGS),
         api.getDelayReasons().catch(() => DELAY_REASONS),
@@ -317,7 +317,7 @@ const App: React.FC = () => {
       
       if (deliveriesData.length > 0 && !dataLoadedFromNAS.current) {
         setDeliveriesIsPartial(true);
-        setDeliveriesLoadedDays(30);
+        setDeliveriesLoadedDays(90);
       }
       
       dataLoadedFromNAS.current = true;
@@ -616,7 +616,7 @@ const App: React.FC = () => {
             <i className="fas fa-clock text-amber-500"></i>
             <span className="text-amber-800">แสดงข้อมูล <strong>{deliveriesLoadedDays} วันล่าสุด</strong> ({deliveries.length.toLocaleString()} รายการ)</span>
             <div className="ml-auto flex gap-1">
-              {[60, 90].map(d => (
+              {[180, 365].map(d => (
                 <button key={d} onClick={async () => {
                   setIsLoadingAllDeliveries(true);
                   try {

@@ -59,18 +59,23 @@ function fixDoubleEncoded(str: string | null | undefined): string {
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://neosiam.dscloud.biz:5001';
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
-  });
-  
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-  
-  return response.json();
 }
 
 // ========== Deliveries ==========
