@@ -57,7 +57,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v15d - 2026-03-24 gzip-compression active');
+console.log('[STARTUP] index.js v15f - 2026-03-24 always-gzip active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -173,7 +173,7 @@ function normalizeDatetime(value) {
 app.get('/api/deliveries', async (req, res) => {
     try {
         const all = req.query.all === 'true';
-        const days = parseInt(String(req.query.days || '90'), 10);
+        const days = parseInt(String(req.query.days || '30'), 10);
         const sql = all
             ? 'SELECT * FROM deliveries ORDER BY plan_date DESC'
             : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY plan_date DESC`;
@@ -186,19 +186,13 @@ app.get('/api/deliveries', async (req, res) => {
             delivery_status: fixDoubleEncoded(r.delivery_status),
         }));
         const json = JSON.stringify(sanitized);
-        const acceptsGzip = String(req.headers['accept-encoding'] || '').includes('gzip');
-        if (acceptsGzip) {
-            const compressed = await gzipAsync(Buffer.from(json, 'utf-8'));
-            res.removeHeader('Content-Length');
-            res.setHeader('Content-Encoding', 'gzip');
-            res.setHeader('Content-Type', 'application/json');
-            console.log(`[deliveries] gzip ${Math.round(json.length / 1024)}KB -> ${Math.round(compressed.length / 1024)}KB`);
-            res.end(compressed);
-        }
-        else {
-            res.setHeader('Content-Type', 'application/json');
-            res.end(json);
-        }
+        const compressed = await gzipAsync(Buffer.from(json, 'utf-8'));
+        console.log(`[deliveries] gzip ${Math.round(json.length / 1024)}KB -> ${Math.round(compressed.length / 1024)}KB (${rows.length} rows)`);
+        res.removeHeader('Content-Length');
+        res.setHeader('Content-Encoding', 'gzip');
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Vary', 'Accept-Encoding');
+        res.end(compressed);
     }
     catch (error) {
         console.error('Error fetching deliveries:', error);
