@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DeliveryRecord } from '../types';
 import { formatQty } from '../utils/formatters';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 

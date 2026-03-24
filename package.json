@@ -11,7 +11,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "firebase": "^11.1.0",
-    "pdfjs-dist": "^5.5.207",
+    "pdfjs-dist": "4.10.38",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0",
