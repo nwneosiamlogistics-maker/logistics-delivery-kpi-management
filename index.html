@@ -24,6 +24,11 @@
 
 <body class="bg-gray-50 text-gray-900">
   <div id="root"></div>
+  <script>
+    if (typeof Promise.try !== 'function') {
+      Promise.try = function(fn) { return new Promise(function(resolve) { resolve(fn()); }); };
+    }
+  </script>
   <script type="module" src="/index.tsx"></script>
 </body>
 
