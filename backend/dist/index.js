@@ -54,7 +54,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v14 - 2026-03-24 server-side-import active');
+console.log('[STARTUP] index.js v15 - 2026-03-24 db-index+query-optimize active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -86,6 +86,20 @@ console.log('[STARTUP] index.js v14 - 2026-03-24 server-side-import active');
     }
     catch (e) {
         console.warn('[MIGRATION] import_logs create skipped:', e?.message);
+    }
+    try {
+        await (0, db_1.execute)('CREATE INDEX IF NOT EXISTS idx_deliveries_plan_date ON deliveries(plan_date)');
+        console.log('[MIGRATION] index idx_deliveries_plan_date ready');
+    }
+    catch (e) {
+        console.warn('[MIGRATION] index plan_date skipped:', e?.message);
+    }
+    try {
+        await (0, db_1.execute)('CREATE INDEX IF NOT EXISTS idx_deliveries_updated_at ON deliveries(updated_at)');
+        console.log('[MIGRATION] index idx_deliveries_updated_at ready');
+    }
+    catch (e) {
+        console.warn('[MIGRATION] index updated_at skipped:', e?.message);
     }
     try {
         await (0, db_1.execute)(`CREATE TABLE IF NOT EXISTS document_import_logs (
@@ -159,7 +173,7 @@ app.get('/api/deliveries', async (req, res) => {
         const days = parseInt(String(req.query.days || '90'), 10);
         const sql = all
             ? 'SELECT * FROM deliveries ORDER BY updated_at DESC'
-            : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) OR actual_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY updated_at DESC`;
+            : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY plan_date DESC`;
         const rows = await (0, db_1.query)(sql);
         console.log(`[deliveries] loaded ${rows.length} rows (all=${all}, days=${days})`);
         // MariaDB DECIMAL returns strings — convert to numbers for frontend
