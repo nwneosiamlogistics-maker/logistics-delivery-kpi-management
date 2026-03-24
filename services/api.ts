@@ -79,14 +79,32 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 // ========== Deliveries ==========
+async function fetchDeliveriesPages(params: string): Promise<DeliveryRecord[]> {
+  const PAGE_SIZE = 2000;
+  const CONCURRENCY = 3;
+  const { count } = await fetchAPI<{ count: number }>(`/api/deliveries/count?${params}`);
+  if (count === 0) return [];
+  const totalPages = Math.ceil(count / PAGE_SIZE);
+  const allRows: any[] = [];
+  for (let i = 0; i < totalPages; i += CONCURRENCY) {
+    const chunk = Array.from(
+      { length: Math.min(CONCURRENCY, totalPages - i) },
+      (_, j) => i + j + 1
+    );
+    const results = await Promise.all(
+      chunk.map(page => fetchAPI<any[]>(`/api/deliveries?${params}&page=${page}&limit=${PAGE_SIZE}`))
+    );
+    results.forEach(rows => allRows.push(...rows));
+  }
+  return allRows.map(mapDeliveryFromAPI);
+}
+
 export async function getDeliveries(days = 90): Promise<DeliveryRecord[]> {
-  const data = await fetchAPI<any[]>(`/api/deliveries?days=${days}`);
-  return data.map(mapDeliveryFromAPI);
+  return fetchDeliveriesPages(`days=${days}`);
 }
 
 export async function getAllDeliveries(): Promise<DeliveryRecord[]> {
-  const data = await fetchAPI<any[]>('/api/deliveries?all=true');
-  return data.map(mapDeliveryFromAPI);
+  return fetchDeliveriesPages('all=true');
 }
 
 export async function importDeliveries(

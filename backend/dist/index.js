@@ -57,7 +57,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v15h - 2026-03-24 res-json active');
+console.log('[STARTUP] index.js v15i - 2026-03-24 pagination active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -170,24 +170,39 @@ function normalizeDatetime(value) {
     return trimmed;
 }
 // ============ DELIVERIES ============
-app.get('/api/deliveries', async (req, res) => {
+app.get('/api/deliveries/count', async (req, res) => {
     try {
         const all = req.query.all === 'true';
         const days = parseInt(String(req.query.days || '30'), 10);
         const sql = all
-            ? 'SELECT * FROM deliveries ORDER BY plan_date DESC'
-            : `SELECT * FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY) ORDER BY plan_date DESC`;
+            ? 'SELECT COUNT(*) as cnt FROM deliveries'
+            : `SELECT COUNT(*) as cnt FROM deliveries WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY)`;
         const rows = await (0, db_1.query)(sql);
-        console.log(`[deliveries] loaded ${rows.length} rows (all=${all}, days=${days})`);
+        res.json({ count: Number(rows[0].cnt) });
+    }
+    catch (error) {
+        console.error('Error counting deliveries:', error);
+        res.status(500).json({ error: 'Failed to count deliveries' });
+    }
+});
+app.get('/api/deliveries', async (req, res) => {
+    try {
+        const all = req.query.all === 'true';
+        const days = parseInt(String(req.query.days || '30'), 10);
+        const page = parseInt(String(req.query.page || '1'), 10);
+        const limit = parseInt(String(req.query.limit || '2000'), 10);
+        const offset = (page - 1) * limit;
+        const baseWhere = all ? '' : `WHERE plan_date >= DATE_SUB(NOW(), INTERVAL ${days} DAY)`;
+        const sql = `SELECT * FROM deliveries ${baseWhere} ORDER BY plan_date DESC LIMIT ${limit} OFFSET ${offset}`;
+        const rows = await (0, db_1.query)(sql);
+        console.log(`[deliveries] page=${page} limit=${limit} loaded=${rows.length} (all=${all},days=${days})`);
         const sanitized = rows.map((r) => ({
             ...r,
             qty: r.qty !== null && r.qty !== undefined ? parseFloat(String(r.qty)) : 0,
             delay_days: r.delay_days !== null && r.delay_days !== undefined ? parseInt(String(r.delay_days), 10) : 0,
             delivery_status: fixDoubleEncoded(r.delivery_status),
         }));
-        console.log(`[deliveries] sending response: ${sanitized.length} rows`);
         res.json(sanitized);
-        console.log(`[deliveries] response sent OK`);
     }
     catch (error) {
         console.error('Error fetching deliveries:', error);
