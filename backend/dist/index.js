@@ -57,7 +57,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v15f - 2026-03-24 always-gzip active');
+console.log('[STARTUP] index.js v15g - 2026-03-24 no-proxy-buffering active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -186,13 +186,10 @@ app.get('/api/deliveries', async (req, res) => {
             delivery_status: fixDoubleEncoded(r.delivery_status),
         }));
         const json = JSON.stringify(sanitized);
-        const compressed = await gzipAsync(Buffer.from(json, 'utf-8'));
-        console.log(`[deliveries] gzip ${Math.round(json.length / 1024)}KB -> ${Math.round(compressed.length / 1024)}KB (${rows.length} rows)`);
-        res.removeHeader('Content-Length');
-        res.setHeader('Content-Encoding', 'gzip');
+        console.log(`[deliveries] sending ${Math.round(json.length / 1024)}KB plain JSON`);
+        res.setHeader('X-Accel-Buffering', 'no');
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Vary', 'Accept-Encoding');
-        res.end(compressed);
+        res.end(json);
     }
     catch (error) {
         console.error('Error fetching deliveries:', error);
