@@ -54,6 +54,7 @@ const App: React.FC = () => {
   const [storeMappings, setStoreMappings] = useState<StoreMapping[]>([]);
   const [branchResources, setBranchResources] = useState<BranchResource[]>([]);
   const dataLoadedFromNAS = useRef(false);
+  const isLoadingFromNAS = useRef(false);
   const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [documentImportLogs, setDocumentImportLogs] = useState<DocumentImportLog[]>([]);
@@ -263,6 +264,8 @@ const App: React.FC = () => {
   }, [kpiConfigs, holidays, storeClosures]);
 
   const loadDataFromNAS = useCallback(async () => {
+    if (isLoadingFromNAS.current) return;
+    isLoadingFromNAS.current = true;
     try {
       console.log('[NAS API] Loading data from NAS...');
       const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData, documentImportLogsData] = await Promise.all([
@@ -325,6 +328,8 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('[NAS API] Error loading data:', error);
       setDeliveriesLoaded(true);
+    } finally {
+      isLoadingFromNAS.current = false;
     }
   }, []);
 

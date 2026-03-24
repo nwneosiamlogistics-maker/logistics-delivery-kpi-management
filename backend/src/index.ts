@@ -173,9 +173,10 @@ app.get('/api/deliveries', async (req, res) => {
     const acceptsGzip = String(req.headers['accept-encoding'] || '').includes('gzip');
     if (acceptsGzip) {
       const compressed = await gzipAsync(Buffer.from(json, 'utf-8'));
+      res.removeHeader('Content-Length');
       res.setHeader('Content-Encoding', 'gzip');
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Length', compressed.length);
+      console.log(`[deliveries] gzip ${Math.round(json.length/1024)}KB -> ${Math.round(compressed.length/1024)}KB`);
       res.end(compressed);
     } else {
       res.setHeader('Content-Type', 'application/json');
