@@ -57,7 +57,7 @@ function safeJsonParse(val) {
         return undefined;
     }
 }
-console.log('[STARTUP] index.js v15g - 2026-03-24 no-proxy-buffering active');
+console.log('[STARTUP] index.js v15h - 2026-03-24 res-json active');
 // Auto-migrate: expand store_id column + create import_logs table
 (async () => {
     try {
@@ -185,11 +185,9 @@ app.get('/api/deliveries', async (req, res) => {
             delay_days: r.delay_days !== null && r.delay_days !== undefined ? parseInt(String(r.delay_days), 10) : 0,
             delivery_status: fixDoubleEncoded(r.delivery_status),
         }));
-        const json = JSON.stringify(sanitized);
-        console.log(`[deliveries] sending ${Math.round(json.length / 1024)}KB plain JSON`);
-        res.setHeader('X-Accel-Buffering', 'no');
-        res.setHeader('Content-Type', 'application/json');
-        res.end(json);
+        console.log(`[deliveries] sending response: ${sanitized.length} rows`);
+        res.json(sanitized);
+        console.log(`[deliveries] response sent OK`);
     }
     catch (error) {
         console.error('Error fetching deliveries:', error);
