@@ -314,9 +314,7 @@ const App: React.FC = () => {
       if (importLogsData.length > 0) setImportLogs(importLogsData);
       if (documentImportLogsData.length > 0) setDocumentImportLogs(documentImportLogsData);
       
-      if (deliveriesData.length > 0) {
-        setDeliveries(deliveriesData);
-        setDeliveriesLoaded(true);
+      if (deliveriesData.length > 0 && !dataLoadedFromNAS.current) {
         setDeliveriesIsPartial(true);
       }
       
