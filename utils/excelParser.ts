@@ -144,6 +144,19 @@ function normalize(s: string): string {
     .replace(/[\s_-]/g, '');
 }
 
+export function normalizeSenderName(raw: string | undefined): string {
+  if (!raw) return '';
+  let s = String(raw).normalize('NFC').trim();
+  // collapse consecutive spaces/tabs → single space
+  s = s.replace(/[ \t]+/g, ' ');
+  // strip common Thai company prefix abbreviations
+  s = s.replace(/^บ\.\s*/i, '');
+  s = s.replace(/^บจก\.\s*/i, '');
+  s = s.replace(/^หจก\.\s*/i, '');
+  s = s.replace(/^บจ\.\s*/i, '');
+  return s.trim();
+}
+
 function mapHeader(header: string): string | null {
   const clean = normalize(header);
   if (!clean) return null;
@@ -433,7 +446,7 @@ export function parseExcelFile(file: ArrayBuffer, columnOverrides?: Record<strin
         return 0;
       })(),
       productDetails: m.productDetails ? String(m.productDetails).trim() : undefined,
-      sender: m.sender ? String(m.sender).trim() : undefined,
+      sender: m.sender ? normalizeSenderName(String(m.sender)) : undefined,
       province: m.province ? String(m.province).trim() : undefined,
       deliveryStatus: m.deliveryStatus ? String(m.deliveryStatus).trim() : undefined,
       // actualDatetime: parse ก่อนเก็บ — แปลง Excel serial เป็น ISO date เช่น "2026-02-11"
