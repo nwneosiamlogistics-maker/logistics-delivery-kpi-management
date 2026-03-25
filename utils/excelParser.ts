@@ -75,6 +75,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     'สถานะงาน', 'สถานะการส่ง', 'สถานะจัดส่ง', 'สถานะ delivery',
     'ผลการส่ง', 'ผลส่ง', 'ผล', 'delivery status', 'Delivery Status',
     'DELIVERY STATUS', 'STATUS', 'สถานะปัจจุบัน', 'สถานะสินค้า',
+    'ตีกลับ', 'ส่งคืน', 'returned', 'Return', 'RETURN',
   ],
   actualDatetime: [
     'actualDatetime', 'รายละเอียด', 'detail', 'Detail',
@@ -456,6 +457,7 @@ const STATUS_ORDER: Record<string, number> = {
   'รอกระจาย': 2,
   'กระจายสินค้า': 3,
   'ส่งเสร็จ': 4,
+  'ตีกลับ': 4,
 };
 
 function getStatusPriority(status: string | undefined): number {
@@ -523,6 +525,8 @@ export function processImport(
 
     const status = (row.deliveryStatus || '').trim();
     const isDelivered = status === 'ส่งเสร็จ';
+    const isReturned = status === 'ตีกลับ';
+    const isFinalState = isDelivered || isReturned;
 
     // Logic:
     // - วันที่ (openDate) → วันเปิดเอกสาร ใช้ fallback คำนวณ planDate
@@ -533,15 +537,15 @@ export function processImport(
     // For รอจัด/ขนส่ง: not delivered yet, skip KPI
     // ถ้าสถานะ "ส่งเสร็จ" และมี actualDatetime → ใช้ actualDatetime เป็น actualDate
     const parsedActualDatetime = row.actualDatetime ? parseDate(row.actualDatetime) : null;
-    const resolvedActualDate = row.actualDate || (isDelivered && parsedActualDatetime) || row.planDate;
+    const resolvedActualDate = row.actualDate || (isFinalState && parsedActualDatetime) || row.planDate;
 
     if (!resolvedActualDate) {
       result.errors.push({ row: index + 2, error: 'ไม่พบวันที่ส่งจริง', data: row });
       return;
     }
 
-    // For ส่งเสร็จ: use actualDatetime (รายละเอียด) as the KPI delivery date if available
-    const kpiActualDate = (isDelivered && parsedActualDatetime)
+    // For ส่งเสร็จ/ตีกลับ: use actualDatetime (รายละเอียด) as the KPI delivery date if available
+    const kpiActualDate = (isFinalState && parsedActualDatetime)
       ? parsedActualDatetime
       : resolvedActualDate;
 
@@ -553,7 +557,7 @@ export function processImport(
       const existingPriority = getStatusPriority(existing.deliveryStatus);
       const newPriority = getStatusPriority(status);
 
-      // ส่งเสร็จ is final — never overwrite status, but always recalculate KPI with latest dates
+      // ส่งเสร็จ / ตีกลับ is final — never overwrite status, but always recalculate KPI with latest dates
       if (existingPriority >= STATUS_ORDER['ส่งเสร็จ']) {
         const newOpenDate = row.openDate || existing.openDate;
         const patchedCfg = kpiConfigs.find(c =>
@@ -699,10 +703,15 @@ export function processImport(
 
     // KPI calculation logic:
     // - ส่งเสร็จ: calculate based on actual delivery date (with grace period)
+    // - ตีกลับ: calculate based on attempt date but force KPI = FAIL (delivery not successful)
     // - ยังไม่ส่งเสร็จ: strict calculation - exceeding planDate = fail immediately (no grace period)
     const kpi = (() => {
       if (isDelivered) {
         return calculateKpiStatus(kpiDeadline, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
+      }
+      if (isReturned) {
+        const base = calculateKpiStatus(kpiDeadline, kpiActualDate, row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
+        return { ...base, kpiStatus: KpiStatus.NOT_PASS, reasonRequired: true };
       }
       // For pending deliveries, use strict calculation (no grace period)
       const today = new Date();
@@ -710,11 +719,11 @@ export function processImport(
       return calculatePendingKpiStatus(kpiDeadline, today.toISOString().slice(0, 10), row.district, kpiConfigs, holidays, storeClosures, undefined, row.province);
     })();
 
-    // ถ้าสถานะไม่ใช่ 'ส่งเสร็จ' → ลบ actualDate ออก (ยังไม่ได้ส่งจริง)
-    const finalActualDate = isDelivered ? resolvedActualDate : '';
+    // ถ้าสถานะไม่ใช่ 'ส่งเสร็จ' หรือ 'ตีกลับ' → ลบ actualDate ออก (ยังไม่ได้ส่งจริง)
+    const finalActualDate = isFinalState ? resolvedActualDate : '';
     
     // Debug: ตรวจสอบ actualDate flow
-    if (isDelivered) {
+    if (isFinalState) {
       console.log(`[processImport] ${row.orderNo} actualDate flow:`, {
         'row.actualDate': row.actualDate,
         'row.actualDatetime': row.actualDatetime,
@@ -779,10 +788,10 @@ export function processImport(
       province: row.province,
       importFileId: importFileId || row.importFileId,
       deliveryStatus: (hasManualActualDate && existing?.deliveryStatus) || status || undefined,
-      actualDatetime: isDelivered ? row.actualDatetime : undefined, // ลบ datetime ด้วยถ้ายังไม่ส่งเสร็จ
+      actualDatetime: isFinalState ? row.actualDatetime : undefined, // ลบ datetime ด้วยถ้ายังไม่ใช่ final state
       productDetails: row.productDetails,
       ...useKpi,
-      weekday: isDelivered && (useActualDate || finalActualDate) ? getWeekday(useActualDate || finalActualDate) : '',
+      weekday: isFinalState && (useActualDate || finalActualDate) ? getWeekday(useActualDate || finalActualDate) : '',
       updatedAt: new Date().toISOString(),
       // คงค่า flag ไว้ถ้าเคยแก้ไขด้วยมือ
       manualPlanDate: existing?.manualPlanDate,

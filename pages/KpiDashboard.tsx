@@ -103,10 +103,10 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({ deliveries, kpiConfi
     return [...new Set(src.map(d => d.district).filter(Boolean))].sort();
   }, [deliveries, filterProvince]);
 
-  // แยกรายการล่าช้าเป็น 2 กลุ่ม: ส่งเสร็จแล้ว และ ยังไม่ส่ง
+  // แยกรายการล่าช้าเป็น 2 กลุ่ม: สำเร็จ/ตีกลับ (สถานะสุดท้าย) และ ยังไม่ส่ง
   const { deliveredDelayed, pendingDelayed } = useMemo(() => {
-    const delivered = filtered.filter(d => d.deliveryStatus === DeliveryStatus.DELIVERED);
-    const pending = filtered.filter(d => d.deliveryStatus !== DeliveryStatus.DELIVERED);
+    const delivered = filtered.filter(d => d.deliveryStatus === DeliveryStatus.DELIVERED || d.deliveryStatus === DeliveryStatus.RETURNED);
+    const pending = filtered.filter(d => d.deliveryStatus !== DeliveryStatus.DELIVERED && d.deliveryStatus !== DeliveryStatus.RETURNED);
     return {
       deliveredDelayed: delivered.sort((a, b) => b.delayDays - a.delayDays),
       pendingDelayed: pending.sort((a, b) => b.delayDays - a.delayDays)

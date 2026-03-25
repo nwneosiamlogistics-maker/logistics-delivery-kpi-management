@@ -75,6 +75,18 @@ const STATUS_TABS = [
     rowClass: 'hover:bg-green-50',
     urgentClass: '',
   },
+  {
+    key: 'ตีกลับ',
+    label: 'ตีกลับ',
+    description: 'ลูกค้าไม่รับสินค้า / สินค้าเดินทางกลับ',
+    icon: 'fa-rotate-left',
+    color: 'red',
+    bgClass: 'bg-red-100 text-red-700 border-red-200',
+    activeClass: 'bg-red-600 text-white border-red-600',
+    badgeClass: 'bg-red-500',
+    rowClass: 'hover:bg-red-50',
+    urgentClass: 'bg-red-50 border-l-4 border-red-400',
+  },
 ];
 
 function getKpiDeadline(d: DeliveryRecord, kpiConfigs: KpiConfig[]): string {
@@ -106,6 +118,7 @@ function StatusBadge({ status }: { status: string }) {
     indigo: 'bg-indigo-100 text-indigo-700 border border-indigo-200',
     orange: 'bg-orange-100 text-orange-700 border border-orange-200',
     green: 'bg-green-100 text-green-700 border border-green-200',
+    red: 'bg-red-100 text-red-700 border border-red-200',
   };
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-bold ${colorMap[tab.color]}`}>

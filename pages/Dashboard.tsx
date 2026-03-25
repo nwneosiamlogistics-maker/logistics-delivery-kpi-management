@@ -157,6 +157,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
   const activeDeliveries = filtered.filter(d => d.deliveryStatus !== 'รอจัด');
   const totalAll = filtered.length;
   const waitingCount = filtered.filter(d => d.deliveryStatus === 'รอจัด').length;
+  const returnedCount = filtered.filter(d => d.deliveryStatus === 'ตีกลับ').length;
   const total = activeDeliveries.length;
   const passCount = activeDeliveries.filter(d => d.kpiStatus === KpiStatus.PASS).length;
   const failCount = total - passCount;
@@ -324,6 +325,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ deliveries, kpiConfigs = [
           </div>
           <div className="text-xs text-gray-400">
             ยังไม่ถึงสาขา
+          </div>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl border-l-4 border-red-400">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-xs font-medium text-red-500">ตีกลับ</p>
+              <h3 className="text-2xl font-bold text-red-600 mt-1">{formatNum(returnedCount)}</h3>
+            </div>
+            <div className="p-2 bg-red-50 text-red-600 rounded-lg">
+              <i className="fas fa-rotate-left"></i>
+            </div>
+          </div>
+          <div className="text-xs text-red-400">
+            ลูกค้าไม่รับสินค้า
           </div>
         </div>
 

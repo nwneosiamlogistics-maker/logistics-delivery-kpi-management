@@ -172,9 +172,15 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const pct = (n: number, total: number) =>
     total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
 
-  // POD pending: not yet delivered
+  // ตีกลับ (returned/rejected by customer)
+  const returnedThisWeek = weekDeliveries.filter(d =>
+    d.deliveryStatus === DeliveryStatus.RETURNED
+  );
+  const returnedCount = returnedThisWeek.length;
+
+  // POD pending: not yet delivered (excluding ตีกลับ which is a final state)
   const podPending = weekDeliveries.filter(d =>
-    d.deliveryStatus !== DeliveryStatus.DELIVERED
+    d.deliveryStatus !== DeliveryStatus.DELIVERED && d.deliveryStatus !== DeliveryStatus.RETURNED
   );
   const podDone = deliveredThisWeek.length;
   const podPendingCount = podPending.length;
@@ -483,9 +489,10 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {statCard('fa-file-invoice', 'text-indigo-600', 'bg-indigo-50', 'จำนวน Inv. ทั้งหมด', formatNum(totalInv), `${formatQty(totalQty)} ชิ้น/กล่อง`)}
         {statCard('fa-check-circle', 'text-green-600', 'bg-green-50', 'ส่งเสร็จ', formatNum(podDone), `${pct(podDone, totalInv)}% ของทั้งหมด`)}
+        {statCard('fa-rotate-left', 'text-red-600', 'bg-red-50', 'ตีกลับ', formatNum(returnedCount), `${pct(returnedCount, totalInv)}% ของทั้งหมด`)}
         {statCard('fa-clock', 'text-orange-600', 'bg-orange-50', 'รอจัดส่ง', formatNum(podPendingCount), `${podPendingPct}% ของทั้งหมด`)}
         {statCard('fa-trophy', 'text-blue-600', 'bg-blue-50', 'KPI ผ่าน', `${pct(kpiPass, kpiTotal)}%`, `ผ่าน ${kpiPass} / ไม่ผ่าน ${kpiFail} (จาก ${kpiTotal} Inv.)`)}
       </div>
@@ -1070,6 +1077,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
                           d.deliveryStatus === DeliveryStatus.IN_TRANSIT ? 'bg-blue-100 text-blue-700' :
                           d.deliveryStatus === DeliveryStatus.DISTRIBUTING ? 'bg-purple-100 text-purple-700' :
                           d.deliveryStatus === DeliveryStatus.WAITING_DISTRIBUTE ? 'bg-orange-100 text-orange-700' :
+                          d.deliveryStatus === DeliveryStatus.RETURNED ? 'bg-red-100 text-red-700 font-bold' :
                           'bg-gray-100 text-gray-600'
                         }`}>
                           {d.deliveryStatus || 'รอจัด'}

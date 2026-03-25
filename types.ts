@@ -16,7 +16,8 @@ export enum DeliveryStatus {
   IN_TRANSIT = 'ขนส่ง',
   DISTRIBUTING = 'กระจายสินค้า',
   WAITING_DISTRIBUTE = 'รอกระจาย',
-  DELIVERED = 'ส่งเสร็จ'
+  DELIVERED = 'ส่งเสร็จ',
+  RETURNED = 'ตีกลับ'
 }
 
 export enum HolidayType {
