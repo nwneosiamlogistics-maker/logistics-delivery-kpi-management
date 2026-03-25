@@ -209,6 +209,7 @@ export const Import: React.FC<ImportProps> = ({
   const effectiveMap = firstPreview ? { ...firstPreview.columnMap, ...columnOverrides } : {};
   const hasQtyColumn = Object.values(effectiveMap).includes('qty');
   const hasWeightColumn = Object.values(effectiveMap).includes('weight');
+  const hasStatusColumn = Object.values(effectiveMap).includes('deliveryStatus');
 
   return (
     <div className="space-y-8 animate-fade-in-up">
@@ -234,6 +235,17 @@ export const Import: React.FC<ImportProps> = ({
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Warning if no status column detected */}
+              {!hasStatusColumn && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start gap-3">
+                  <i className="fas fa-exclamation-circle text-purple-500 mt-0.5"></i>
+                  <div>
+                    <p className="font-bold text-purple-900">ไม่พบคอลัมน์ "สถานะ" — ข้อมูลสถานะจะไม่ถูกอัพเดท</p>
+                    <p className="text-purple-700 text-sm mt-1">ถ้าต้องการอัพเดทสถานะ (เช่น "ส่งเสร็จ") กรุณากด <strong>สถานะ?</strong> ในแถวที่มีข้อมูลสถานะของคุณ</p>
+                  </div>
+                </div>
+              )}
+
               {/* Warning if no qty but has weight */}
               {!hasQtyColumn && hasWeightColumn && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
@@ -258,7 +270,8 @@ export const Import: React.FC<ImportProps> = ({
                         <th className="px-4 py-2.5 text-left font-bold text-gray-700">ชื่อคอลัมน์ (Excel)</th>
                         <th className="px-4 py-2.5 text-left font-bold text-gray-700">ตัวอย่างข้อมูล</th>
                         <th className="px-4 py-2.5 text-left font-bold text-gray-700">ระบบตรวจพบว่า</th>
-                        <th className="px-4 py-2.5 text-center font-bold text-gray-700">ใช้เป็น qty?</th>
+                        <th className="px-4 py-2.5 text-center font-bold text-gray-700">qty?</th>
+                        <th className="px-4 py-2.5 text-center font-bold text-gray-700">สถานะ?</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -267,33 +280,28 @@ export const Import: React.FC<ImportProps> = ({
                         const effectiveMapping = effectiveMap[h];
                         const isWeight = effectiveMapping === 'weight';
                         const isQty = effectiveMapping === 'qty';
+                        const isStatus = effectiveMapping === 'deliveryStatus';
                         const sampleVal = firstPreview.sampleRows[0]?.[h] ?? '';
                         return (
-                          <tr key={i} className={`border-t border-gray-100 ${isWeight ? 'bg-amber-50/50' : isQty ? 'bg-green-50/50' : ''}`}>
+                          <tr key={i} className={`border-t border-gray-100 ${isWeight ? 'bg-amber-50/50' : isQty ? 'bg-green-50/50' : isStatus ? 'bg-purple-50/50' : ''}`}>
                             <td className="px-4 py-2 font-mono text-gray-800 font-medium">{h}</td>
                             <td className="px-4 py-2 text-gray-500 truncate max-w-[150px]">{String(sampleVal).substring(0, 40)}</td>
                             <td className="px-4 py-2">
                               {isQty && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-bold">จำนวนชิ้น (qty)</span>}
                               {isWeight && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">น้ำหนัก (weight)</span>}
-                              {autoMap && !isWeight && !isQty && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs">{autoMap}</span>}
+                              {isStatus && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">สถานะ (deliveryStatus)</span>}
+                              {autoMap && !isWeight && !isQty && !isStatus && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs">{autoMap}</span>}
                               {!autoMap && !columnOverrides[h] && <span className="text-gray-300 text-xs">—</span>}
                             </td>
                             <td className="px-4 py-2 text-center">
                               {(isWeight || isQty || !autoMap) && (
                                 <button
                                   onClick={() => {
-                                    if (isQty && autoMap === 'qty') {
-                                      // Already auto-mapped as qty, can't toggle off
-                                      return;
-                                    }
+                                    if (isQty && autoMap === 'qty') return;
                                     setColumnOverrides(prev => {
                                       const next = { ...prev };
-                                      if (next[h] === 'qty') {
-                                        // Revert to original
-                                        delete next[h];
-                                      } else {
-                                        // Set this column as qty
-                                        // Remove qty override from other columns first
+                                      if (next[h] === 'qty') { delete next[h]; }
+                                      else {
                                         Object.keys(next).forEach(k => { if (next[k] === 'qty') delete next[k]; });
                                         next[h] = 'qty';
                                       }
@@ -301,13 +309,35 @@ export const Import: React.FC<ImportProps> = ({
                                     });
                                   }}
                                   className={`w-8 h-8 rounded-lg transition-all ${
-                                    isQty
-                                      ? 'bg-green-500 text-white shadow-md'
-                                      : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-600'
+                                    isQty ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-600'
                                   }`}
                                   title={isQty ? 'ใช้เป็นจำนวนชิ้นแล้ว' : 'เลือกเป็นจำนวนชิ้น'}
                                 >
                                   <i className={`fas ${isQty ? 'fa-check' : 'fa-plus'}`}></i>
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {(!autoMap || isStatus || (autoMap && autoMap !== 'deliveryStatus')) && (
+                                <button
+                                  onClick={() => {
+                                    if (isStatus && autoMap === 'deliveryStatus') return;
+                                    setColumnOverrides(prev => {
+                                      const next = { ...prev };
+                                      if (next[h] === 'deliveryStatus') { delete next[h]; }
+                                      else {
+                                        Object.keys(next).forEach(k => { if (next[k] === 'deliveryStatus') delete next[k]; });
+                                        next[h] = 'deliveryStatus';
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className={`w-8 h-8 rounded-lg transition-all ${
+                                    isStatus ? 'bg-purple-500 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-purple-100 hover:text-purple-600'
+                                  }`}
+                                  title={isStatus ? 'ใช้เป็นสถานะแล้ว' : 'เลือกเป็นสถานะการจัดส่ง'}
+                                >
+                                  <i className={`fas ${isStatus ? 'fa-check' : 'fa-plus'}`}></i>
                                 </button>
                               )}
                             </td>

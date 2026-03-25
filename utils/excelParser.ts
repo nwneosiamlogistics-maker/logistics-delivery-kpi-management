@@ -70,7 +70,12 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   productDetails: ['productDetails', 'สินค้า', 'product', 'Product', 'รายการสินค้า', 'รายละเอียดสินค้า'],
   sender: ['sender', 'Sender', 'ผู้ส่ง', 'ต้นทาง', 'บริษัทผู้ส่ง', 'shipper', 'Shipper'],
   province: ['province', 'Province', 'จังหวัด', 'จว.', 'จว'],
-  deliveryStatus: ['deliveryStatus', 'สถานะ', 'status', 'Status', 'สถานะการจัดส่ง'],
+  deliveryStatus: [
+    'deliveryStatus', 'สถานะ', 'status', 'Status', 'สถานะการจัดส่ง',
+    'สถานะงาน', 'สถานะการส่ง', 'สถานะจัดส่ง', 'สถานะ delivery',
+    'ผลการส่ง', 'ผลส่ง', 'ผล', 'delivery status', 'Delivery Status',
+    'DELIVERY STATUS', 'STATUS', 'สถานะปัจจุบัน', 'สถานะสินค้า',
+  ],
   actualDatetime: [
     'actualDatetime', 'รายละเอียด', 'detail', 'Detail',
     // ชื่อ column timestamp ส่งเสร็จที่พบบ่อยใน Thai Logistics ERP

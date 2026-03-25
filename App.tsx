@@ -55,6 +55,7 @@ const App: React.FC = () => {
   const [branchResources, setBranchResources] = useState<BranchResource[]>([]);
   const dataLoadedFromNAS = useRef(false);
   const isLoadingFromNAS = useRef(false);
+  const importInProgress = useRef(false);
   const [deliveriesLoaded, setDeliveriesLoaded] = useState(false);
   const [importLogs, setImportLogs] = useState<ImportLog[]>([]);
   const [documentImportLogs, setDocumentImportLogs] = useState<DocumentImportLog[]>([]);
@@ -92,6 +93,7 @@ const App: React.FC = () => {
     });
 
     // Server-side import: send all records in ONE request (faster, handles concurrent users)
+    importInProgress.current = true;
     setNasSaveProgress({ saved: 0, total: sanitizedNew.length });
     api.importDeliveries(sanitizedNew, (saved, total) => {
       setNasSaveProgress({ saved, total });
@@ -99,9 +101,9 @@ const App: React.FC = () => {
       .then((result) => {
         console.log(`[NAS API] Server-side import done: ${result.saved} saved, ${result.errors} errors / ${result.total} total`);
         setNasSaveProgress(null);
-        // Reload from DB after import — ensures refresh shows correct data
+        importInProgress.current = false;
         setTimeout(() => {
-          api.getDeliveries()
+          api.getDeliveries(deliveriesLoadedDays)
             .then(rows => setDeliveries(rows))
             .catch(err => console.warn('[NAS API] post-import reload error:', err));
         }, 500);
@@ -109,6 +111,7 @@ const App: React.FC = () => {
       .catch(err => {
         console.error('[NAS API] server-side import error:', err);
         setNasSaveProgress(null);
+        importInProgress.current = false;
       });
 
     syncWeeklyDeliveriesToReturnNeosiam(sanitizedNew, kpiConfigs);
@@ -265,6 +268,7 @@ const App: React.FC = () => {
 
   const loadDataFromNAS = useCallback(async () => {
     if (isLoadingFromNAS.current) return;
+    if (importInProgress.current) return;
     isLoadingFromNAS.current = true;
     try {
       console.log('[NAS API] Loading data from NAS...');
