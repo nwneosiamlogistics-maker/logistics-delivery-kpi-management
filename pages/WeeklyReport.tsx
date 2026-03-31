@@ -100,14 +100,17 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   const normalize = (value?: string | null) => (value ?? '').trim().toLowerCase();
   const makeKey = (province?: string | null, district?: string | null) => `${normalize(province)}||${normalize(district)}`;
 
+  const normBranch = (b?: string | null) => (b ?? '').trim().replace(/\s+/g, ' ');
+
   const districtBranchMap = useMemo(() => {
     const map = new Map<string, string>();
     kpiConfigs.forEach(c => {
       if (!c.branch || !c.district) return;
+      const branch = normBranch(c.branch);
       const fullKey = makeKey(c.province, c.district);
       const districtOnlyKey = makeKey('', c.district);
-      if (fullKey.trim() !== '||') map.set(fullKey, c.branch);
-      map.set(districtOnlyKey, c.branch);
+      if (fullKey.trim() !== '||') map.set(fullKey, branch);
+      map.set(districtOnlyKey, branch);
     });
     return map;
   }, [kpiConfigs]);
@@ -115,7 +118,7 @@ export const WeeklyReport: React.FC<WeeklyReportProps> = ({
   // All unique branches
   const branches = useMemo(() => {
     const set = new Set<string>();
-    kpiConfigs.forEach(c => { if (c.branch) set.add(c.branch); });
+    kpiConfigs.forEach(c => { if (c.branch) set.add(normBranch(c.branch)); });
     return Array.from(set).sort();
   }, [kpiConfigs]);
 
