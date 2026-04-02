@@ -173,9 +173,9 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
     const headers = {
       'Content-Type': 'application/json',
       'x-user-id': currentUser.id,
-      'x-user-name': currentUser.name,
+      'x-user-name': encodeURIComponent(currentUser.name),
       'x-user-role': currentUser.role,
-      ...(currentUser.email ? { 'x-user-email': currentUser.email } : {}),
+      ...(currentUser.email ? { 'x-user-email': encodeURIComponent(currentUser.email) } : {}),
       ...(options?.headers || {}),
     };
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
