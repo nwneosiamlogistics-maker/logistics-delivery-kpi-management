@@ -1,0 +1,10 @@
+# MariaDB Connection (Synology NAS)
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=logistics_api
+DB_PASSWORD=LogisticsKPI2026
+DB_NAME=logistics_kpi
+
+# API Server
+PORT=3001
+CORS_ORIGIN=https://logistics-delivery-kpi-management-two.vercel.app
