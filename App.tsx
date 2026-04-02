@@ -333,7 +333,7 @@ const App: React.FC = () => {
     try {
       console.log('[NAS API] Loading data from NAS...');
       const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData, documentImportLogsData] = await Promise.all([
-        (import.meta.env.DEV ? api.getAllDeliveries() : api.getDeliveries(90)).catch(() => []),
+        (import.meta.env.DEV ? api.getAllDeliveries() : api.getDeliveries(90)).catch(err => { console.error('[NAS API] getDeliveries error:', String(err)); return []; }),
         api.getHolidays().catch(() => HOLIDAYS),
         api.getKpiConfigs().catch(() => KPI_CONFIGS),
         api.getDelayReasons().catch(() => DELAY_REASONS),

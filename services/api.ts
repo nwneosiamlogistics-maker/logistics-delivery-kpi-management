@@ -196,6 +196,7 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 async function fetchDeliveriesPages(params: string): Promise<DeliveryRecord[]> {
   const PAGE_SIZE = 2000;
   const CONCURRENCY = 3;
+  console.log(`[API] calling deliveries/count?${params} from ${API_BASE_URL}`);
   const countData = await fetchAPI<{ count: number }>(`/api/deliveries/count?${params}`);
   const count = countData?.count ?? 0;
   console.log(`[API] deliveries/count?${params} → ${count}`);
@@ -241,7 +242,7 @@ export async function getAllDeliveries(): Promise<DeliveryRecord[]> {
   return withLocalSnapshotFallback(
     () => fetchDeliveriesPages('all=true'),
     snapshot => Object.values(snapshot.deliveries || {}).map(mapDeliveryFromSnapshot)
-  );
+  ).catch(err => { console.error('[API] getAllDeliveries failed:', err); return []; });
 }
 
 export async function importDeliveries(
