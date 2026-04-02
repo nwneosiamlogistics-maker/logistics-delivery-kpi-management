@@ -4,7 +4,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
+COPY package.json package-lock.json ./
 
 # Install production dependencies only (no TypeScript needed - using pre-compiled dist/)
 RUN npm install --production

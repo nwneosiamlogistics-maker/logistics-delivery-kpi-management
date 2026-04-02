@@ -43,6 +43,66 @@ import { calculateKpiStatus, calculatePendingKpiStatus } from './utils/kpiEngine
 
 // Using NAS API for all data operations (100% NAS sync)
 
+const CURRENT_USER_STORAGE_KEY = 'logistics_kpi_user';
+const TAB_ACCESS: Record<string, User['role'][]> = {
+  dashboard: ['Admin', 'Staff', 'Viewer'],
+  import: ['Admin', 'Staff'],
+  exceptions: ['Admin', 'Staff'],
+  'upload-history': ['Admin', 'Staff'],
+  'delivery-status': ['Admin', 'Staff', 'Viewer'],
+  'weekly-report': ['Admin', 'Staff', 'Viewer'],
+  'document-import': ['Admin', 'Staff'],
+  'document-report': ['Admin', 'Staff', 'Viewer'],
+  'kpi-dashboard': ['Admin', 'Staff', 'Viewer'],
+  forecast: ['Admin', 'Staff', 'Viewer'],
+  'branch-resources': ['Admin', 'Staff'],
+  analysis: ['Admin', 'Staff', 'Viewer'],
+  settings: ['Admin'],
+};
+
+function resolveCurrentUser(): User {
+  const envRole = import.meta.env.VITE_DEFAULT_USER_ROLE;
+  const envName = import.meta.env.VITE_DEFAULT_USER_NAME;
+  const envEmail = import.meta.env.VITE_DEFAULT_USER_EMAIL;
+
+  const normalizeRole = (role: unknown): User['role'] | null => {
+    if (role === 'Admin' || role === 'Staff' || role === 'Viewer') return role;
+    return null;
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem(CURRENT_USER_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<User>;
+        const parsedRole = normalizeRole(parsed.role);
+        if (parsedRole && parsed.id && parsed.name) {
+          return {
+            id: parsed.id,
+            name: parsed.name,
+            role: parsedRole,
+            email: parsed.email,
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('[Auth] Failed to parse current user from localStorage:', error);
+    }
+  }
+
+  const safeEnvRole = normalizeRole(envRole);
+  if (safeEnvRole && envName) {
+    return {
+      id: `env-${safeEnvRole.toLowerCase()}`,
+      name: envName,
+      role: safeEnvRole,
+      email: envEmail || undefined,
+    };
+  }
+
+  return DEFAULT_USER;
+}
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -64,7 +124,7 @@ const App: React.FC = () => {
   const [deliveriesIsPartial, setDeliveriesIsPartial] = useState(false);
   const [deliveriesLoadedDays, setDeliveriesLoadedDays] = useState(90);
   const [isLoadingAllDeliveries, setIsLoadingAllDeliveries] = useState(false);
-  const [currentUser] = useState<User>(DEFAULT_USER);
+  const [currentUser] = useState<User>(() => resolveCurrentUser());
 
   const handleImportComplete = useCallback((newRecords: DeliveryRecord[], importLog: ImportLog) => {
     const sanitizedNew = newRecords.map(d => ({
@@ -273,7 +333,7 @@ const App: React.FC = () => {
     try {
       console.log('[NAS API] Loading data from NAS...');
       const [deliveriesData, holidaysData, kpiConfigsData, delayReasonsData, storeMappingsData, branchResourcesData, storeClosuresData, importLogsData, documentImportLogsData] = await Promise.all([
-        api.getDeliveries(90).catch(() => []),
+        (import.meta.env.DEV ? api.getAllDeliveries() : api.getDeliveries(90)).catch(() => []),
         api.getHolidays().catch(() => HOLIDAYS),
         api.getKpiConfigs().catch(() => KPI_CONFIGS),
         api.getDelayReasons().catch(() => DELAY_REASONS),
@@ -322,9 +382,13 @@ const App: React.FC = () => {
       if (importLogsData.length > 0) setImportLogs(importLogsData);
       if (documentImportLogsData.length > 0) setDocumentImportLogs(documentImportLogsData);
       
-      if (deliveriesData.length > 0 && !dataLoadedFromNAS.current) {
+      if (deliveriesData.length > 0 && !dataLoadedFromNAS.current && !import.meta.env.DEV) {
         setDeliveriesIsPartial(true);
         setDeliveriesLoadedDays(90);
+      }
+
+      if (import.meta.env.DEV) {
+        setDeliveriesIsPartial(false);
       }
       
       dataLoadedFromNAS.current = true;
@@ -346,22 +410,24 @@ const App: React.FC = () => {
   // All data is now loaded from NAS API in the useEffect above
 
   // Handle save branch resource with history
-  const handleSaveBranchResource = useCallback((resource: BranchResource, oldResource?: BranchResource) => {
+  const handleSaveBranchResource = useCallback(async (resource: BranchResource, oldResource?: BranchResource) => {
     console.log('[BranchResource] handleSaveBranchResource called:', resource.branchName);
-    
-    // Update or add resource in local state
-    setBranchResources(prev => {
-      const exists = prev.find(b => b.id === resource.id);
-      if (exists) {
-        return prev.map(b => b.id === resource.id ? resource : b);
-      }
-      return [...prev, resource];
-    });
 
-    // Save to NAS API
-    api.saveBranchResource(resource)
-      .then(() => console.log('[NAS API] Branch resource saved:', resource.branchName))
-      .catch(err => console.error('[NAS API] Save branch resource error:', err));
+    try {
+      await api.saveBranchResource(resource);
+      console.log('[NAS API] Branch resource saved:', resource.branchName);
+
+      const refreshedResources = await api.getBranchResources();
+      const confirmedResource = refreshedResources.find(b => b.id === resource.id);
+      if (!confirmedResource) {
+        throw new Error(`Saved branch resource "${resource.branchName}" was not returned by NAS`);
+      }
+
+      setBranchResources(refreshedResources);
+    } catch (err) {
+      console.error('[NAS API] Save branch resource error:', err);
+      throw err;
+    }
   }, []);
 
   const handleAddKpiConfig = useCallback((newConfig: Omit<KpiConfig, 'id'>) => {
@@ -394,12 +460,16 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   const canAccess = (tab: string): boolean => {
-    if (currentUser.role === 'Admin') return true;
-    if (currentUser.role === 'Staff') {
-      return ['dashboard', 'import', 'exceptions', 'analysis'].includes(tab);
-    }
-    return ['dashboard', 'analysis'].includes(tab);
+    const allowedRoles = TAB_ACCESS[tab];
+    if (!allowedRoles) return true;
+    return allowedRoles.includes(currentUser.role);
   };
+
+  useEffect(() => {
+    if (!canAccess(activeTab)) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, currentUser.role]);
 
   const renderContent = () => {
     if (!canAccess(activeTab)) {
@@ -548,24 +618,27 @@ const App: React.FC = () => {
             importLogs={importLogs}
             deliveries={deliveries}
             onUpdateHolidays={(updated) => {
-              // Detect added or removed holidays and sync to NAS
-              const oldIds = new Set(holidays.map(h => h.id));
+              const oldMap = new Map(holidays.map(h => [h.id, h]));
               const newIds = new Set(updated.map(h => h.id));
-              // Save new holidays
-              updated.filter(h => !oldIds.has(h.id)).forEach(h => {
-                api.saveHoliday(h).catch(err => console.warn('[NAS API] save holiday error:', err));
+              updated.forEach(h => {
+                const previous = oldMap.get(h.id);
+                if (!previous || JSON.stringify(previous) !== JSON.stringify(h)) {
+                  api.saveHoliday(h).catch(err => console.warn('[NAS API] save holiday error:', err));
+                }
               });
-              // Delete removed holidays
               holidays.filter(h => !newIds.has(h.id)).forEach(h => {
                 api.deleteHoliday(h.id).catch(err => console.warn('[NAS API] delete holiday error:', err));
               });
               setHolidays(updated);
             }}
             onUpdateStoreClosures={(updated) => {
-              const oldIds = new Set(storeClosures.map(c => c.id));
+              const oldMap = new Map(storeClosures.map(c => [c.id, c]));
               const newIds = new Set(updated.map(c => c.id));
-              updated.filter(c => !oldIds.has(c.id)).forEach(c => {
-                api.saveStoreClosure(c).catch(err => console.warn('[NAS API] save store closure error:', err));
+              updated.forEach(c => {
+                const previous = oldMap.get(c.id);
+                if (!previous || JSON.stringify(previous) !== JSON.stringify(c)) {
+                  api.saveStoreClosure(c).catch(err => console.warn('[NAS API] save store closure error:', err));
+                }
               });
               storeClosures.filter(c => !newIds.has(c.id)).forEach(c => {
                 api.deleteStoreClosure(c.id).catch(err => console.warn('[NAS API] delete store closure error:', err));
@@ -590,10 +663,13 @@ const App: React.FC = () => {
             }}
             onAddKpiConfig={handleAddKpiConfig}
             onUpdateDelayReasons={(updated) => {
-              const oldCodes = new Set(delayReasons.map(r => r.code));
+              const oldMap = new Map(delayReasons.map(r => [r.code, r]));
               const newCodes = new Set(updated.map(r => r.code));
-              updated.filter(r => !oldCodes.has(r.code)).forEach(r => {
-                api.saveDelayReason(r).catch(err => console.warn('[NAS API] save delay reason error:', err));
+              updated.forEach(r => {
+                const previous = oldMap.get(r.code);
+                if (!previous || JSON.stringify(previous) !== JSON.stringify(r)) {
+                  api.saveDelayReason(r).catch(err => console.warn('[NAS API] save delay reason error:', err));
+                }
               });
               delayReasons.filter(r => !newCodes.has(r.code)).forEach(r => {
                 api.deleteDelayReason(r.code).catch(err => console.warn('[NAS API] delete delay reason error:', err));

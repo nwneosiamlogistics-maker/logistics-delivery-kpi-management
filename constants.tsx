@@ -1,10 +1,10 @@
 import { KpiConfig, Holiday, HolidayType, StoreClosure, DelayReason, User } from './types';
 
 export const DEFAULT_USER: User = {
-  id: 'user-001',
-  name: 'neosiam admin',
-  role: 'Admin',
-  email: 'neosiam admin'
+  id: 'viewer-001',
+  name: 'ผู้ใช้งานทั่วไป',
+  role: 'Viewer',
+  email: 'viewer@local'
 };
 
 export const KPI_CONFIGS: KpiConfig[] = [

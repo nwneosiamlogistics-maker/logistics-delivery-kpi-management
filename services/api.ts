@@ -17,6 +17,15 @@ import {
   DocumentImportLog
 } from '../types';
 
+const USER_ROLES = ['Admin', 'Staff', 'Viewer'] as const;
+type UserRole = typeof USER_ROLES[number];
+type ApiUser = {
+  id: string;
+  name: string;
+  role: UserRole;
+  email?: string;
+};
+
 // Strip ISO time portion from date strings (2026-03-11T00:00:00.000Z → 2026-03-11)
 function formatApiDate(d: string | null | undefined): string {
   if (!d) return '';
@@ -54,20 +63,125 @@ function fixDoubleEncoded(str: string | null | undefined): string {
   return str;
 }
 
-// API Base URL - Cloudflare Tunnel to NAS
-// Use empty string for local dev (Vite proxy), full URL for production (Vercel)
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://neosiam.dscloud.biz:5001';
+// API Base URL
+// In local dev, keep empty string so Vite proxy handles /api.
+const ENV_API_BASE_URL = import.meta.env.VITE_API_URL?.trim() ?? '';
+const API_BASE_URL = import.meta.env.DEV
+  ? ENV_API_BASE_URL
+  : (ENV_API_BASE_URL || 'https://neosiam.dscloud.biz:8443');
+
+type FirebaseExportSnapshot = {
+  deliveries?: Record<string, any>;
+  kpiConfigs?: Record<string, any>;
+  holidays?: Record<string, any>;
+  storeClosures?: Record<string, any>;
+  delayReasons?: Record<string, any>;
+  storeMappings?: Record<string, any>;
+  branchResources?: Record<string, any>;
+  branchResourcesHistory?: Record<string, any>;
+};
+
+let localSnapshotPromise: Promise<FirebaseExportSnapshot | null> | null = null;
+
+function normalizeUserRole(role: unknown): UserRole | null {
+  if (role === 'Admin' || role === 'Staff' || role === 'Viewer') return role;
+  return null;
+}
+
+function getApiUser(): ApiUser {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem('logistics_kpi_user');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<ApiUser>;
+        const parsedRole = normalizeUserRole(parsed.role);
+        if (parsedRole && parsed.id && parsed.name) {
+          return {
+            id: parsed.id,
+            name: parsed.name,
+            role: parsedRole,
+            email: parsed.email,
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('[API Auth] Failed to parse current user from localStorage:', error);
+    }
+  }
+
+  const envRole = normalizeUserRole(import.meta.env.VITE_DEFAULT_USER_ROLE);
+  if (envRole && import.meta.env.VITE_DEFAULT_USER_NAME) {
+    return {
+      id: `env-${envRole.toLowerCase()}`,
+      name: import.meta.env.VITE_DEFAULT_USER_NAME,
+      role: envRole,
+      email: import.meta.env.VITE_DEFAULT_USER_EMAIL || undefined,
+    };
+  }
+
+  return {
+    id: 'viewer-001',
+    name: 'ผู้ใช้งานทั่วไป',
+    role: 'Viewer',
+    email: 'viewer@local',
+  };
+}
+
+function shouldUseLocalSnapshotFallback(error: unknown): boolean {
+  if (!import.meta.env.DEV) return false;
+  return error instanceof Error && /403\b/.test(error.message);
+}
+
+async function loadLocalSnapshot(): Promise<FirebaseExportSnapshot | null> {
+  if (!import.meta.env.DEV) return null;
+  if (!localSnapshotPromise) {
+    const snapshotModulePath = '../backend/src/firebase-export.json';
+    localSnapshotPromise = import(/* @vite-ignore */ snapshotModulePath)
+      .then(module => (module.default ?? module) as FirebaseExportSnapshot)
+      .catch(error => {
+        console.warn('[Local Snapshot] load error:', error);
+        return null;
+      });
+  }
+  return localSnapshotPromise;
+}
+
+async function withLocalSnapshotFallback<T>(
+  loadFromApi: () => Promise<T>,
+  loadFromSnapshot: (snapshot: FirebaseExportSnapshot) => T | Promise<T>
+): Promise<T> {
+  try {
+    return await loadFromApi();
+  } catch (error) {
+    if (!shouldUseLocalSnapshotFallback(error)) {
+      throw error;
+    }
+    const snapshot = await loadLocalSnapshot();
+    if (!snapshot) {
+      throw error;
+    }
+    console.warn('[Local Snapshot] Using local fallback because NAS API returned 403');
+    return loadFromSnapshot(snapshot);
+  }
+}
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000);
   try {
+    const currentUser = getApiUser();
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-user-id': currentUser.id,
+      'x-user-name': currentUser.name,
+      'x-user-role': currentUser.role,
+      ...(currentUser.email ? { 'x-user-email': currentUser.email } : {}),
+      ...(options?.headers || {}),
+    };
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-      },
       ...options,
+      headers,
     });
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
@@ -100,11 +214,30 @@ async function fetchDeliveriesPages(params: string): Promise<DeliveryRecord[]> {
 }
 
 export async function getDeliveries(days = 90): Promise<DeliveryRecord[]> {
-  return fetchDeliveriesPages(`days=${days}`);
+  return withLocalSnapshotFallback(
+    () => fetchDeliveriesPages(`days=${days}`),
+    snapshot => {
+      const rows = Object.values(snapshot.deliveries || {});
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      cutoff.setHours(0, 0, 0, 0);
+      return rows
+        .filter((row: any) => {
+          const refDate = row.planDate || row.openDate || row.actualDate;
+          if (!refDate) return false;
+          const date = new Date(refDate);
+          return !Number.isNaN(date.getTime()) && date >= cutoff;
+        })
+        .map(mapDeliveryFromSnapshot);
+    }
+  );
 }
 
 export async function getAllDeliveries(): Promise<DeliveryRecord[]> {
-  return fetchDeliveriesPages('all=true');
+  return withLocalSnapshotFallback(
+    () => fetchDeliveriesPages('all=true'),
+    snapshot => Object.values(snapshot.deliveries || {}).map(mapDeliveryFromSnapshot)
+  );
 }
 
 export async function importDeliveries(
@@ -165,13 +298,23 @@ export async function saveDeliveries(deliveries: DeliveryRecord[], onProgress?: 
 
 // ========== Holidays ==========
 export async function getHolidays(): Promise<Holiday[]> {
-  const data = await fetchAPI<any[]>('/api/holidays');
-  return data.map(h => ({
-    id: h.id,
-    date: formatApiDate(h.date),
-    name: h.name,
-    type: h.type,
-  }));
+  return withLocalSnapshotFallback(
+    async () => {
+      const data = await fetchAPI<any[]>('/api/holidays');
+      return data.map(h => ({
+        id: h.id,
+        date: formatApiDate(h.date),
+        name: h.name,
+        type: h.type,
+      }));
+    },
+    snapshot => Object.entries(snapshot.holidays || {}).map(([key, h]: [string, any]) => ({
+      id: h.id || key,
+      date: formatApiDate(h.date),
+      name: fixDoubleEncoded(h.name),
+      type: h.type,
+    }))
+  );
 }
 
 export async function saveHoliday(holiday: Holiday): Promise<void> {
@@ -187,15 +330,27 @@ export async function deleteHoliday(id: string): Promise<void> {
 
 // ========== KPI Configs ==========
 export async function getKpiConfigs(): Promise<KpiConfig[]> {
-  const data = await fetchAPI<any[]>('/api/kpi-configs');
-  return data.map(c => ({
-    id: c.id,
-    branch: c.branch,
-    province: c.province,
-    district: c.district,
-    onTimeLimit: c.on_time_limit,
-    isDraft: Boolean(c.is_draft),
-  }));
+  return withLocalSnapshotFallback(
+    async () => {
+      const data = await fetchAPI<any[]>('/api/kpi-configs');
+      return data.map(c => ({
+        id: c.id,
+        branch: fixDoubleEncoded(c.branch),
+        province: fixDoubleEncoded(c.province),
+        district: fixDoubleEncoded(c.district),
+        onTimeLimit: c.on_time_limit,
+        isDraft: Boolean(c.is_draft),
+      }));
+    },
+    snapshot => Object.entries(snapshot.kpiConfigs || {}).map(([key, c]: [string, any]) => ({
+      id: c.id || key,
+      branch: fixDoubleEncoded(c.branch),
+      province: fixDoubleEncoded(c.province),
+      district: fixDoubleEncoded(c.district),
+      onTimeLimit: c.onTimeLimit,
+      isDraft: Boolean(c.isDraft),
+    }))
+  );
 }
 
 export async function saveKpiConfig(config: KpiConfig): Promise<void> {
@@ -218,14 +373,25 @@ export async function deleteKpiConfig(id: string): Promise<void> {
 
 // ========== Store Closures ==========
 export async function getStoreClosures(): Promise<StoreClosure[]> {
-  const data = await fetchAPI<any[]>('/api/store-closures');
-  return data.map(s => ({
-    id: s.id,
-    storeId: s.store_id,
-    date: formatApiDate(s.date),
-    closeRule: s.close_rule,
-    reason: s.reason,
-  }));
+  return withLocalSnapshotFallback(
+    async () => {
+      const data = await fetchAPI<any[]>('/api/store-closures');
+      return data.map(s => ({
+        id: s.id,
+        storeId: s.store_id,
+        date: formatApiDate(s.date),
+        closeRule: s.close_rule,
+        reason: fixDoubleEncoded(s.reason),
+      }));
+    },
+    snapshot => Object.entries(snapshot.storeClosures || {}).map(([key, s]: [string, any]) => ({
+      id: s.id || key,
+      storeId: fixDoubleEncoded(s.storeId),
+      date: formatApiDate(s.date),
+      closeRule: s.closeRule,
+      reason: fixDoubleEncoded(s.reason),
+    }))
+  );
 }
 
 export async function saveStoreClosure(closure: StoreClosure): Promise<void> {
@@ -247,12 +413,21 @@ export async function deleteStoreClosure(id: string): Promise<void> {
 
 // ========== Delay Reasons ==========
 export async function getDelayReasons(): Promise<DelayReason[]> {
-  const data = await fetchAPI<any[]>('/api/delay-reasons');
-  return data.map(d => ({
-    code: d.code,
-    label: d.label,
-    category: d.category,
-  }));
+  return withLocalSnapshotFallback(
+    async () => {
+      const data = await fetchAPI<any[]>('/api/delay-reasons');
+      return data.map(d => ({
+        code: d.code,
+        label: fixDoubleEncoded(d.label),
+        category: d.category,
+      }));
+    },
+    snapshot => Object.entries(snapshot.delayReasons || {}).map(([key, d]: [string, any]) => ({
+      code: d.code || key,
+      label: fixDoubleEncoded(d.label),
+      category: d.category,
+    }))
+  );
 }
 
 export async function saveDelayReason(reason: DelayReason): Promise<void> {
@@ -268,13 +443,23 @@ export async function deleteDelayReason(code: string): Promise<void> {
 
 // ========== Store Mappings ==========
 export async function getStoreMappings(): Promise<StoreMapping[]> {
-  const data = await fetchAPI<any[]>('/api/store-mappings');
-  return data.map(m => ({
-    storeId: m.store_id,
-    district: m.district,
-    province: m.province,
-    createdAt: m.created_at,
-  }));
+  return withLocalSnapshotFallback(
+    async () => {
+      const data = await fetchAPI<any[]>('/api/store-mappings');
+      return data.map(m => ({
+        storeId: fixDoubleEncoded(m.store_id),
+        district: fixDoubleEncoded(m.district),
+        province: fixDoubleEncoded(m.province),
+        createdAt: m.created_at,
+      }));
+    },
+    snapshot => Object.entries(snapshot.storeMappings || {}).map(([key, m]: [string, any]) => ({
+      storeId: fixDoubleEncoded(m.storeId || key),
+      district: fixDoubleEncoded(m.district),
+      province: fixDoubleEncoded(m.province),
+      createdAt: m.createdAt || '',
+    }))
+  );
 }
 
 export async function saveStoreMapping(mapping: StoreMapping): Promise<void> {
@@ -291,25 +476,47 @@ export async function saveStoreMapping(mapping: StoreMapping): Promise<void> {
 
 // ========== Branch Resources ==========
 export async function getBranchResources(): Promise<BranchResource[]> {
-  const data = await fetchAPI<any[]>('/api/branch-resources');
-  return data.map(b => ({
-    id: b.id,
-    branchName: b.branch_name,
-    trucks: b.trucks,
-    tripsPerDay: b.trips_per_day,
-    loaders: b.loaders,
-    checkers: b.checkers,
-    admin: b.admin,
-    workHoursPerDay: b.work_hours_per_day,
-    loaderWage: b.loader_wage,
-    checkerWage: b.checker_wage,
-    adminWage: b.admin_wage,
-    truckCostPerDay: b.truck_cost_per_day,
-    calculatedCapacity: b.calculated_capacity,
-    calculatedSpeed: b.calculated_speed,
-    updatedAt: b.updated_at,
-    updatedBy: b.updated_by,
-  }));
+  return withLocalSnapshotFallback(
+    async () => {
+      const data = await fetchAPI<any[]>('/api/branch-resources');
+      return data.map(b => ({
+        id: b.id,
+        branchName: fixDoubleEncoded(b.branch_name),
+        trucks: b.trucks,
+        tripsPerDay: b.trips_per_day,
+        loaders: b.loaders,
+        checkers: b.checkers,
+        admin: b.admin,
+        workHoursPerDay: b.work_hours_per_day,
+        loaderWage: b.loader_wage,
+        checkerWage: b.checker_wage,
+        adminWage: b.admin_wage,
+        truckCostPerDay: b.truck_cost_per_day,
+        calculatedCapacity: b.calculated_capacity,
+        calculatedSpeed: b.calculated_speed,
+        updatedAt: b.updated_at,
+        updatedBy: b.updated_by,
+      }));
+    },
+    snapshot => Object.entries(snapshot.branchResources || {}).map(([key, b]: [string, any]) => ({
+      id: b.id || key,
+      branchName: fixDoubleEncoded(b.branchName),
+      trucks: Number(b.trucks || 0),
+      tripsPerDay: Number(b.tripsPerDay || 0),
+      loaders: Number(b.loaders || 0),
+      checkers: Number(b.checkers || 0),
+      admin: Number(b.admin || 0),
+      workHoursPerDay: Number(b.workHoursPerDay || 0),
+      loaderWage: Number(b.loaderWage || 0),
+      checkerWage: Number(b.checkerWage || 0),
+      adminWage: Number(b.adminWage || 0),
+      truckCostPerDay: Number(b.truckCostPerDay || 0),
+      calculatedCapacity: Number(b.calculatedCapacity || 0),
+      calculatedSpeed: Number(b.calculatedSpeed || 0),
+      updatedAt: b.updatedAt || '',
+      updatedBy: b.updatedBy || '',
+    }))
+  );
 }
 
 export async function saveBranchResource(resource: BranchResource): Promise<void> {
@@ -477,6 +684,37 @@ function mapDeliveryToAPI(d: DeliveryRecord): any {
     documentReturnSource: d.documentReturnSource,
     manualPlanDate: d.manualPlanDate ? 1 : 0,
     manualActualDate: d.manualActualDate ? 1 : 0,
+  };
+}
+
+function mapDeliveryFromSnapshot(d: any): DeliveryRecord {
+  return {
+    orderNo: d.orderNo,
+    district: fixDoubleEncoded(d.district),
+    storeId: fixDoubleEncoded(d.storeId),
+    planDate: formatApiDate(d.planDate),
+    openDate: formatApiDate(d.openDate),
+    actualDate: formatApiDate(d.actualDate),
+    qty: parseFloat(String(d.qty)) || 0,
+    sender: fixDoubleEncoded(d.sender),
+    province: fixDoubleEncoded(d.province),
+    importFileId: d.importFileId,
+    deliveryStatus: fixDoubleEncoded(d.deliveryStatus),
+    actualDatetime: d.actualDatetime,
+    productDetails: d.productDetails,
+    kpiStatus: d.kpiStatus,
+    delayDays: parseInt(String(d.delayDays), 10) || 0,
+    reasonRequired: Boolean(d.reasonRequired),
+    reasonStatus: d.reasonStatus,
+    delayReason: d.delayReason,
+    updatedAt: d.updatedAt,
+    weekday: d.weekday,
+    documentReturned: Boolean(d.documentReturned),
+    documentReturnedDate: formatApiDate(d.documentReturnedDate),
+    documentReturnBillDate: formatApiDate(d.documentReturnBillDate),
+    documentReturnSource: d.documentReturnSource,
+    manualPlanDate: Boolean(d.manualPlanDate),
+    manualActualDate: Boolean(d.manualActualDate),
   };
 }
 

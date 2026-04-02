@@ -13,13 +13,89 @@ const gzipAsync = (0, util_1.promisify)(zlib_1.gzip);
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
+const USER_ROLES = ['Admin', 'Staff', 'Viewer'];
+const configuredCorsOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+const allowedCorsOrigins = new Set([
+    ...configuredCorsOrigins,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://192.168.1.61:3000',
+]);
 // Middleware
 app.use((0, cors_1.default)({
-    origin: true,
+    origin(origin, callback) {
+        if (!origin || allowedCorsOrigins.size === 0 || allowedCorsOrigins.has(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
 }));
 app.use(express_1.default.json({ limit: '50mb' }));
+function normalizeUserRole(role) {
+    if (role === 'Admin' || role === 'Staff' || role === 'Viewer')
+        return role;
+    return null;
+}
+function getRequestUser(req) {
+    const role = normalizeUserRole(req.header('x-user-role'));
+    if (!role) {
+        return {
+            id: 'anonymous-viewer',
+            name: 'Anonymous Viewer',
+            role: 'Viewer',
+        };
+    }
+    return {
+        id: req.header('x-user-id') || `${role.toLowerCase()}-anonymous`,
+        name: req.header('x-user-name') || role,
+        role,
+        email: req.header('x-user-email') || undefined,
+    };
+}
+function requireRoles(allowedRoles) {
+    return (req, res, next) => {
+        const user = getRequestUser(req);
+        if (!allowedRoles.includes(user.role)) {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: `This action requires one of: ${allowedRoles.join(', ')}`,
+            });
+        }
+        next();
+    };
+}
+function buildBranchResourceChanges(previous, next) {
+    const fieldMap = [
+        ['branch_name', 'branchName'],
+        ['trucks', 'trucks'],
+        ['trips_per_day', 'tripsPerDay'],
+        ['loaders', 'loaders'],
+        ['checkers', 'checkers'],
+        ['admin', 'admin'],
+        ['work_hours_per_day', 'workHoursPerDay'],
+        ['loader_wage', 'loaderWage'],
+        ['checker_wage', 'checkerWage'],
+        ['admin_wage', 'adminWage'],
+        ['truck_cost_per_day', 'truckCostPerDay'],
+        ['calculated_capacity', 'calculatedCapacity'],
+        ['calculated_speed', 'calculatedSpeed'],
+        ['updated_by', 'updatedBy'],
+    ];
+    const changes = {};
+    fieldMap.forEach(([dbKey, apiKey]) => {
+        const fromValue = previous ? previous[dbKey] ?? null : null;
+        const toValue = next[apiKey] ?? null;
+        if (fromValue !== toValue) {
+            changes[apiKey] = { from: fromValue, to: toValue };
+        }
+    });
+    return changes;
+}
 // Windows-1252 → byte mapping (MySQL "latin1" is actually cp1252)
 const CP1252_MAP = {
     0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85,
@@ -119,6 +195,23 @@ console.log('[STARTUP] index.js v15i - 2026-03-24 pagination active');
     }
     catch (e) {
         console.warn('[MIGRATION] document_import_logs create skipped:', e?.message);
+    }
+    try {
+        await (0, db_1.execute)(`CREATE TABLE IF NOT EXISTS branch_resource_history (
+      id VARCHAR(100) PRIMARY KEY,
+      branch_id VARCHAR(100) NOT NULL,
+      action VARCHAR(20) NOT NULL,
+      changes JSON,
+      updated_at DATETIME NOT NULL,
+      updated_by VARCHAR(255),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_branch_resource_history_branch_id (branch_id),
+      INDEX idx_branch_resource_history_updated_at (updated_at)
+    ) ENGINE=InnoDB`);
+        console.log('[MIGRATION] branch_resource_history table ready');
+    }
+    catch (e) {
+        console.warn('[MIGRATION] branch_resource_history create skipped:', e?.message);
     }
 })();
 // Health check
@@ -222,7 +315,7 @@ app.get('/api/deliveries/:orderNo', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch delivery' });
     }
 });
-app.post('/api/deliveries', async (req, res) => {
+app.post('/api/deliveries', requireRoles(['Admin', 'Staff']), async (req, res) => {
     try {
         const d = req.body;
         const planDate = normalizeDate(d.planDate);
@@ -263,7 +356,7 @@ app.post('/api/deliveries', async (req, res) => {
         res.status(500).json({ error: 'Failed to save delivery' });
     }
 });
-app.post('/api/deliveries/bulk', async (req, res) => {
+app.post('/api/deliveries/bulk', requireRoles(['Admin', 'Staff']), async (req, res) => {
     try {
         const deliveries = req.body;
         if (deliveries.length > 0) {
@@ -315,7 +408,7 @@ app.post('/api/deliveries/bulk', async (req, res) => {
         res.status(500).json({ error: 'Failed to bulk save deliveries' });
     }
 });
-app.post('/api/deliveries/import', async (req, res) => {
+app.post('/api/deliveries/import', requireRoles(['Admin', 'Staff']), async (req, res) => {
     try {
         const deliveries = req.body;
         if (!Array.isArray(deliveries) || deliveries.length === 0) {
@@ -372,7 +465,7 @@ app.post('/api/deliveries/import', async (req, res) => {
         res.status(500).json({ error: 'Failed to import deliveries' });
     }
 });
-app.patch('/api/deliveries/:orderNo', async (req, res) => {
+app.patch('/api/deliveries/:orderNo', requireRoles(['Admin', 'Staff']), async (req, res) => {
     try {
         const updates = req.body;
         const fields = Object.keys(updates).map(k => `${toSnakeCase(k)} = ?`).join(', ');
@@ -395,7 +488,7 @@ app.get('/api/holidays', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch holidays' });
     }
 });
-app.post('/api/holidays', async (req, res) => {
+app.post('/api/holidays', requireRoles(['Admin']), async (req, res) => {
     try {
         const h = req.body;
         await (0, db_1.execute)('INSERT INTO holidays (id, date, name, type) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), type = VALUES(type)', [h.id, h.date, h.name, h.type]);
@@ -405,7 +498,7 @@ app.post('/api/holidays', async (req, res) => {
         res.status(500).json({ error: 'Failed to save holiday' });
     }
 });
-app.delete('/api/holidays/:id', async (req, res) => {
+app.delete('/api/holidays/:id', requireRoles(['Admin']), async (req, res) => {
     try {
         await (0, db_1.execute)('DELETE FROM holidays WHERE id = ?', [req.params.id]);
         res.json({ success: true });
@@ -424,7 +517,7 @@ app.get('/api/kpi-configs', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch KPI configs' });
     }
 });
-app.post('/api/kpi-configs', async (req, res) => {
+app.post('/api/kpi-configs', requireRoles(['Admin']), async (req, res) => {
     try {
         const c = req.body;
         await (0, db_1.execute)('INSERT INTO kpi_configs (id, branch, province, district, on_time_limit, is_draft) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE branch = VALUES(branch), province = VALUES(province), district = VALUES(district), on_time_limit = VALUES(on_time_limit), is_draft = VALUES(is_draft)', [c.id, c.branch, c.province, c.district, c.onTimeLimit, c.isDraft ? 1 : 0]);
@@ -434,7 +527,7 @@ app.post('/api/kpi-configs', async (req, res) => {
         res.status(500).json({ error: 'Failed to save KPI config' });
     }
 });
-app.delete('/api/kpi-configs/:id', async (req, res) => {
+app.delete('/api/kpi-configs/:id', requireRoles(['Admin']), async (req, res) => {
     try {
         await (0, db_1.execute)('DELETE FROM kpi_configs WHERE id = ?', [req.params.id]);
         res.json({ success: true });
@@ -453,7 +546,7 @@ app.get('/api/store-closures', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch store closures' });
     }
 });
-app.post('/api/store-closures', async (req, res) => {
+app.post('/api/store-closures', requireRoles(['Admin']), async (req, res) => {
     try {
         const s = req.body;
         await (0, db_1.execute)('INSERT INTO store_closures (id, store_id, date, close_rule, reason) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE store_id = VALUES(store_id), date = VALUES(date), close_rule = VALUES(close_rule), reason = VALUES(reason)', [s.id, s.storeId, s.date, s.closeRule, s.reason]);
@@ -463,7 +556,7 @@ app.post('/api/store-closures', async (req, res) => {
         res.status(500).json({ error: 'Failed to save store closure' });
     }
 });
-app.delete('/api/store-closures/:id', async (req, res) => {
+app.delete('/api/store-closures/:id', requireRoles(['Admin']), async (req, res) => {
     try {
         await (0, db_1.execute)('DELETE FROM store_closures WHERE id = ?', [req.params.id]);
         res.json({ success: true });
@@ -482,7 +575,7 @@ app.get('/api/delay-reasons', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch delay reasons' });
     }
 });
-app.post('/api/delay-reasons', async (req, res) => {
+app.post('/api/delay-reasons', requireRoles(['Admin']), async (req, res) => {
     try {
         const d = req.body;
         await (0, db_1.execute)('INSERT INTO delay_reasons (code, label, category) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE label = VALUES(label), category = VALUES(category)', [d.code, d.label, d.category]);
@@ -492,7 +585,7 @@ app.post('/api/delay-reasons', async (req, res) => {
         res.status(500).json({ error: 'Failed to save delay reason' });
     }
 });
-app.delete('/api/delay-reasons/:code', async (req, res) => {
+app.delete('/api/delay-reasons/:code', requireRoles(['Admin']), async (req, res) => {
     try {
         await (0, db_1.execute)('DELETE FROM delay_reasons WHERE code = ?', [req.params.code]);
         res.json({ success: true });
@@ -511,7 +604,7 @@ app.get('/api/store-mappings', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch store mappings' });
     }
 });
-app.post('/api/store-mappings', async (req, res) => {
+app.post('/api/store-mappings', requireRoles(['Admin']), async (req, res) => {
     try {
         const m = req.body;
         await (0, db_1.execute)('INSERT INTO store_mappings (store_id, district, province, created_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE district = VALUES(district), province = VALUES(province)', [m.storeId, m.district, m.province, m.createdAt]);
@@ -531,14 +624,28 @@ app.get('/api/branch-resources', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch branch resources' });
     }
 });
-app.post('/api/branch-resources', async (req, res) => {
+app.post('/api/branch-resources', requireRoles(['Admin']), async (req, res) => {
     try {
         const r = req.body;
+        const user = getRequestUser(req);
+        const existingRows = await (0, db_1.query)('SELECT * FROM branch_resources WHERE id = ?', [r.id]);
+        const previous = existingRows[0];
+        const changes = buildBranchResourceChanges(previous, r);
         await (0, db_1.execute)(`
       INSERT INTO branch_resources (id, branch_name, trucks, trips_per_day, loaders, checkers, admin, work_hours_per_day, loader_wage, checker_wage, admin_wage, truck_cost_per_day, calculated_capacity, calculated_speed, updated_at, updated_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE branch_name = VALUES(branch_name), trucks = VALUES(trucks), trips_per_day = VALUES(trips_per_day), loaders = VALUES(loaders), checkers = VALUES(checkers), admin = VALUES(admin), work_hours_per_day = VALUES(work_hours_per_day), loader_wage = VALUES(loader_wage), checker_wage = VALUES(checker_wage), admin_wage = VALUES(admin_wage), truck_cost_per_day = VALUES(truck_cost_per_day), calculated_capacity = VALUES(calculated_capacity), calculated_speed = VALUES(calculated_speed), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)
     `, [r.id, r.branchName, r.trucks, r.tripsPerDay, r.loaders, r.checkers, r.admin, r.workHoursPerDay, r.loaderWage, r.checkerWage, r.adminWage, r.truckCostPerDay, r.calculatedCapacity, r.calculatedSpeed, r.updatedAt, r.updatedBy]);
+        if (Object.keys(changes).length > 0) {
+            await (0, db_1.execute)('INSERT INTO branch_resource_history (id, branch_id, action, changes, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?)', [
+                `brh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                r.id,
+                previous ? 'update' : 'create',
+                JSON.stringify(changes),
+                normalizeDatetime(r.updatedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' '),
+                r.updatedBy || user.email || user.name,
+            ]);
+        }
         res.json({ success: true });
     }
     catch (error) {
@@ -571,7 +678,7 @@ app.get('/api/import-logs', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch import logs' });
     }
 });
-app.post('/api/import-logs', async (req, res) => {
+app.post('/api/import-logs', requireRoles(['Admin', 'Staff']), async (req, res) => {
     try {
         const l = req.body;
         await (0, db_1.execute)('INSERT INTO import_logs (id, timestamp, file_name, user_id, user_name, records_processed, created, updated, skipped, errors, error_details, skipped_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp)', [l.id, l.timestamp, l.fileName, l.userId, l.userName,
@@ -605,7 +712,7 @@ app.get('/api/document-import-logs', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch document import logs' });
     }
 });
-app.post('/api/document-import-logs', async (req, res) => {
+app.post('/api/document-import-logs', requireRoles(['Admin', 'Staff']), async (req, res) => {
     try {
         const l = req.body;
         await (0, db_1.execute)('INSERT INTO document_import_logs (id, timestamp, file_names, return_date, confirmed_count, pdf_count, manual_count) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE timestamp=VALUES(timestamp)', [l.id, l.timestamp, JSON.stringify(l.fileNames || []), l.returnDate || '', l.confirmedCount || 0, l.pdfCount || 0, l.manualCount || 0]);

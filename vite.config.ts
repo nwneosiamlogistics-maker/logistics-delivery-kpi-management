@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-    const apiTarget = env.VITE_API_URL || 'https://mat-designed-restoration-talented.trycloudflare.com';
+    const apiTarget = env.VITE_API_URL?.trim() || 'https://neosiam.dscloud.biz:8443';
     return {
       server: {
         port: 3000,

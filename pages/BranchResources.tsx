@@ -6,7 +6,7 @@ interface BranchResourcesProps {
   kpiConfigs: KpiConfig[];
   deliveries: DeliveryRecord[];
   branchResources: BranchResource[];
-  onSaveBranchResource: (resource: BranchResource, oldResource?: BranchResource) => void;
+  onSaveBranchResource: (resource: BranchResource, oldResource?: BranchResource) => Promise<void>;
   currentUserEmail: string;
 }
 
@@ -31,6 +31,9 @@ export const BranchResources: React.FC<BranchResourcesProps> = ({
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<BranchResourceHistory[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   // Month selection for calculation
   const today = new Date();
@@ -226,7 +229,7 @@ export const BranchResources: React.FC<BranchResourcesProps> = ({
     setShowHistory(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedBranch) {
       alert('กรุณาเลือกสาขา');
       return;
@@ -254,7 +257,20 @@ export const BranchResources: React.FC<BranchResourcesProps> = ({
       updatedBy: currentUserEmail
     };
 
-    onSaveBranchResource(resource, existing);
+    setIsSaving(true);
+    setSaveMessage(null);
+    setSaveError(null);
+
+    try {
+      await onSaveBranchResource(resource, existing);
+      setSaveMessage('บันทึกข้อมูลสาขาและยืนยันกับ NAS เรียบร้อย');
+    } catch (error) {
+      console.error('[BranchResources] save failed:', error);
+      setSaveError('บันทึกข้อมูลไม่สำเร็จ หรือ NAS ยังไม่ยืนยันข้อมูล กรุณาลองใหม่');
+    } finally {
+      setIsSaving(false);
+    }
+    return;
     alert('✅ บันทึกข้อมูลสาขาเรียบร้อย');
   };
 
@@ -563,9 +579,10 @@ export const BranchResources: React.FC<BranchResourcesProps> = ({
           <div className="flex gap-4">
             <button
               onClick={handleSave}
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center gap-2"
+              disabled={isSaving}
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <i className="fas fa-save"></i>
+              <i className={`fas ${isSaving ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
               บันทึก
             </button>
             <button
@@ -576,6 +593,20 @@ export const BranchResources: React.FC<BranchResourcesProps> = ({
               ดูประวัติการเปลี่ยนแปลง
             </button>
           </div>
+
+          {saveMessage && (
+            <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              <i className="fas fa-check-circle mr-2"></i>
+              {saveMessage}
+            </div>
+          )}
+
+          {saveError && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <i className="fas fa-exclamation-circle mr-2"></i>
+              {saveError}
+            </div>
+          )}
         </>
       )}
 
