@@ -4,10 +4,12 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   userRole?: string;
+  userName?: string;
   onCollapseChange?: (collapsed: boolean) => void;
+  onLogout?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = 'Viewer', onCollapseChange }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = 'Viewer', userName, onCollapseChange, onLogout }) => {
   const [collapsed, setCollapsed] = useState(false);
 
   const toggle = () => {
@@ -89,6 +91,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userR
                     }`}></i>
                     {roleLabels[userRole] || userRole}
                   </div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ชื่อผู้ใช้</p>
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700`}>
+                    <i className="fas fa-user"></i>
+                    {userName}
+                  </div>
                 </div>
               </div>
             )}
@@ -116,6 +123,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userR
                 พร้อมติดตาม KPI แบบ Real-time
               </p>
             </div>
+          </div>
+        )}
+        {onLogout && (
+          <div className="px-3 pb-3">
+            <button
+              onClick={onLogout}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors ${
+                collapsed ? 'justify-center' : ''
+              }`}
+              title="ออกจากระบบ"
+            >
+              <i className="fas fa-right-from-bracket"></i>
+              {!collapsed && <span>ออกจากระบบ</span>}
+            </button>
           </div>
         )}
       </div>

@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import Login from './pages/Login';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
@@ -124,7 +125,25 @@ const App: React.FC = () => {
   const [deliveriesIsPartial, setDeliveriesIsPartial] = useState(false);
   const [deliveriesLoadedDays, setDeliveriesLoadedDays] = useState(90);
   const [isLoadingAllDeliveries, setIsLoadingAllDeliveries] = useState(false);
-  const [currentUser] = useState<User>(() => resolveCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User>(() => resolveCurrentUser());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as Partial<User>;
+      return !!(parsed.id && parsed.name && (parsed.role === 'Admin' || parsed.role === 'Staff' || parsed.role === 'Viewer'));
+    } catch { return false; }
+  });
+
+  const handleLogin = useCallback((user: User) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+    setIsAuthenticated(false);
+  }, []);
 
   const handleImportComplete = useCallback((newRecords: DeliveryRecord[], importLog: ImportLog) => {
     const sanitizedNew = newRecords.map(d => ({
@@ -685,6 +704,10 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <Navbar user={currentUser} />
@@ -692,7 +715,9 @@ const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         userRole={currentUser.role}
+        userName={currentUser.name}
         onCollapseChange={setSidebarCollapsed}
+        onLogout={handleLogout}
       />
 
       <main className={`flex-1 pt-16 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
