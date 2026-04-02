@@ -196,7 +196,9 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 async function fetchDeliveriesPages(params: string): Promise<DeliveryRecord[]> {
   const PAGE_SIZE = 2000;
   const CONCURRENCY = 3;
-  const { count } = await fetchAPI<{ count: number }>(`/api/deliveries/count?${params}`);
+  const countData = await fetchAPI<{ count: number }>(`/api/deliveries/count?${params}`);
+  const count = countData?.count ?? 0;
+  console.log(`[API] deliveries/count?${params} → ${count}`);
   if (count === 0) return [];
   const totalPages = Math.ceil(count / PAGE_SIZE);
   const allRows: any[] = [];
@@ -209,7 +211,9 @@ async function fetchDeliveriesPages(params: string): Promise<DeliveryRecord[]> {
       chunk.map(page => fetchAPI<any[]>(`/api/deliveries?${params}&page=${page}&limit=${PAGE_SIZE}`))
     );
     results.forEach(rows => allRows.push(...rows));
+    console.log(`[API] fetched pages ${i+1}-${i+chunk.length} → allRows=${allRows.length}`);
   }
+  console.log(`[API] fetchDeliveriesPages done → ${allRows.length} rows`);
   return allRows.map(mapDeliveryFromAPI);
 }
 
